@@ -4,6 +4,7 @@ import { createReadStream, existsSync, statSync, watch, type FSWatcher } from 'n
 import { createServer, type ServerResponse } from 'node:http';
 import { basename, dirname, extname, resolve } from 'node:path';
 import { renderFile, type Rendered } from './build.js';
+import { ChromiumMeasurer } from './measurer.js';
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -72,6 +73,8 @@ export interface DevServer {
 
 export interface DevOptions {
   port?: number;
+  /** ヘッドレス Chromium で計測して自動で分割する（既定は行う） */
+  measure?: boolean;
   host?: string;
   log?: (line: string) => void;
 }
@@ -86,9 +89,12 @@ export async function startDev(mdFile: string, options: DevOptions = {}): Promis
   let version = 0;
   const clients = new Set<ServerResponse>();
 
-  const render = () => {
-    preview = renderFile(file, { debug: true, includeHidden: true, scripts: [LIVE_RELOAD] });
-    present = renderFile(file, { scripts: [RUNTIME_SCRIPT, LIVE_RELOAD] });
+  // 自動分割のための計測。ブラウザは使い回し、編集していない節は測り直さない
+  const measurer = options.measure === false ? undefined : new ChromiumMeasurer();
+  const render = async () => {
+    const previewOptions = { debug: true, includeHidden: true, scripts: [LIVE_RELOAD] };
+    preview = await renderFile(file, previewOptions, measurer);
+    present = await renderFile(file, { scripts: [RUNTIME_SCRIPT, LIVE_RELOAD] }, measurer);
     version++;
     const count = preview.diagnostics.filter((d) => d.severity !== 'info').length;
     const time = new Date().toLocaleTimeString();
@@ -96,7 +102,10 @@ export async function startDev(mdFile: string, options: DevOptions = {}): Promis
       `${time}  ${name} を読み込みました（${present.slides.slides.length} 枚${count ? `、警告 ${count} 件` : ''}）`,
     );
   };
-  render();
+  await render();
+  if (measurer && !(await measurer.browser())) {
+    log(`注意: ${measurer.error ?? 'Chromium を起動できませんでした'}。自動分割を省きます`);
+  }
 
   const server = createServer((req, res) => {
     let path: string;
@@ -167,13 +176,12 @@ export async function startDev(mdFile: string, options: DevOptions = {}): Promis
   const reload = () => {
     clearTimeout(timer);
     timer = setTimeout(() => {
-      try {
-        render();
-      } catch (error) {
-        log(`読み込めませんでした：${(error as Error).message}`);
-        return;
-      }
-      for (const client of clients) client.write('event: reload\ndata: {}\n\n');
+      render().then(
+        () => {
+          for (const client of clients) client.write('event: reload\ndata: {}\n\n');
+        },
+        (error: Error) => log(`読み込めませんでした：${error.message}`),
+      );
     }, 60);
   };
   const watchers: FSWatcher[] = [];
@@ -207,6 +215,7 @@ export async function startDev(mdFile: string, options: DevOptions = {}): Promis
       for (const watcher of watchers) watcher.close();
       for (const client of clients) client.end();
       await new Promise<void>((ok) => server.close(() => ok()));
+      await measurer?.close();
     },
   };
 }

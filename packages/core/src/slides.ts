@@ -41,6 +41,10 @@ export interface Slide {
    * フロントマターに title がなく、先頭の唯一の H1 をタイトルにしたときに使う（構文仕様 §2.2）
    */
   titleOverride?: { title: string; subtitle?: string };
+  /** 自動分割で決めた文字の倍率（1 未満のときだけ。docs/design.md §4.3） */
+  scale?: number;
+  /** 自動分割で節を複数のスライドに分けたときの、何枚目か */
+  page?: { index: number; total: number };
 }
 
 export interface SlideDeck {

@@ -1,7 +1,9 @@
 import {
+  applySplit,
   buildSlides,
   checkMediaFiles,
   parseDeck,
+  planSplit,
   renderDeckHtml,
   type Deck,
   type Diagnostic,
@@ -9,10 +11,12 @@ import {
   type SlideDeck,
 } from '@mds/core';
 import { RUNTIME_SCRIPT } from '@mds/runtime';
+import type { Browser } from 'playwright-core';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createAssets, registerDeckAssets, type Assets } from './assets.js';
+import { ChromiumMeasurer } from './measurer.js';
 
 export interface Rendered {
   html: string;
@@ -24,14 +28,18 @@ export interface Rendered {
   cssFile?: string;
 }
 
-/** 資料を読み、警告を集めて HTML にする。素材のパスは書き出し先での URL に置き換える。 */
-export function renderFile(
+/**
+ * 資料を読み、警告を集めて HTML にする。素材のパスは書き出し先での URL に置き換える。
+ * measurer を渡すと、計測して自動で分割する（docs/design.md §4）。
+ */
+export async function renderFile(
   mdFile: string,
   options: Pick<RenderOptions, 'scripts' | 'debug' | 'includeHidden'> = {},
-): Rendered {
+  measurer?: ChromiumMeasurer,
+): Promise<Rendered> {
   const source = readFileSync(mdFile, 'utf8');
   const deck = parseDeck(source);
-  const slides = buildSlides(deck);
+  let slides = buildSlides(deck);
   const assets = createAssets(mdFile);
   const diagnostics = [...deck.diagnostics, ...checkMediaFiles(deck, (src) => assets.probe(src))];
 
@@ -52,21 +60,31 @@ export function renderFile(
       });
     }
   }
-
   registerDeckAssets(deck, assets);
-  const html = renderDeckHtml(slides, {
-    ...options,
+  const renderOptions: RenderOptions = {
     probe: (src) => assets.probe(src),
     assetUrl: (src) => assets.url(src),
     ...(customCss !== undefined ? { customCss } : {}),
-  });
+  };
+
+  // 自動分割：スライドを空にしたデッキの上で原子の高さを測り、節ごとに区切る
+  if (measurer) {
+    const plan = planSplit(slides);
+    if (plan.jobs.length > 0) {
+      const page = renderDeckHtml({ ...slides, slides: [] }, { ...renderOptions, fit: false });
+      const measurements = await measurer.measure(page, plan.jobs);
+      if (measurements) slides = applySplit(slides, plan, measurements);
+    }
+  }
+
+  const html = renderDeckHtml(slides, { ...options, ...renderOptions });
   diagnostics.sort((a, b) => a.line - b.line);
   return { html, deck, slides, assets, diagnostics, ...(cssFile ? { cssFile } : {}) };
 }
 
 export interface BuildOptions {
   outDir: string;
-  /** ヘッドレス Chromium で開いて、収まらないスライドを調べる（既定は調べる） */
+  /** ヘッドレス Chromium で計測して自動で分割し、収まらないスライドを調べる（既定は行う） */
   measure?: boolean;
 }
 
@@ -83,37 +101,45 @@ export interface BuildResult {
 
 /** 静的な HTML・runtime・素材を書き出す（docs/design.md §10）。 */
 export async function build(mdFile: string, options: BuildOptions): Promise<BuildResult> {
-  const rendered = renderFile(mdFile, { scripts: [RUNTIME_SCRIPT] });
-  const outDir = resolve(options.outDir);
-  mkdirSync(outDir, { recursive: true });
-  const index = join(outDir, 'index.html');
-  writeFileSync(index, rendered.html);
+  const measurer = options.measure === false ? undefined : new ChromiumMeasurer();
+  try {
+    const rendered = await renderFile(mdFile, { scripts: [RUNTIME_SCRIPT] }, measurer);
+    const outDir = resolve(options.outDir);
+    mkdirSync(outDir, { recursive: true });
+    const index = join(outDir, 'index.html');
+    writeFileSync(index, rendered.html);
 
-  let copied = 0;
-  for (const [from, url] of rendered.assets.used()) {
-    if (!existsSync(from)) continue;
-    const to = join(outDir, ...url.split('/').map(decodeURIComponent));
-    mkdirSync(dirname(to), { recursive: true });
-    copyFileSync(from, to);
-    copied++;
-  }
+    let copied = 0;
+    for (const [from, url] of rendered.assets.used()) {
+      if (!existsSync(from)) continue;
+      const to = join(outDir, ...url.split('/').map(decodeURIComponent));
+      mkdirSync(dirname(to), { recursive: true });
+      copyFileSync(from, to);
+      copied++;
+    }
 
-  const result: BuildResult = {
-    index,
-    slides: rendered.slides.slides.filter((slide) => !slide.hidden).length,
-    assets: copied,
-    diagnostics: rendered.diagnostics,
-  };
-  if (options.measure !== false) {
-    const measured = await measure(index);
-    if ('error' in measured) result.measureError = measured.error;
-    else result.diagnostics = [...result.diagnostics, ...measured.diagnostics];
-    result.diagnostics.sort((a, b) => a.line - b.line);
+    const result: BuildResult = {
+      index,
+      slides: rendered.slides.slides.filter((slide) => !slide.hidden).length,
+      assets: copied,
+      diagnostics: rendered.diagnostics,
+    };
+    if (measurer) {
+      const browser = await measurer.browser();
+      if (browser) {
+        result.diagnostics = [...result.diagnostics, ...(await checkOverflow(index, browser))];
+        result.diagnostics.sort((a, b) => a.line - b.line);
+      } else {
+        result.measureError = measurer.error ?? 'Chromium を起動できませんでした';
+      }
+    }
+    return result;
+  } finally {
+    await measurer?.close();
   }
-  return result;
 }
 
-interface SlideMeasure {
+interface SlideCheck {
   id: string;
   src: string;
   title: string;
@@ -121,35 +147,10 @@ interface SlideMeasure {
   overflow: boolean;
 }
 
-/**
- * 書き出した HTML をヘッドレス Chromium で開き、文字を縮小したスライドと収まらないスライドを調べる。
- * M2 では、ここで計測した高さを使って自動で分割する。
- */
-export async function measure(
-  index: string,
-): Promise<{ diagnostics: Diagnostic[] } | { error: string }> {
-  let chromium: typeof import('playwright-core').chromium;
+/** 書き出した HTML を開き、文字を縮小したスライドと、それでも収まらないスライドを調べる。 */
+export async function checkOverflow(index: string, browser: Browser): Promise<Diagnostic[]> {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   try {
-    ({ chromium } = await import('playwright-core'));
-  } catch {
-    return { error: 'playwright-core を読み込めませんでした' };
-  }
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
-  for (const launch of [{}, { channel: 'chrome' }]) {
-    try {
-      browser = await chromium.launch(launch);
-      break;
-    } catch {
-      // 次の方法を試す
-    }
-  }
-  if (!browser) {
-    return {
-      error: 'Chromium が見つかりません（npx playwright install chromium で入れられます）',
-    };
-  }
-  try {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     await page.goto(pathToFileURL(index).href);
     await page.evaluate('document.fonts.ready');
     const slides =
@@ -159,7 +160,7 @@ export async function measure(
       title: s.querySelector('.mds-title')?.textContent?.trim() ?? '',
       fit: Number(s.dataset.fit ?? 1),
       overflow: 'overflow' in s.dataset,
-    }))`)) as SlideMeasure[];
+    }))`)) as SlideCheck[];
     const diagnostics: Diagnostic[] = [];
     for (const slide of slides) {
       const line = Number(slide.src.split('-')[0]) || 1;
@@ -180,9 +181,9 @@ export async function measure(
         });
       }
     }
-    return { diagnostics };
+    return diagnostics;
   } finally {
-    await browser.close();
+    await page.close();
   }
 }
 

@@ -26,7 +26,7 @@ node apps/cli/dist/bin.js build deck.md -o dist  # dist/index.html を書き出�
 | プレビュー `http://127.0.0.1:3000/` | スライドを縦に並べて表示する。収まらないスライドには赤い点線、警告は右下に一覧で出す |
 | 発表の画面 `http://127.0.0.1:3000/present` | 書き出した HTML と同じ。→ / ← で送り、F で全画面、? でキー操作の一覧 |
 
-書き出した `dist/` は、`index.html` をブラウザで開くだけで発表できる（`file://` でも動く）。`build` はヘッドレス Chromium で開いて、収まらないスライドを確かめる（Chromium がなければ確認を省く。`npx playwright install chromium` で入れられる）。
+書き出した `dist/` は、`index.html` をブラウザで開くだけで発表できる（`file://` でも動く）。`build` と `dev` は、ヘッドレス Chromium で本文の高さを測り、1枚に収まらない節を意味のまとまりを崩さない位置で自動で分ける（Chromium がなければ分割を省く。`npx playwright install chromium` で入れられる）。
 
 ## 開発
 

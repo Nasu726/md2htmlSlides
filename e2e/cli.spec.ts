@@ -26,6 +26,25 @@ test('mds build で書き出した HTML を file:// で開くと、素材付き�
   expect(await page.evaluate(() => location.hash)).toBe('#/2');
 });
 
+test('mds build は計測して自動で分割し、fixtures の目安の枚数に収める', async () => {
+  const cases: Array<[string, number, number]> = [
+    ['01-plain-document', 12, 17],
+    ['03-long-lecture', 30, 40],
+  ];
+  for (const [name, min, max] of cases) {
+    const result = await build(join(fixtures, `${name}.md`), {
+      outDir: test.info().outputPath(name),
+    });
+    expect(result.measureError).toBeUndefined();
+    expect(result.slides, name).toBeGreaterThanOrEqual(min);
+    expect(result.slides, name).toBeLessThanOrEqual(max);
+    expect(
+      result.diagnostics.filter((d) => d.code === 'slide/overflow'),
+      name,
+    ).toEqual([]);
+  }
+});
+
 test.describe('mds dev', () => {
   let server: DevServer | undefined;
   test.afterEach(async () => {

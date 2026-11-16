@@ -104,7 +104,10 @@ export function renderSlide(
     );
   }
   const blocks = renderBlocks(slide.blocks, deck.slideLevel, env);
-  if (blocks) parts.push(`<div class="mds-body">\n${blocks}</div>`);
+  // 自動分割で決めた倍率で文字を小さくする（縮小のスクリプトは、ここから始めて足りなければさらに縮める）
+  const scale = slide.scale && slide.scale < 1 ? slide.scale : undefined;
+  const scaleAttrs = scale ? ` data-scale="${scale}" style="--mds-fit:${scale}"` : '';
+  if (blocks) parts.push(`<div class="mds-body"${scaleAttrs}>\n${blocks}</div>`);
   parts.push(renderFooter(slide, deck, position));
 
   const attrs = [
