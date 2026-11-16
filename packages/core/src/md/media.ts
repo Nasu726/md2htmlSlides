@@ -11,6 +11,8 @@ export type RenderEnv = {
   probe?: MediaProbe;
   /** 書き出し先での URL に置き換える関数（素材をコピーする CLI が使う） */
   assetUrl?: (src: string) => string;
+  /** デッキの言語（見出しの文節改行に使う） */
+  lang?: string;
 };
 
 /** 画像・動画だけからなる段落に付ける印。 */

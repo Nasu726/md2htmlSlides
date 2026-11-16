@@ -1,6 +1,7 @@
 import type { Block, MediaRef } from '../ir.js';
 import { md } from '../md/instance.js';
 import type { Slide, SlideDeck } from '../slides.js';
+import { phraseBreaks } from './phrase.js';
 
 const esc = (text: string) => md.utils.escapeHtml(text);
 
@@ -64,11 +65,11 @@ export function renderTitleSlide(
   if (meta.logo) parts.push(`<img class="mds-logo" src="${esc(assetUrl(meta.logo))}" alt="">`);
   if (meta.event) parts.push(`<p class="mds-event">${esc(meta.event)}</p>`);
   parts.push(
-    `<h1 class="mds-title">${slide.titleOverride ? md.renderInline(title) : esc(title)}</h1>`,
+    `<h1 class="mds-title">${phraseBreaks(slide.titleOverride ? md.renderInline(title) : esc(title), meta.lang)}</h1>`,
   );
   if (subtitle) {
     const html = slide.titleOverride?.subtitle ? md.renderInline(subtitle) : esc(subtitle);
-    parts.push(`<p class="mds-subtitle">${html}</p>`);
+    parts.push(`<p class="mds-subtitle">${phraseBreaks(html, meta.lang)}</p>`);
   }
   parts.push(...renderAuthors(deck));
   if (meta.date) parts.push(`<p class="mds-date">${esc(formatDate(meta.date, meta.lang))}</p>`);
