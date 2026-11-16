@@ -1,0 +1,10 @@
+slideLevel: 2
+slides: 4
+  1. [content] ## 節A  L6-L11  #節a
+       paragraph, list
+  2. [content] ## 節B  L13-L30  #節b
+       paragraph, list, paragraph
+  3. [content] ## 節B（続き）  L33-L34  #節b-2
+       paragraph
+  4. [content] ## 節C  L36-L40  #節c  {layout=split media=left}
+       image×1, paragraph

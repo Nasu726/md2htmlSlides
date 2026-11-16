@@ -1,0 +1,26 @@
+slideLevel: 2
+slides: 12
+  1. [content] ## Mermaid：フローチャート  L7-L14  #mermaidフローチャート
+       code[mermaid]
+  2. [content] ## Mermaid：シーケンス図  L16-L25  #mermaidシーケンス図
+       code[mermaid]
+  3. [content] ## Mermaid：文章と並べる  L27-L39  #mermaid文章と並べる
+       paragraph, list, code[mermaid]
+  4. [content] ## Mermaid：ファイルを参照する  L41-L43  #mermaidファイルを参照する
+       image×1
+  5. [content] ## Mermaid：構文エラー  L45-L53  #mermaid構文エラー
+       code[mermaid], paragraph
+  6. [content] ## Mermaid：とても大きな図  L55-L66  #mermaidとても大きな図
+       code[mermaid], paragraph
+  7. [content] ## 数式（M3）  L68-L74  #数式m3
+       paragraph, paragraph
+  8. [content] ## コード：いくつかの言語  L76-L91  #コードいくつかの言語
+       code[python], code[rust]
+  9. [content] ## コード：言語名なし  L93-L97  #コード言語名なし
+       code[]
+ 10. [content] ## コード：知らない言語名  L99-L103  #コード知らない言語名
+       code[unknownlang]
+ 11. [content] ## コード：とても長いコード  L105-L154  #コードとても長いコード
+       code[ts]
+ 12. [content] ## 動く構成図（M4）  L156-L171  #動く構成図m4
+       paragraph, code[arch]

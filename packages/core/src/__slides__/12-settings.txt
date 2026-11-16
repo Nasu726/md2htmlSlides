@@ -1,0 +1,14 @@
+slideLevel: 1
+slides: 6
+  1. [content] # Language and theme  L18-L20  #language-and-theme
+       paragraph
+  2. [content] # Manual split  L22-L37  #manual-split
+       paragraph, list
+  3. [content] # Explicit break  L39-L41  #explicit-break
+       paragraph
+  4. [content] # Explicit break（続き）  L44-L45  #explicit-break-2
+       paragraph
+  5. [content] # Accent color  L47-L49  #accent-color  {.highlight}
+       paragraph
+  6. [content] # No page numbers  L51-L53  #no-page-numbers
+       paragraph

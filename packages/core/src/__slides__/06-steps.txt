@@ -1,0 +1,28 @@
+slideLevel: 2
+slides: 13
+  1. [content] ## . . . で区切る  L7-L17  #---で区切る
+       paragraph, pause, paragraph, pause, paragraph
+  2. [content] ## :::steps でリストを1つずつ  L19-L26  #steps-でリストを1つずつ
+       :::steps(list)
+  3. [content] ## :::steps でブロックを1つずつ  L28-L36  #steps-でブロックを1つずつ
+       :::steps(paragraph, image×1, paragraph)
+  4. [content] ## {step} で要素ごとに指定  L38-L46  #step-で要素ごとに指定
+       paragraph, paragraph, image×1, paragraph
+  5. [content] ## {step=N} で順番を指定  L48-L54  #stepn-で順番を指定
+       paragraph, list
+  6. [content] ## 同じ番号は同時に出る  L56-L60  #同じ番号は同時に出る
+       image×2, paragraph
+  7. [content] ## 自動の番号と明示の番号が混ざる  L62-L70  #自動の番号と明示の番号が混ざる
+       paragraph, paragraph, paragraph, paragraph
+  8. [content] ## :::row の中で . . .  L72-L84  #row-の中で---
+       :::row(###左, paragraph, pause, ###右, paragraph)
+  9. [content] ## 問題と答え（画像）  L86-L92  #問題と答え画像
+       image×1, pause, image×1
+ 10. [content] ## 図にステップを付ける  L94-L101  #図にステップを付ける
+       code[mermaid], paragraph
+ 11. [content] ## コードの行ハイライト（M4）  L103-L111  #コードの行ハイライトm4
+       code[ts]
+ 12. [content] ## . . . の範囲は分割しない  L113-L131  #---の範囲は分割しない
+       paragraph, list, pause, list
+ 13. [content] ## 段階表示のないスライド  L133-L135  #段階表示のないスライド
+       paragraph

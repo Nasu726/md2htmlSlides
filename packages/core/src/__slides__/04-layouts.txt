@@ -1,0 +1,41 @@
+slideLevel: 2
+slides: 20
+  1. [content] ## 一文だけ → statement  L12-L14  #一文だけ--statement
+       paragraph
+  2. [content] ## 引用だけ → statement  L16-L18  #引用だけ--statement
+       quote
+  3. [content] ## 見出しだけ → section  L20  #見出しだけ--section
+  4. [content] ## 横長の画像1枚 → media  L22-L24  #横長の画像1枚--media
+       image×1
+  5. [content] ## 図だけ → media  L26-L31  #図だけ--media
+       code[mermaid]
+  6. [content] ## 動画だけ → media  L33-L35  #動画だけ--media
+       image×1
+  7. [content] ## 画像4枚 → grid  L37-L41  #画像4枚--grid
+       paragraph, image×4
+  8. [content] ## キャプション付きの画像3枚 → grid  L43-L49  #キャプション付きの画像3枚--grid
+       image×1, image×1, image×1
+  9. [content] ## 文章と縦長の画像 → split（文章60：画像40）  L51-L59  #文章と縦長の画像--split文章60画像40
+       paragraph, list, image×1
+ 10. [content] ## 文章と横長の画像 → split（50：50）  L61-L65  #文章と横長の画像--split5050
+       paragraph, image×1
+ 11. [content] ## 文章ととても横長の画像 → stack（画像は下）  L67-L71  #文章ととても横長の画像--stack画像は下
+       paragraph, image×1
+ 12. [content] ## 文章と短いコード → split  L73-L83  #文章と短いコード--split
+       paragraph, code[ts]
+ 13. [content] ## 文章と長い行のコード → stack  L85-L92  #文章と長い行のコード--stack
+       paragraph, code[ts]
+ 14. [content] ## 文章と動画 → split  L94-L102  #文章と動画--split
+       paragraph, list, image×1
+ 15. [content] ## 分量の近い小見出し3つ → columns  L104-L116  #分量の近い小見出し3つ--columns
+       ###速い, paragraph, ###軽い, paragraph, ###綺麗, paragraph
+ 16. [content] ## 分量の違う小見出し2つ → stack  L118-L126  #分量の違う小見出し2つ--stack
+       ###概要, paragraph, ###補足, paragraph
+ 17. [content] ## 段落とリスト → stack  L128-L136  #段落とリスト--stack
+       paragraph, list, paragraph
+ 18. [content] ## 短い項目の多いリスト → stack（リストは2段組）  L138-L153  #短い項目の多いリスト--stackリストは2段組
+       list
+ 19. [content] ## 長い項目の多いリスト → stack（2段組にしない）  L155-L164  #長い項目の多いリスト--stack2段組にしない
+       list
+ 20. [content] ## 表だけ → stack  L166-L172  #表だけ--stack
+       table
