@@ -1,0 +1,103 @@
+import { buildSlides, parseDeck, renderDeckHtml } from '@mds/core';
+import { RUNTIME_SCRIPT } from '@mds/runtime';
+import { expect, test, type Page } from '@playwright/test';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+
+/** fixtures の資料を、runtime 入りの HTML にして file:// で開く。 */
+async function open(page: Page, name: string, hash = '') {
+  const source = readFileSync(new URL(`../fixtures/${name}`, import.meta.url), 'utf8');
+  const html = renderDeckHtml(buildSlides(parseDeck(source)), { scripts: [RUNTIME_SCRIPT] });
+  const path = test.info().outputPath('deck.html');
+  writeFileSync(path, html);
+  await page.goto(pathToFileURL(path).href + hash);
+}
+
+const current = (page: Page) => page.locator('.mds-slide.is-current');
+const hash = (page: Page) => page.evaluate(() => location.hash);
+
+test('画面に合わせて拡大し、1枚ずつ表示する', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await open(page, '01-plain-document.md');
+  await expect(page.locator('.mds-slide:visible')).toHaveCount(1);
+  const box = await current(page).boundingBox();
+  expect(box).toEqual({ x: 0, y: 0, width: 1920, height: 1080 });
+});
+
+test('縦横比が違う画面では、上下に帯を付けて中央に置く', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await open(page, '01-plain-document.md');
+  const box = await current(page).boundingBox();
+  expect(box).toEqual({ x: 0, y: 96, width: 1024, height: 576 });
+});
+
+test('キー操作でページを送り、URL に反映する', async ({ page }) => {
+  await open(page, '01-plain-document.md');
+  expect(await hash(page)).toBe('#/1');
+  await page.keyboard.press('ArrowRight');
+  expect(await hash(page)).toBe('#/2');
+  await page.keyboard.press('Space');
+  await page.keyboard.press('PageDown');
+  expect(await hash(page)).toBe('#/4');
+  await page.keyboard.press('PageUp');
+  await page.keyboard.press('ArrowLeft');
+  expect(await hash(page)).toBe('#/2');
+  await page.keyboard.press('End');
+  expect(await hash(page)).toBe('#/8');
+  await page.keyboard.press('ArrowRight');
+  expect(await hash(page)).toBe('#/8');
+  await page.keyboard.press('Home');
+  expect(await hash(page)).toBe('#/1');
+  // 数字 → Enter で指定したページへ
+  await page.keyboard.type('6');
+  await page.keyboard.press('Enter');
+  expect(await hash(page)).toBe('#/6');
+  await expect(page.locator('.mds-slide').nth(5)).toHaveClass(/is-current/);
+});
+
+test('URL の #/5 で開くと5枚目から始まり、ハッシュを変えると移動する', async ({ page }) => {
+  await open(page, '01-plain-document.md', '#/5');
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { mdsPlayer: { page: number } }).mdsPlayer.page,
+    ),
+  ).toBe(5);
+  await page.evaluate(() => (location.hash = '#/3'));
+  await expect(page.locator('.mds-slide').nth(2)).toHaveClass(/is-current/);
+});
+
+test('? でヘルプ、B で暗転、O で一覧を出す', async ({ page }) => {
+  await open(page, '01-plain-document.md');
+  await page.keyboard.press('?');
+  await expect(page.locator('.mds-player-help')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.mds-player-help')).toBeHidden();
+  await page.keyboard.press('b');
+  await expect(page.locator('.mds-player-black')).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.mds-player-black')).toBeHidden();
+  expect(await hash(page)).toBe('#/1');
+  await page.keyboard.press('o');
+  await expect(page.locator('.mds-slide:visible')).toHaveCount(8);
+  await page.locator('.mds-slide').nth(3).click();
+  expect(await hash(page)).toBe('#/4');
+  await expect(page.locator('.mds-slide:visible')).toHaveCount(1);
+});
+
+test('スワイプでページを送る', async ({ page }) => {
+  await open(page, '01-plain-document.md');
+  const swipe = (dx: number) =>
+    page.evaluate((dx) => {
+      const deck = document.querySelector('.mds-deck')!;
+      const touch = (x: number) =>
+        new Touch({ identifier: 1, target: deck, clientX: x, clientY: 300 });
+      deck.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(600)] }));
+      deck.dispatchEvent(new TouchEvent('touchend', { changedTouches: [touch(600 + dx)] }));
+    }, dx);
+  await swipe(-120);
+  expect(await hash(page)).toBe('#/2');
+  await swipe(120);
+  expect(await hash(page)).toBe('#/1');
+  await swipe(-10);
+  expect(await hash(page)).toBe('#/1');
+});
