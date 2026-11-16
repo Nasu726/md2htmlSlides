@@ -368,6 +368,9 @@ body { margin: 0; background: #d1d5db; }
 .mds-list-cols > ul, .mds-list-cols > ol { display: block; columns: 2; column-gap: 2.5em; }
 .mds-list-cols li { break-inside: avoid; margin-bottom: 0.25em; }
 
+/* 発表者ノート：発表の画面と印刷には出さない（発表者ビューが読む） */
+.mds-notes { display: none !important; }
+
 /* 段階的表示（構文仕様 §5）。runtime が data-step-hidden を付け外しする（既定はフェード） */
 .mds-step-group { display: contents; }
 [data-step], .mds-step-group > * { transition: opacity 0.3s ease, visibility 0.3s; }

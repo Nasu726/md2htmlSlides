@@ -135,6 +135,8 @@ export function renderSlide(
   const numbered = numberSteps(body);
   if (body) parts.push(`<div class="mds-body"${bodyAttrs}>\n${numbered.html}</div>`);
   parts.push(renderFooter(slide, deck, position));
+  const notes = renderNotes(slide, deck.slideLevel, env);
+  if (notes) parts.push(notes);
 
   const attrs = [
     `class="${classes.map(esc).join(' ')}"`,
@@ -146,6 +148,12 @@ export function renderSlide(
     ...(slide.hidden ? ['data-hidden=""'] : []),
   ];
   return `<section ${attrs.join(' ')}>\n${parts.join('\n')}\n</section>`;
+}
+
+/** 発表者ノート（`:::notes`）。発表の画面には出さず、発表者ビューが読む（設計プラン §8.4）。 */
+export function renderNotes(slide: Slide, slideLevel: number, env: RenderEnv = {}): string {
+  if (slide.notes.length === 0) return '';
+  return `<aside class="mds-notes" hidden>\n${renderBlocks(slide.notes, slideLevel, env)}</aside>`;
 }
 
 /** レイアウトに合わせて本文を組む（§5.1）。 */
