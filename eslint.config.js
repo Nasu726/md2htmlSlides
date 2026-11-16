@@ -11,6 +11,8 @@ export default defineConfig([
     'fixtures/',
     'docs/',
     'examples/',
+    // 試作による検証のスクリプト（Node とブラウザの両方で動くコードを混ぜて書くため）
+    'spikes/',
   ]),
   js.configs.recommended,
   tseslint.configs.recommended,
