@@ -1,0 +1,15 @@
+/* 12-settings.md 用のカスタムCSS。.mds-deck の内側だけに効くことを確かめる */
+.slide h1,
+.slide h2 {
+  letter-spacing: 0.02em;
+}
+
+.slide.highlight {
+  outline: 6px solid var(--accent);
+  outline-offset: -24px;
+}
+
+/* デッキの外（エディタの画面）に効いてはいけない */
+body {
+  background: magenta;
+}
