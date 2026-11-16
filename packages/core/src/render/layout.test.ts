@@ -54,3 +54,45 @@ describe('isShortList', () => {
     expect([isShortList(short), isShortList(few), isShortList(long)]).toEqual([true, false, false]);
   });
 });
+
+describe('fixtures/05-overrides（利用者の指定）', () => {
+  const deck = buildSlides(parseDeck(readFileSync(new URL('05-overrides.md', fixtures), 'utf8')));
+  const layoutOf = (heading: string, page = 0) => {
+    const slides = deck.slides.filter((s) => s.heading?.text.startsWith(heading));
+    return chooseLayout(slides[page]!, deck.slideLevel, probe);
+  };
+
+  it('--- で区切った2枚目も stack で、見出しを引き継ぐ', () => {
+    expect(layoutOf('--- で区切る', 0).layout).toBe('stack');
+    expect(layoutOf('--- で区切る', 1).layout).toBe('stack');
+  });
+
+  it('layout=split media=left ratio=2:3 は、画像が左で 画像：文章 ＝ 2：3', () => {
+    expect(layoutOf('レイアウトと比率を指定する')).toEqual({
+      layout: 'split',
+      ratio: [2, 3],
+      mediaLeft: true,
+    });
+  });
+
+  it('layout=stack は自動の statement を上書きし、:::stack は左右に並べない', () => {
+    expect(layoutOf('自動の判定を上書きする').layout).toBe('stack');
+    expect(layoutOf('縦に並べる').layout).toBe('stack');
+  });
+
+  it('width= の画像は伸縮させず stack、見出しのない最後のスライドは media', () => {
+    expect(layoutOf('画像の幅を固定する', 0).layout).toBe('stack');
+    expect(layoutOf('画像の幅を固定する', 1).layout).toBe('media');
+  });
+
+  it('自動で選ぶ split の比は、メディアが左なら入れ替える', () => {
+    const left = buildSlides(
+      parseDeck('## A {media=left}\n\n本文\n\n![縦長](assets/portrait-3x4.png)\n'),
+    );
+    expect(chooseLayout(left.slides[0]!, 2, probe)).toEqual({
+      layout: 'split',
+      ratio: [2, 3],
+      mediaLeft: true,
+    });
+  });
+});
