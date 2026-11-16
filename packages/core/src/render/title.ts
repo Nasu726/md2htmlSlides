@@ -3,6 +3,7 @@ import { md } from '../md/instance.js';
 import type { Slide, SlideDeck } from '../slides.js';
 import type { RenderEnv } from '../md/media.js';
 import { findBackground, isBackgroundBlock, renderBackground } from './background.js';
+import { renderNotes } from './html.js';
 import { phraseBreaks } from './phrase.js';
 
 const esc = (text: string) => md.utils.escapeHtml(text);
@@ -77,7 +78,7 @@ export function renderTitleSlide(
 ${bgHtml}<div class="mds-titleblock">
 ${parts.join('\n')}
 </div>
-</section>`;
+${renderNotes(slide, deck.slideLevel, env)}</section>`;
 }
 
 /** 著者と所属。所属が複数あれば、著者名に番号を付けて所属を番号付きで並べる（authblk と同じ形）。 */

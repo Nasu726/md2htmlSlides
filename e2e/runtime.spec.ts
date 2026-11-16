@@ -133,3 +133,29 @@ test('段階的表示：:::steps のリストは入れ子の項目を親と一�
   );
   expect(visible).toEqual([true, false, false, false]);
 });
+
+test('発表者ビュー：P で開き、今と次のスライド・ノート・経過時間を出し、→ で両方が進む', async ({
+  page,
+}) => {
+  await open(page, '02-tech-talk.md', '#/5');
+  const [presenter] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('p')]);
+  await expect(presenter.locator('.mds-pv-page')).toHaveText(/^5 \/ \d+$/);
+  await expect(presenter.locator('.mds-pv-current .mds-slide')).toHaveCount(1);
+  await expect(presenter.locator('.mds-pv-next .mds-slide')).toHaveCount(1);
+  await expect(presenter.locator('.mds-pv-notes')).not.toHaveText('ノートはありません');
+  await expect(presenter.locator('.mds-pv-elapsed')).toHaveText(/^\d\d:\d\d$/);
+  // 発表者ビューで → を押すと、発表の画面も進む
+  await presenter.keyboard.press('ArrowRight');
+  expect(await page.evaluate(() => location.hash)).toMatch(/^#\/5\/1$|^#\/6$/);
+  await expect(presenter.locator('.mds-pv-page')).toHaveText(
+    (await page.evaluate(
+      () => (window as unknown as { mdsPlayer: { page: number } }).mdsPlayer.page,
+    )) +
+      ' / ' +
+      (await page.evaluate(
+        () => (window as unknown as { mdsPlayer: { total: number } }).mdsPlayer.total,
+      )),
+  );
+  // ノートは発表の画面には出さない
+  await expect(page.locator('.mds-notes').first()).toBeHidden();
+});

@@ -33,9 +33,19 @@ export function startPlayer(doc: Document): void {
           ['O', '一覧表示'],
           ['F', '全画面'],
           ['B / .', '画面を暗くする'],
+          ['P', '発表者ビュー'],
           ['?', 'このヘルプ'],
         ],
         slide: 'スライド',
+        presenter: '発表者ビュー',
+        now: '現在',
+        next: '次',
+        nextStep: '次（このスライドの続き）',
+        notes: 'ノート',
+        noNotes: 'ノートはありません',
+        elapsed: '経過',
+        clock: '時刻',
+        end: '最後のスライドです',
       }
     : {
         help: 'Keyboard shortcuts',
@@ -48,9 +58,19 @@ export function startPlayer(doc: Document): void {
           ['O', 'Overview'],
           ['F', 'Fullscreen'],
           ['B / .', 'Black screen'],
+          ['P', 'Presenter view'],
           ['?', 'This help'],
         ],
         slide: 'Slide',
+        presenter: 'Presenter view',
+        now: 'Current',
+        next: 'Next',
+        nextStep: 'Next (same slide)',
+        notes: 'Notes',
+        noNotes: 'No notes',
+        elapsed: 'Elapsed',
+        clock: 'Clock',
+        end: 'This is the last slide',
       };
 
   // 発表用の見た目。印刷では使わない（screen だけ）
@@ -243,6 +263,7 @@ export function startPlayer(doc: Document): void {
     }
     progress.style.setProperty('--mds-progress', String((index + 1) / slides.length));
     writeHash();
+    updatePresenter();
   };
 
   /** 次のステップ。最後のステップなら次のスライドへ */
@@ -285,7 +306,135 @@ export function startPlayer(doc: Document): void {
     }
   };
 
-  doc.addEventListener('keydown', (event) => {
+  // 発表者ビュー（設計プラン §8.4）：今のスライド・次・ノート・経過時間・時刻・ステップ。
+  // 空のウィンドウを開いて、この文書から中身を書く（file:// でも同じ文書として扱える）
+  let presenter: Window | null = null;
+  let presenterStart = 0;
+  let presenterTimer = 0;
+  const two = (n: number) => String(n).padStart(2, '0');
+  const cloneSlide = (pdoc: Document, k: number, upTo: number) => {
+    const clone = pdoc.importNode(slides[k]!, true) as HTMLElement;
+    clone.classList.remove('is-current');
+    clone.removeAttribute('inert');
+    clone.removeAttribute('aria-hidden');
+    for (const el of Array.from(clone.querySelectorAll<HTMLElement>('[data-step]'))) {
+      el.toggleAttribute('data-step-hidden', Number(el.dataset.step) > upTo);
+    }
+    for (const video of Array.from(clone.querySelectorAll('video'))) {
+      video.muted = true;
+      video.autoplay = false;
+      video.removeAttribute('autoplay');
+    }
+    return clone;
+  };
+  const placeSlide = (frame: HTMLElement, clone: HTMLElement | undefined) => {
+    frame.replaceChildren();
+    if (!clone) return;
+    // 枠が空のうちに大きさを測る（スライドを入れると、その大きさに引っ張られるため）
+    const scale = Math.min(frame.clientWidth / width, frame.clientHeight / height);
+    const holder = frame.ownerDocument.createElement('div');
+    holder.className = deck.className.replace(/\bis-(presenting|overview|idle)\b/g, '');
+    holder.setAttribute('style', deck.getAttribute('style') ?? '');
+    holder.append(clone);
+    frame.append(holder);
+    clone.style.zoom = String(scale > 0 ? scale : 0.5);
+  };
+  const tickPresenter = () => {
+    if (!presenter || presenter.closed) return;
+    const pdoc = presenter.document;
+    const seconds = Math.floor((Date.now() - presenterStart) / 1000);
+    const now = new Date();
+    const set = (sel: string, value: string) => {
+      const el = pdoc.querySelector(sel);
+      if (el) el.textContent = value;
+    };
+    set('.mds-pv-elapsed', `${two(Math.floor(seconds / 60))}:${two(seconds % 60)}`);
+    set('.mds-pv-clock', `${two(now.getHours())}:${two(now.getMinutes())}`);
+  };
+  const updatePresenter = () => {
+    if (!presenter || presenter.closed) return;
+    const pdoc = presenter.document;
+    const steps = stepsOf(index);
+    const set = (sel: string, value: string) => {
+      const el = pdoc.querySelector(sel);
+      if (el) el.textContent = value;
+    };
+    set('.mds-pv-page', `${index + 1} / ${slides.length}`);
+    set('.mds-pv-step', steps > 0 ? `${step} / ${steps}` : '—');
+    placeSlide(
+      pdoc.querySelector<HTMLElement>('.mds-pv-current .mds-pv-frame')!,
+      cloneSlide(pdoc, index, step),
+    );
+    // 次：このスライドにステップが残っていれば次のステップ、なければ次のスライド
+    const nextFrame = pdoc.querySelector<HTMLElement>('.mds-pv-next .mds-pv-frame')!;
+    const nextLabel = pdoc.querySelector('.mds-pv-next .mds-pv-label')!;
+    if (step < steps) {
+      nextLabel.textContent = text.nextStep;
+      placeSlide(nextFrame, cloneSlide(pdoc, index, step + 1));
+    } else if (index + 1 < slides.length) {
+      nextLabel.textContent = text.next;
+      placeSlide(nextFrame, cloneSlide(pdoc, index + 1, 0));
+    } else {
+      nextLabel.textContent = text.end;
+      placeSlide(nextFrame, undefined);
+    }
+    const notes = slides[index]!.querySelector('.mds-notes');
+    const box = pdoc.querySelector<HTMLElement>('.mds-pv-notes')!;
+    box.innerHTML = notes ? notes.innerHTML : `<p class="mds-pv-empty">${text.noNotes}</p>`;
+    tickPresenter();
+  };
+  const openPresenter = () => {
+    if (presenter && !presenter.closed) {
+      presenter.focus();
+      return;
+    }
+    presenter = win.open('', 'mds-presenter', 'width=1280,height=800');
+    if (!presenter) return; // ポップアップを止められている
+    const pdoc = presenter.document;
+    pdoc.open();
+    pdoc.write(
+      `<!doctype html><html lang="${doc.documentElement.lang}"><head><meta charset="utf-8"><title>${text.presenter}</title></head><body></body></html>`,
+    );
+    pdoc.close();
+    for (const el of Array.from(doc.querySelectorAll('style')))
+      pdoc.head.append(pdoc.importNode(el, true));
+    const css = pdoc.createElement('style');
+    css.textContent = `
+html, body { height: 100%; margin: 0; background: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; }
+.mds-pv { box-sizing: border-box; height: 100vh; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); gap: 14px; padding: 16px; }
+.mds-pv-bar { grid-column: 1 / -1; display: flex; gap: 28px; align-items: baseline; font-size: 15px; color: #94a3b8; }
+.mds-pv-bar b { margin-left: 8px; font-size: 30px; color: #f8fafc; font-variant-numeric: tabular-nums; }
+.mds-pv-pane { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.mds-pv-current { grid-row: 2 / 4; }
+.mds-pv-label { font-size: 13px; letter-spacing: 0.04em; color: #94a3b8; }
+.mds-pv-frame { flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
+.mds-pv-frame > .mds-deck { display: block; padding: 0; background: none; }
+.mds-pv-frame .mds-slide { box-shadow: 0 4px 24px rgb(0 0 0 / 0.45); }
+.mds-pv-notes { flex: 1; min-height: 0; overflow: auto; padding: 14px 18px; border-radius: 10px;
+  background: #1e293b; font-size: 22px; line-height: 1.6; }
+.mds-pv-notes > :first-child { margin-top: 0; }
+.mds-pv-empty { color: #64748b; }`;
+    pdoc.head.append(css);
+    pdoc.body.innerHTML = `<div class="mds-pv">
+<div class="mds-pv-bar"><span>${text.slide}<b class="mds-pv-page"></b></span><span>Step<b class="mds-pv-step"></b></span>
+<span>${text.elapsed}<b class="mds-pv-elapsed">00:00</b></span><span>${text.clock}<b class="mds-pv-clock"></b></span></div>
+<div class="mds-pv-pane mds-pv-current"><div class="mds-pv-label">${text.now}</div><div class="mds-pv-frame"></div></div>
+<div class="mds-pv-pane mds-pv-next"><div class="mds-pv-label"></div><div class="mds-pv-frame"></div></div>
+<div class="mds-pv-pane"><div class="mds-pv-label">${text.notes}</div><div class="mds-pv-notes"></div></div>
+</div>`;
+    pdoc.addEventListener('keydown', onKey);
+    presenter.addEventListener('resize', updatePresenter);
+    presenterStart = Date.now();
+    win.clearInterval(presenterTimer);
+    presenterTimer = win.setInterval(() => {
+      if (!presenter || presenter.closed) win.clearInterval(presenterTimer);
+      else tickPresenter();
+    }, 1000);
+    updatePresenter();
+  };
+
+  const onKey = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
     const target = event.target as Element | null;
     if (
@@ -338,6 +487,8 @@ export function startPlayer(doc: Document): void {
       black.hidden = false;
     } else if (key === '?') {
       help.hidden = false;
+    } else if (key === 'p' || key === 'P') {
+      openPresenter();
     } else if (key === 'o' || key === 'O') {
       setOverview(!overview);
     } else if (key === 'Escape' && overview) {
@@ -346,7 +497,8 @@ export function startPlayer(doc: Document): void {
       handled = false;
     }
     if (handled) event.preventDefault();
-  });
+  };
+  doc.addEventListener('keydown', onKey);
 
   // 一覧表示では、クリックしたスライドへ移動する
   deck.addEventListener('click', (event) => {
