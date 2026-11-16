@@ -219,29 +219,27 @@ export function startPlayer(doc: Document): void {
     const next = Math.max(0, Math.min(slides.length - 1, target));
     step = Math.max(0, Math.min(stepsOf(next), targetStep));
     const slide = slides[next]!;
-    if (next === index) {
-      showSteps(slide, overview ? Infinity : step); // 同じスライドの中ではフェードで出す
-    } else {
-      // 別のスライドに移るときは、隠す要素を一瞬で隠す（表示した後に消えていくのを防ぐ）
-      slide.setAttribute('data-no-anim', '');
-      showSteps(slide, overview ? Infinity : step);
-      void slide.offsetWidth;
-      slide.removeAttribute('data-no-anim');
-    }
-    if (next !== index) {
+    const entering = next !== index;
+    // 別のスライドに移るときは、ステップの効果を止めて一瞬で切り替える
+    // （隠す要素が表示されてから消えたり、表示する要素がスライドの表示に遅れて出たりするのを防ぐ）
+    if (entering) slide.setAttribute('data-no-anim', '');
+    showSteps(slide, overview ? Infinity : step); // 同じスライドの中ではフェードで出す
+    if (entering) {
       const previous = slides[index];
       if (previous) playMedia(previous, false);
       index = next;
-      slides.forEach((slide, k) => {
+      slides.forEach((s, k) => {
         const current = k === index;
-        slide.classList.toggle('is-current', current);
+        s.classList.toggle('is-current', current);
         if (overview) return;
-        slide.inert = !current;
-        slide.setAttribute('aria-hidden', String(!current));
+        s.inert = !current;
+        s.setAttribute('aria-hidden', String(!current));
       });
-      playMedia(slides[index]!, true);
-      const heading = slides[index]!.querySelector('.mds-title')?.textContent?.trim();
+      playMedia(slide, true);
+      const heading = slide.querySelector('.mds-title')?.textContent?.trim();
       live.textContent = `${text.slide} ${index + 1} / ${slides.length}${heading ? `：${heading}` : ''}`;
+      void slide.offsetWidth; // ここまでの変更を、効果なしで反映する
+      slide.removeAttribute('data-no-anim');
     }
     progress.style.setProperty('--mds-progress', String((index + 1) / slides.length));
     writeHash();
