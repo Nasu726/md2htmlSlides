@@ -1,0 +1,13 @@
+{
+  "name": "@mds/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Markdown からスライドを作る中核（パース・分割・レイアウト・描画）",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  }
+}
