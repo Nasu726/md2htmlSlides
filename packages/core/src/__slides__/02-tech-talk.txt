@@ -1,0 +1,36 @@
+slideLevel: 2
+slides: 19
+  1. [title] (見出しなし)  L13-L16  #title  {variant=left}
+       image×1, paragraph
+  2. [content] ## 自己紹介  L19-L25  #自己紹介  {layout=split}
+       image×1, list
+  3. [content] ## 今日の話  L27-L32  #今日の話
+       list
+  4. [section] # 何が遅かったのか  L34  #何が遅かったのか
+  5. [content] ## 状況  L36-L48  #状況  章=何が遅かったのか ノート1
+       list, pause, quote
+  6. [content] ## クイズ  L50-L66  #クイズ  章=何が遅かったのか
+       paragraph, :::row(paragraph, paragraph, paragraph, paragraph), pause, paragraph
+  7. [section] # どう測ったのか  L68  #どう測ったのか
+  8. [content] ## 工程ごとの所要時間  L70-L78  #工程ごとの所要時間  章=どう測ったのか
+       table
+  9. [content] ## 計測に使ったスクリプト  L80-L99  #計測に使ったスクリプト  章=どう測ったのか
+       paragraph, code[ts]
+ 10. [section] # 何を変えたのか  L101  #何を変えたのか
+ 11. [content] ## 変更の全体像  L103-L113  #変更の全体像  章=何を変えたのか
+       code[mermaid]
+ 12. [content] ## やったこと  L115-L122  #やったこと  章=何を変えたのか
+       :::steps(list)
+ 13. [content] ## 型チェックのキャッシュ  L124-L138  #型チェックのキャッシュ  章=何を変えたのか
+       paragraph, code[json], paragraph
+ 14. [content] ## Before / After  L140-L154  #before--after  章=何を変えたのか
+       :::row(###Before, list, ###After, list)
+ 15. [section] # 結果と残った課題  L156  #結果と残った課題
+ 16. [content] ## 結果  L158-L160  #結果  {layout=statement} 章=結果と残った課題
+       paragraph
+ 17. [content] ## 残った課題  L162-L170  #残った課題  章=結果と残った課題
+       list, pause, paragraph
+ 18. [content] ## まとめ  L172-L176  #まとめ  章=結果と残った課題
+       list
+ 19. [content] ## まとめ（続き）  L179-L184  #まとめ-2  {layout=statement} 章=結果と残った課題
+       image×1, paragraph

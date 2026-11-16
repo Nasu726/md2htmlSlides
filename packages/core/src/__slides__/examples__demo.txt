@@ -1,0 +1,25 @@
+slideLevel: 2
+slides: 13
+  1. [title] (見出しなし)  L19  #title
+  2. [section] # はじめに  L21  #はじめに
+  3. [content] ## なぜ作るのか  L23-L33  #なぜ作るのか  章=はじめに
+       paragraph, list, quote
+  4. [content] ## 目指すもの  L35-L42  #目指すもの  {layout=split} 章=はじめに
+       image×1, paragraph, list
+  5. [section] # 使い方  L44  #使い方
+  6. [content] ## 書き方の基本  L46-L62  #書き方の基本  章=使い方
+       paragraph, ###見出しで区切る, paragraph, ###明示的に区切る, paragraph, ###まとめる, paragraph
+  7. [content] ## 比較  L64-L74  #比較  章=使い方
+       :::row(###Before, list, ###After, list)
+  8. [content] ## クイズ  L76-L82  #クイズ  章=使い方
+       paragraph, pause, paragraph
+  9. [content] ## 理由は3つ  L84-L94  #理由は3つ  章=使い方 ノート1
+       :::steps(list)
+ 10. [content] ## 仕組み  L96-L102  #仕組み  章=使い方
+       code[mermaid]
+ 11. [content] ## デモ動画  L104-L106  #デモ動画  章=使い方
+       image×1
+ 12. [content] ## 写真と一言  L108-L112  #写真と一言  章=使い方
+       image×1, paragraph
+ 13. [content] ## 写真と一言（続き）  L115-L122  #写真と一言-2  {layout=statement} 章=使い方
+       comment, image×1, paragraph

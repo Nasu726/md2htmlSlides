@@ -2,6 +2,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { formatOutline } from './outline.js';
 import { parseDeck } from './parse.js';
+import { formatSlides } from './slides-outline.js';
+import { buildSlides } from './slides.js';
 
 const root = new URL('../../../', import.meta.url);
 
@@ -23,6 +25,26 @@ describe('fixtures の資料を IR に変換する', () => {
       .replace(/\//g, '__')
       .replace(/\.md$/, '');
     await expect(formatOutline(parse(path))).toMatchFileSnapshot(`./__outlines__/${name}.txt`);
+    await expect(formatSlides(buildSlides(parse(path)))).toMatchFileSnapshot(
+      `./__slides__/${name}.txt`,
+    );
+  });
+
+  it('スライドの枚数（fixtures/README.md の「必須」）', () => {
+    const count = (path: string) => buildSlides(parse(path)).slides;
+    const s05 = count('fixtures/05-overrides.md');
+    expect(s05).toHaveLength(16);
+    expect(s05.filter((s) => !s.hidden)).toHaveLength(15);
+    expect(count('fixtures/08-maketitle.md').map((s) => s.kind)).toEqual([
+      'content',
+      'title',
+      'content',
+      'content',
+      'content',
+      'title',
+    ]);
+    expect(count('fixtures/12-settings.md')).toHaveLength(6);
+    expect(buildSlides(parse('fixtures/12-settings.md')).slideLevel).toBe(1);
   });
 
   it('11-edge-cases：フロントマターの未知のキーと、空行のない --- を警告する', () => {

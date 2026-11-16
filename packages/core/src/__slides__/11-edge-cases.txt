@@ -1,0 +1,37 @@
+slideLevel: 2
+slides: 19
+  1. [content] ## 空行のない ---  L15  #空行のない----
+  2. [content] ## この行の直後に空行なしで --- を書くと、この行は見出しになる  L17-L20  #この行の直後に空行なしで-----を書くとこの行は見出しになる
+       paragraph
+  3. [content] ## 書き間違えた属性 {lyout=split}  L22-L24  #書き間違えた属性-lyoutsplit
+       paragraph
+  4. [content] ## 文中の波かっこ  L26-L32  #文中の波かっこ
+       paragraph, paragraph, paragraph
+  5. [content] ## 未知のコンテナ  L34-L38  #未知のコンテナ
+       :::colums(paragraph)
+  6. [content] ## 閉じていないコンテナ  L40-L43  #閉じていないコンテナ
+       :::row(paragraph)
+  7. [content] ## 未知の指示  L45-L49  #未知の指示
+       paragraph, paragraph
+  8. [content] ## 水平線  L51-L61  #水平線
+       paragraph, rule[***], paragraph, rule[___], paragraph
+  9. [content] ## 連続した ---  L63-L65  #連続した----
+       paragraph
+ 10. [content] ## 連続した ---（続き）  L70-L71  #連続した-----2
+       paragraph
+ 11. [content] ## 1枚に収まらない段落  L73-L75  #1枚に収まらない段落
+       paragraph
+ 12. [content] ## 深い入れ子のリスト  L77-L84  #深い入れ子のリスト
+       list
+ 13. [content] ## 見出しのレベルの飛び  L86-L90  #見出しのレベルの飛び
+       ####H4 がいきなり出てくる, paragraph
+ 14. [content] ## 背景が2つ  L92-L97  #背景が2つ
+       image×2, paragraph
+ 15. [content] ## 生 HTML  L99-L103  #生-html
+       html
+ 16. [content] ## 脚注とアラート  L105-L113  #脚注とアラート
+       paragraph, quote, quote
+ 17. [content] ## タスクリストと打ち消し線  L117-L121  #タスクリストと打ち消し線
+       list
+ 18. [content] ## 空の節  L123  #空の節
+ 19. [content] ##   L125  #section

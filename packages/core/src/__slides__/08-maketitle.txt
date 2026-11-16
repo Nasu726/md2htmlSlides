@@ -1,0 +1,13 @@
+slideLevel: 2
+slides: 6
+  1. [content] (見出しなし)  L17-L26  #start  {layout=statement}
+       comment, quote
+  2. [title] (見出しなし)  L28-L35  #title  {variant=left} ノート1
+       image×1, paragraph
+  3. [content] ## 背景  L38-L40  #背景
+       paragraph
+  4. [content] ## 提案手法  L42-L44  #提案手法
+       paragraph
+  5. [content] ## まとめ  L46-L49  #まとめ
+       list
+  6. [title] (見出しなし)  L51  #title~2

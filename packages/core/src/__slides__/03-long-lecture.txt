@@ -1,0 +1,49 @@
+slideLevel: 2
+slides: 26
+  1. [section] # 前回の復習  L9  #前回の復習
+  2. [content] ## SQL の基本  L11-L23  #sql-の基本  章=前回の復習
+       paragraph, code[sql], paragraph
+  3. [content] ## 今日のテーマ  L25-L33  #今日のテーマ  章=前回の復習
+       paragraph, paragraph, list
+  4. [section] # データを探す仕組み  L35  #データを探す仕組み
+  5. [content] ## 全件走査  L37-L55  #全件走査  章=データを探す仕組み
+       paragraph, paragraph, ###本の索引で考える, paragraph, paragraph, paragraph, ###ディスクとメモリ, paragraph, paragraph
+  6. [content] ## 検索にかかる時間の比較  L57-L66  #検索にかかる時間の比較  章=データを探す仕組み
+       paragraph, table, paragraph
+  7. [section] # インデックスの仕組み  L68  #インデックスの仕組み
+  8. [content] ## B-tree  L70-L83  #b-tree  章=インデックスの仕組み
+       paragraph, image×1, paragraph, list, paragraph
+  9. [content] ## B-tree での検索の流れ  L85-L103  #b-tree-での検索の流れ  章=インデックスの仕組み
+       paragraph, ###1. 根から始める, paragraph, ###2. 中間のノードをたどる, paragraph, ###3. 葉で行の場所を得る, paragraph, ###4. 合計の読み込み, paragraph
+ 10. [content] ## 範囲検索  L105-L114  #範囲検索  章=インデックスの仕組み
+       paragraph, code[sql], paragraph
+ 11. [content] ## ハッシュインデックス  L116-L131  #ハッシュインデックス  章=インデックスの仕組み
+       paragraph, :::row(###得意なこと, list, ###苦手なこと, list), paragraph
+ 12. [section] # インデックスの設計  L133-L135  #インデックスの設計
+       paragraph
+ 13. [content] ## インデックスを作る  L137-L146  #インデックスを作る  章=インデックスの設計
+       paragraph, code[sql], paragraph
+ 14. [content] ## 複合インデックス  L148-L181  #複合インデックス  章=インデックスの設計
+       paragraph, code[sql], ###列の順番が重要, paragraph, paragraph, list, paragraph, list, paragraph, ###順番の決め方, paragraph, list, paragraph
+ 15. [content] ## インデックスの使えない書き方  L183-L200  #インデックスの使えない書き方  章=インデックスの設計
+       paragraph, list, paragraph
+ 16. [content] ## インデックスのコスト  L202-L218  #インデックスのコスト  章=インデックスの設計
+       paragraph, ###書き込みが遅くなる, paragraph, ###容量が増える, paragraph, ###判断の基準, list
+ 17. [section] # 実行計画を読む  L220  #実行計画を読む
+ 18. [content] ## EXPLAIN  L222-L234  #explain  章=実行計画を読む
+       paragraph, code[sql], paragraph
+ 19. [content] ## 実行計画の例  L236-L255  #実行計画の例  章=実行計画を読む
+       paragraph, code[text], paragraph
+ 20. [content] ## 改善後の実行計画  L257-L272  #改善後の実行計画  章=実行計画を読む
+       paragraph, code[text], paragraph
+ 21. [content] ## 実行計画で見るべき項目  L274-L291  #実行計画で見るべき項目  章=実行計画を読む
+       table
+ 22. [content] ## 遅いクエリを直す手順  L293-L304  #遅いクエリを直す手順  章=実行計画を読む
+       list, paragraph
+ 23. [section] # まとめ  L306  #まとめ
+ 24. [content] ## 今日のまとめ  L308-L314  #今日のまとめ  章=まとめ
+       list
+ 25. [content] ## 次回予告  L316-L318  #次回予告  章=まとめ
+       paragraph
+ 26. [content] ## 課題  L320-L328  #課題  章=まとめ
+       paragraph, list, paragraph

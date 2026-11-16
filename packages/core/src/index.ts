@@ -14,7 +14,7 @@ export {
   type FrontmatterBlock,
 } from './frontmatter.js';
 export { hashString } from './hash.js';
-export type { Block, BlockKind, Deck, Heading, SectionNode, SourceRange } from './ir.js';
+export type { Block, BlockKind, Deck, Heading, MediaRef, SectionNode, SourceRange } from './ir.js';
 export { formatOutline } from './outline.js';
 export { parseDeck } from './parse.js';
 export { SlugRegistry, slugify } from './slug.js';
@@ -26,3 +26,28 @@ export {
   type FrontmatterKey,
   type ValueSpec,
 } from './syntax/frontmatter-keys.js';
+export { formatAttrs, parseAttrs, type Attrs, type AttrsResult } from './attrs.js';
+export { detectSlideLevel, scanHeadings, type HeadingSummary } from './slide-level.js';
+export {
+  buildSlides,
+  headingSummaries,
+  type Slide,
+  type SlideDeck,
+  type SlideHeading,
+  type SlideKind,
+} from './slides.js';
+export { formatSlides } from './slides-outline.js';
+export {
+  ATTRIBUTE_KEYS,
+  ATTRIBUTE_KEY_NAMES,
+  CONTAINERS,
+  CONTAINER_NAMES,
+  DIRECTIVES,
+  DIRECTIVE_NAMES,
+  LAYOUTS,
+  findAttributeKey,
+  type AttrKey,
+  type AttrPlace,
+  type AttrValueSpec,
+  type LayoutName,
+} from './syntax/elements.js';

@@ -1,0 +1,18 @@
+slideLevel: 2
+slides: 8
+  1. [content] ## ファイル参照（正常時）  L12-L14  #ファイル参照正常時
+       image×1
+  2. [content] ## ファイル参照（決済の障害）  L16-L18  #ファイル参照決済の障害
+       image×1
+  3. [content] ## シナリオを省略（最初のシナリオ）  L20-L22  #シナリオを省略最初のシナリオ
+       image×1
+  4. [content] ## 動きのない構成図  L24-L26  #動きのない構成図
+       image×1
+  5. [content] ## 説明を図の横に出す（指定）  L28-L30  #説明を図の横に出す指定
+       image×1
+  6. [content] ## コードブロックに直接書く（上から下）  L32-L57  #コードブロックに直接書く上から下
+       code[arch]
+  7. [content] ## 段階表示と組み合わせる  L59-L69  #段階表示と組み合わせる
+       paragraph, pause, image×1, pause, paragraph
+  8. [content] ## 書き間違い  L71-L86  #書き間違い
+       code[arch], image×1
