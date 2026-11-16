@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@mds/cli": "workspace:*",
     "@mds/core": "workspace:*",
     "@mds/runtime": "workspace:*",
     "@playwright/test": "1.63.0",

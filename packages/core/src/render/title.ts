@@ -34,6 +34,8 @@ export function renderTitleSlide(
   slide: Slide,
   deck: SlideDeck,
   renderBlocks: (blocks: Block[]) => string,
+  /** 書き出し先での URL に置き換える関数 */
+  assetUrl: (src: string) => string = (src) => src,
 ): string {
   const { meta } = deck;
   const variant = slide.attrs?.values.variant === 'left' ? 'left' : 'center';
@@ -59,7 +61,7 @@ export function renderTitleSlide(
   const title = slide.titleOverride?.title ?? meta.title ?? '';
   const subtitle = slide.titleOverride?.subtitle ?? meta.subtitle;
   const parts: string[] = [];
-  if (meta.logo) parts.push(`<img class="mds-logo" src="${esc(meta.logo)}" alt="">`);
+  if (meta.logo) parts.push(`<img class="mds-logo" src="${esc(assetUrl(meta.logo))}" alt="">`);
   if (meta.event) parts.push(`<p class="mds-event">${esc(meta.event)}</p>`);
   parts.push(
     `<h1 class="mds-title">${slide.titleOverride ? md.renderInline(title) : esc(title)}</h1>`,
@@ -79,7 +81,9 @@ export function renderTitleSlide(
     ...(bgPosition ? [`has-bg-${bgPosition}`] : []),
     ...(slide.attrs?.classes ?? []),
   ];
-  const bgHtml = background ? renderBackground(background, bgPosition!) : '';
+  const bgHtml = background
+    ? renderBackground({ ...background, src: assetUrl(background.src) }, bgPosition!)
+    : '';
   return `<section class="${classes.map(esc).join(' ')}" data-id="${esc(slide.id)}" data-kind="title" data-src="${slide.src.start}-${slide.src.end}"${slide.hidden ? ' data-hidden=""' : ''}>
 ${bgHtml}<div class="mds-titleblock">
 ${parts.join('\n')}

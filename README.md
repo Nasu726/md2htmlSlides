@@ -13,6 +13,21 @@ Markdown を書くだけで、区切り・配置・デザインが自動で整�
 | [テスト用の資料](fixtures/README.md) | 観点ごとのテスト用 Markdown と、期待する結果 |
 | [開発の進め方](CONTRIBUTING.md) | issue・ブランチ・PR の決まり |
 
+## 使い方（開発中）
+
+```sh
+pnpm install && pnpm build
+node apps/cli/dist/bin.js dev deck.md            # プレビュー（保存するたびに反映）
+node apps/cli/dist/bin.js build deck.md -o dist  # dist/index.html を書き出す
+```
+
+| 画面 | 内容 |
+|---|---|
+| プレビュー `http://127.0.0.1:3000/` | スライドを縦に並べて表示する。収まらないスライドには赤い点線、警告は右下に一覧で出す |
+| 発表の画面 `http://127.0.0.1:3000/present` | 書き出した HTML と同じ。→ / ← で送り、F で全画面、? でキー操作の一覧 |
+
+書き出した `dist/` は、`index.html` をブラウザで開くだけで発表できる（`file://` でも動く）。`build` はヘッドレス Chromium で開いて、収まらないスライドを確かめる（Chromium がなければ確認を省く。`npx playwright install chromium` で入れられる）。
+
 ## 開発
 
 必要なもの：Node.js 22 以上、pnpm（`corepack enable` で使えるようになる）
