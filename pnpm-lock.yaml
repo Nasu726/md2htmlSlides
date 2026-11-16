@@ -62,6 +62,9 @@ importers:
       '@mds/themes':
         specifier: workspace:*
         version: link:../themes
+      budoux:
+        specifier: 0.10.4
+        version: 0.10.4
       markdown-it:
         specifier: ^15.0.3
         version: 15.0.3

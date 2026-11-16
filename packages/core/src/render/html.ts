@@ -8,6 +8,7 @@ import type { Slide, SlideDeck } from '../slides.js';
 import type { LayoutName } from '../syntax/elements.js';
 import { BASE_CSS } from './base-css.js';
 import { FIT_SCRIPT } from './fit.js';
+import { phraseBreaks } from './phrase.js';
 import { renderTitleSlide } from './title.js';
 
 export const SLIDE_SIZES = {
@@ -46,6 +47,7 @@ export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): st
   const style = [`--mds-w:${width}px`, `--mds-h:${height}px`];
   if (meta.accent) style.push(`--mds-accent:${meta.accent}`);
   const env: RenderEnv = {
+    lang: meta.lang,
     ...(options.probe ? { probe: options.probe } : {}),
     ...(options.assetUrl ? { assetUrl: options.assetUrl } : {}),
   };
@@ -77,7 +79,7 @@ export function renderSlide(
   slide: Slide,
   deck: SlideDeck,
   position: { page: number; total: number },
-  env: RenderEnv = {},
+  env: RenderEnv = { lang: deck.meta.lang },
 ): string {
   if (slide.kind === 'title') {
     return renderTitleSlide(
@@ -98,7 +100,7 @@ export function renderSlide(
     const tag = layout === 'section' ? 'h1' : 'h2';
     const continued = slide.heading.continued ? '<span class="mds-continued">（続き）</span>' : '';
     parts.push(
-      `<${tag} class="mds-title">${md.renderInline(slide.heading.raw)}${continued}</${tag}>`,
+      `<${tag} class="mds-title">${phraseBreaks(md.renderInline(slide.heading.raw), deck.meta.lang)}${continued}</${tag}>`,
     );
   }
   const blocks = renderBlocks(slide.blocks, deck.slideLevel, env);
@@ -157,7 +159,8 @@ function renderBlock(block: Block, slideLevel: number, env: RenderEnv): string {
     case 'heading': {
       const level = Math.min(6, Math.max(3, (block.level ?? slideLevel + 1) - slideLevel + 2));
       const raw = block.raw.replace(/^#{1,6}[ \t]*/, '');
-      return `<h${level}${attrString(block.attrs)}>${md.renderInline(stripTrailingAttrs(raw))}</h${level}>\n`;
+      const html = phraseBreaks(md.renderInline(stripTrailingAttrs(raw)), env.lang ?? '');
+      return `<h${level}${attrString(block.attrs)}>${html}</h${level}>\n`;
     }
     case 'container':
       return renderContainer(block, slideLevel, env);

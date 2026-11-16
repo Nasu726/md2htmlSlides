@@ -285,6 +285,14 @@ body { margin: 0; background: #d1d5db; }
 .mds-titleblock > * { margin: 0; }
 .layout-title .mds-title { font-size: var(--mds-fs-title); line-height: 1.2; }
 .mds-subtitle { font-size: 1.15em; color: var(--mds-muted); text-wrap: balance; word-break: auto-phrase; }
+/*
+ * 日本語の見出しは、core が BudouX で文節の切れ目に <wbr> を入れているので、そこでだけ改行する
+ * （auto-phrase のないブラウザ・PDF でも同じ位置で改行される。設計プラン §5.5）
+ */
+.mds-deck:lang(ja) :is(.mds-title, .mds-subtitle, .mds-body h3, .mds-body h4, .mds-body h5, .mds-body h6) {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
 .mds-event {
   font-size: var(--mds-fs-small);
   font-weight: 700;
