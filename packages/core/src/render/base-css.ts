@@ -368,6 +368,15 @@ body { margin: 0; background: #d1d5db; }
 .mds-list-cols > ul, .mds-list-cols > ol { display: block; columns: 2; column-gap: 2.5em; }
 .mds-list-cols li { break-inside: avoid; margin-bottom: 0.25em; }
 
+/* 段階的表示（構文仕様 §5）。runtime が data-step-hidden を付け外しする（既定はフェード） */
+.mds-step-group { display: contents; }
+[data-step], .mds-step-group > * { transition: opacity 0.3s ease, visibility 0.3s; }
+[data-step][data-step-hidden], .mds-step-group[data-step-hidden] > * { visibility: hidden; opacity: 0; }
+[data-no-anim] [data-step], [data-no-anim] .mds-step-group > * { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  [data-step], .mds-step-group > * { transition: none; }
+}
+
 /* タイトルスライド（構文仕様 §2.2） */
 .layout-title { justify-content: center; }
 .mds-titleblock {

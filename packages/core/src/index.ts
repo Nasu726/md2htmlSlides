@@ -83,6 +83,7 @@ export { BASE_CSS } from './render/base-css.js';
 export { FIT_SCRIPT, fitSlides } from './render/fit.js';
 export {
   SLIDE_SIZES,
+  numberSteps,
   renderBlocks,
   renderDeckHtml,
   renderSlide,

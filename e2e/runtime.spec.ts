@@ -101,3 +101,35 @@ test('スワイプでページを送る', async ({ page }) => {
   await swipe(-10);
   expect(await hash(page)).toBe('#/1');
 });
+
+test('段階的表示：→ で1つずつ出し、最後のステップの次は次のスライドへ。URL は #/1/2', async ({
+  page,
+}) => {
+  await open(page, '06-steps.md');
+  const hidden = () => page.locator('.mds-slide.is-current [data-step-hidden]').count();
+  expect(await hidden()).toBe(2);
+  await page.keyboard.press('ArrowRight');
+  expect(await page.evaluate(() => location.hash)).toBe('#/1/1');
+  expect(await hidden()).toBe(1);
+  await page.keyboard.press('ArrowRight');
+  expect(await page.evaluate(() => location.hash)).toBe('#/1/2');
+  expect(await hidden()).toBe(0);
+  await page.keyboard.press('ArrowRight');
+  expect(await page.evaluate(() => location.hash)).toBe('#/2');
+  // 戻ると、前のスライドはすべて表示した状態
+  await page.keyboard.press('ArrowLeft');
+  expect(await page.evaluate(() => location.hash)).toBe('#/1/2');
+  expect(await hidden()).toBe(0);
+});
+
+test('段階的表示：:::steps のリストは入れ子の項目を親と一緒に出し、#/2/1 で途中から開ける', async ({
+  page,
+}) => {
+  await open(page, '06-steps.md', '#/2/1');
+  const items = page.locator('.mds-slide.is-current li');
+  // 1つ目だけ表示（入れ子の項目は2つ目の親と一緒に隠れている）
+  const visible = await items.evaluateAll((els) =>
+    els.map((el) => getComputedStyle(el).visibility === 'visible'),
+  );
+  expect(visible).toEqual([true, false, false, false]);
+});

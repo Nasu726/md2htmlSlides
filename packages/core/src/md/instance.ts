@@ -54,6 +54,16 @@ function applyAttrs(token: Token, attrs: Attrs | undefined): void {
   if (!attrs) return;
   if (attrs.classes.length > 0) token.attrJoin('class', attrs.classes.join(' '));
   if (attrs.id) token.attrSet('id', attrs.id);
+  applyStep(token, attrs);
+}
+
+/**
+ * `{step}`・`{step=N}` の印（構文仕様 §5.3）。番号はスライドを描いた後に文書順で決める
+ * （`numberSteps`）ので、ここでは「自動」か「明示の番号」かだけを書く。
+ */
+function applyStep(token: Token, attrs: Attrs | undefined): void {
+  const step = attrs?.values.step;
+  if (step !== undefined) token.attrSet('data-mds-step', step === true ? 'auto' : String(step));
 }
 
 /** 描画の規則：属性のクラス、表示しない段落、アラート、画像・動画、コンテナ。 */
@@ -117,6 +127,22 @@ function renderRules(instance: MarkdownIt): void {
       }
     }
     return self.renderToken(tokens, idx, options);
+  };
+
+  // 箇条書きの項目の末尾に書いた {step} は、項目（li）に付ける
+  rules.list_item_open = (tokens, idx, options) => {
+    const next = tokens[idx + 1];
+    if (next?.type === 'paragraph_open')
+      applyStep(tokens[idx]!, (next.meta as BlockMeta | null)?.attrs);
+    return self.renderToken(tokens, idx, options);
+  };
+  // コード・図（```mermaid {step}）の {step} は pre に付ける
+  const fence = rules.fence!;
+  rules.fence = (tokens, idx, options, env, renderer) => {
+    const html = fence(tokens, idx, options, env, renderer);
+    const step = (tokens[idx]!.meta as BlockMeta | null)?.attrs?.values.step;
+    if (step === undefined) return html;
+    return html.replace(/^<pre/, `<pre data-mds-step="${step === true ? 'auto' : String(step)}"`);
   };
 
   rules.image = (tokens, idx, _options, env) =>
