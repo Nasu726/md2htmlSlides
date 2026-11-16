@@ -13,27 +13,39 @@ sections
     ## 見出しだけ → section  L20  #見出しだけ--section
     ## 横長の画像1枚 → media  L22-L24  #横長の画像1枚--media
       - paragraph  L24
+          image ./assets/landscape-16x9.png alt="横長の画像" title="画像だけのスライド"
     ## 図だけ → media  L26-L31  #図だけ--media
       - code[mermaid]  L28-L31
     ## 動画だけ → media  L33-L35  #動画だけ--media
       - paragraph  L35
+          image ./assets/demo.mp4 alt="デモ動画" {autoplay loop muted}
     ## 画像4枚 → grid  L37-L41  #画像4枚--grid
       - paragraph  L39
       - paragraph  L41
+          image ./assets/grid-1.png alt="案1"
+          image ./assets/grid-2.png alt="案2"
+          image ./assets/grid-3.png alt="案3"
+          image ./assets/grid-4.png alt="案4"
     ## キャプション付きの画像3枚 → grid  L43-L49  #キャプション付きの画像3枚--grid
       - paragraph  L45
+          image ./assets/grid-1.png alt="案1" title="赤系"
       - paragraph  L47
+          image ./assets/grid-2.png alt="案2" title="青緑系"
       - paragraph  L49
+          image ./assets/grid-3.png alt="案3" title="黄系"
     ## 文章と縦長の画像 → split（文章60：画像40）  L51-L59  #文章と縦長の画像--split文章60画像40
       - paragraph  L53
       - list  L55-L57
       - paragraph  L59
+          image ./assets/portrait-3x4.png alt="新しい画面"
     ## 文章と横長の画像 → split（50：50）  L61-L65  #文章と横長の画像--split5050
       - paragraph  L63
       - paragraph  L65
+          image ./assets/landscape-16x9.png alt="ダッシュボード"
     ## 文章ととても横長の画像 → stack（画像は下）  L67-L71  #文章ととても横長の画像--stack画像は下
       - paragraph  L69
       - paragraph  L71
+          image ./assets/wide-3x1.png alt="利用者数の推移"
     ## 文章と短いコード → split  L73-L83  #文章と短いコード--split
       - paragraph  L75
       - code[ts]  L77-L83
@@ -44,6 +56,7 @@ sections
       - paragraph  L96
       - list  L98-L100
       - paragraph  L102
+          image ./assets/demo.mp4 alt="操作の流れ" {controls}
     ## 分量の近い小見出し3つ → columns  L104-L116  #分量の近い小見出し3つ--columns
       ### 速い  L106-L108  #速い
         - paragraph  L108

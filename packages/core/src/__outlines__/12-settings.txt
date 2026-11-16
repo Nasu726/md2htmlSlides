@@ -20,7 +20,7 @@ sections
       - paragraph  L41
       - rule[---]  L43
       - paragraph  L45
-    # Accent color {.highlight}  L47-L49  #accent-color-highlight
+    # Accent color {.highlight}  L47-L49  #accent-color
       - paragraph  L49
     # No page numbers  L51-L53  #no-page-numbers
       - paragraph  L53

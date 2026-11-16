@@ -14,6 +14,7 @@ sections
       - paragraph  L30
       - rule[---]  L32
       - paragraph  L34
-    ## 節C {layout=split media=left}  L36-L40  #節c-layoutsplit-medialeft
+    ## 節C {layout=split media=left}  L36-L40  #節c
       - paragraph  L38
+          image ../assets/square.png
       - paragraph  L40

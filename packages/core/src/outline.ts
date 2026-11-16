@@ -1,8 +1,9 @@
+import { formatAttrs } from './attrs.js';
 import type { Block, Deck, SectionNode, SourceRange } from './ir.js';
 
 /**
  * IR を人が読める文字列にする。テストのスナップショットと、動作の確認に使う。
- * 例：`## SQL の基本  L11-L20  #sql-の基本`
+ * 例：`## SQL の基本 {layout=split}  L11-L20  #sql-の基本`
  */
 export function formatOutline(deck: Deck): string {
   const out: string[] = [];
@@ -50,25 +51,55 @@ export function formatOutline(deck: Deck): string {
 function writeSection(section: SectionNode, depth: number, out: string[]): void {
   const indent = '  '.repeat(depth);
   const label = section.heading
-    ? `${'#'.repeat(section.heading.level)} ${section.heading.text}${section.heading.setext ? '（下線の見出し）' : ''}`
+    ? `${'#'.repeat(section.heading.level)} ${section.heading.text}` +
+      (section.heading.setext ? '（下線の見出し）' : '') +
+      (section.attrs ? ` ${formatAttrs(section.attrs)}` : '')
     : '(先頭)';
   out.push(`${indent}${label}  ${lines(section.src)}${section.id ? `  #${section.id}` : ''}`);
-  for (const block of section.blocks) out.push(`${indent}  - ${describe(block)}`);
+  writeBlocks(section.blocks, depth + 1, out);
   for (const child of section.children) writeSection(child, depth + 1, out);
 }
 
+function writeBlocks(blocks: Block[], depth: number, out: string[]): void {
+  const indent = '  '.repeat(depth);
+  for (const block of blocks) {
+    out.push(`${indent}- ${describe(block)}`);
+    for (const media of block.media ?? []) {
+      out.push(
+        `${indent}    image ${media.src}` +
+          (media.alt ? ` alt="${media.alt}"` : '') +
+          (media.title ? ` title="${media.title}"` : '') +
+          (media.attrs ? ` ${formatAttrs(media.attrs)}` : ''),
+      );
+    }
+    if (block.children) writeBlocks(block.children, depth + 1, out);
+  }
+}
+
 function describe(block: Block): string {
-  const detail =
-    block.kind === 'code'
-      ? `[${block.lang ?? ''}]`
-      : block.kind === 'list'
-        ? block.ordered
-          ? '[番号付き]'
-          : ''
-        : block.kind === 'rule'
-          ? `[${block.marker}]`
-          : '';
-  return `${block.kind}${detail}  ${lines(block.src)}`;
+  let label: string = block.kind;
+  switch (block.kind) {
+    case 'code':
+      label += `[${block.lang ?? ''}]`;
+      break;
+    case 'list':
+      if (block.ordered) label += '[番号付き]';
+      break;
+    case 'rule':
+      label += `[${block.marker}]`;
+      break;
+    case 'container':
+      label = `:::${block.name}`;
+      break;
+    case 'directive':
+      label = `::${block.name}`;
+      break;
+    case 'heading':
+      label = `${'#'.repeat(block.level ?? 1)} ${block.text}`;
+      break;
+  }
+  if (block.attrs) label += ` ${formatAttrs(block.attrs)}`;
+  return `${label}  ${lines(block.src)}`;
 }
 
 function lines(src: SourceRange): string {

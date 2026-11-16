@@ -12,14 +12,15 @@ diagnostics
 sections
   (先頭)  L11-L122
     - comment  L12-L17
-    - paragraph  L19
+    - ::maketitle  L19
     # はじめに  L21-L42  #はじめに
       ## なぜ作るのか  L23-L33  #なぜ作るのか
         - paragraph  L25
         - list  L27-L30
         - quote  L32-L33
-      ## 目指すもの {layout=split}  L35-L42  #目指すもの-layoutsplit
+      ## 目指すもの {layout=split}  L35-L42  #目指すもの
         - paragraph  L37
+            image ../fixtures/assets/landscape-16x9.png alt="エディタとプレビューを並べた画面" title="編集しながらプレビュー"
         - paragraph  L39
         - list  L41-L42
     # 使い方  L44-L122  #使い方
@@ -32,28 +33,32 @@ sections
         ### まとめる  L60-L62  #まとめる
           - paragraph  L62
       ## 比較  L64-L74  #比較
-        - paragraph  L66
-        ### Before  L67-L69  #before
+        - :::row  L66-L74
+          - ### Before  L67
           - list  L68-L69
-        ### After  L71-L74  #after
-          - list  L72-L74
+          - ### After  L71
+          - list  L72-L73
       ## クイズ  L76-L82  #クイズ
         - paragraph  L78
-        - paragraph  L80
+        - pause  L80
         - paragraph  L82
       ## 理由は3つ  L84-L94  #理由は3つ
-        - paragraph  L86
-        - list  L87-L90
-        - paragraph  L92-L94
+        - :::steps  L86-L90
+          - list  L87-L89
+        - :::notes  L92-L94
+          - paragraph  L93
       ## 仕組み  L96-L102  #仕組み
         - code[mermaid]  L98-L102
       ## デモ動画  L104-L106  #デモ動画
         - paragraph  L106
+            image ../fixtures/assets/demo.mp4 alt="操作のデモ" {autoplay loop muted}
       ## 写真と一言  L108-L122  #写真と一言
         - paragraph  L110
+            image ../fixtures/assets/portrait-3x4.png {bg=left}
         - paragraph  L112
         - rule[---]  L114
         - comment  L116
         - paragraph  L118
-        - paragraph  L120
+            image ../fixtures/assets/bg-dark.jpg {bg dim=0.5}
+        - slide-attrs {layout=statement}  L120
         - paragraph  L122
