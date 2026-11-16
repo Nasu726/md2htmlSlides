@@ -1,0 +1,59 @@
+meta
+  title: 段階的表示テスト
+  theme=clean aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=false paginate=true
+diagnostics
+  (なし)
+sections
+  (先頭)  L6-L135
+    ## . . . で区切る  L7-L17  #---で区切る
+      - paragraph  L9
+      - paragraph  L11
+      - paragraph  L13
+      - paragraph  L15
+      - paragraph  L17
+    ## :::steps でリストを1つずつ  L19-L26  #steps-でリストを1つずつ
+      - paragraph  L21
+      - list  L22-L26
+    ## :::steps でブロックを1つずつ  L28-L36  #steps-でブロックを1つずつ
+      - paragraph  L30-L31
+      - paragraph  L33
+      - paragraph  L35-L36
+    ## {step} で要素ごとに指定  L38-L46  #step-で要素ごとに指定
+      - paragraph  L40
+      - paragraph  L42
+      - paragraph  L44
+      - paragraph  L46
+    ## {step=N} で順番を指定  L48-L54  #stepn-で順番を指定
+      - paragraph  L50
+      - list  L52-L54
+    ## 同じ番号は同時に出る  L56-L60  #同じ番号は同時に出る
+      - paragraph  L58
+      - paragraph  L60
+    ## 自動の番号と明示の番号が混ざる  L62-L70  #自動の番号と明示の番号が混ざる
+      - paragraph  L64
+      - paragraph  L66
+      - paragraph  L68
+      - paragraph  L70
+    ## :::row の中で . . .  L72-L84  #row-の中で---
+      - paragraph  L74
+      ### 左  L75-L79  #左
+        - paragraph  L77
+        - paragraph  L79
+      ### 右  L81-L84  #右
+        - paragraph  L83-L84
+    ## 問題と答え（画像）  L86-L92  #問題と答え画像
+      - paragraph  L88
+      - paragraph  L90
+      - paragraph  L92
+    ## 図にステップを付ける  L94-L101  #図にステップを付ける
+      - code[mermaid]  L96-L99
+      - paragraph  L101
+    ## コードの行ハイライト（M4）  L103-L111  #コードの行ハイライトm4
+      - code[ts]  L105-L111
+    ## . . . の範囲は分割しない  L113-L131  #---の範囲は分割しない
+      - paragraph  L115
+      - list  L117-L121
+      - paragraph  L123
+      - list  L125-L131
+    ## 段階表示のないスライド  L133-L135  #段階表示のないスライド
+      - paragraph  L135

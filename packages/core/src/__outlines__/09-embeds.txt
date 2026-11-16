@@ -1,0 +1,38 @@
+meta
+  title: 図・数式・コードの埋め込みテスト
+  theme=dark aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=false paginate=true
+diagnostics
+  (なし)
+sections
+  (先頭)  L6-L171
+    ## Mermaid：フローチャート  L7-L14  #mermaidフローチャート
+      - code[mermaid]  L9-L14
+    ## Mermaid：シーケンス図  L16-L25  #mermaidシーケンス図
+      - code[mermaid]  L18-L25
+    ## Mermaid：文章と並べる  L27-L39  #mermaid文章と並べる
+      - paragraph  L29
+      - list  L31-L32
+      - code[mermaid]  L34-L39
+    ## Mermaid：ファイルを参照する  L41-L43  #mermaidファイルを参照する
+      - paragraph  L43
+    ## Mermaid：構文エラー  L45-L53  #mermaid構文エラー
+      - code[mermaid]  L47-L51
+      - paragraph  L53
+    ## Mermaid：とても大きな図  L55-L66  #mermaidとても大きな図
+      - code[mermaid]  L57-L64
+      - paragraph  L66
+    ## 数式（M3）  L68-L74  #数式m3
+      - paragraph  L70
+      - paragraph  L72-L74
+    ## コード：いくつかの言語  L76-L91  #コードいくつかの言語
+      - code[python]  L78-L84
+      - code[rust]  L86-L91
+    ## コード：言語名なし  L93-L97  #コード言語名なし
+      - code[]  L95-L97
+    ## コード：知らない言語名  L99-L103  #コード知らない言語名
+      - code[unknownlang]  L101-L103
+    ## コード：とても長いコード  L105-L154  #コードとても長いコード
+      - code[ts]  L107-L154
+    ## 動く構成図（M4）  L156-L171  #動く構成図m4
+      - paragraph  L158
+      - code[arch]  L160-L171

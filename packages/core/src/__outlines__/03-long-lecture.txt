@@ -1,0 +1,122 @@
+meta
+  title: データベース入門 第3回
+  subtitle: インデックスとクエリの最適化
+  authors: 情報工学科 データベース担当
+  date: 2026-10-14
+  theme=clean aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=auto paginate=true
+diagnostics
+  (なし)
+sections
+  (先頭)  L8-L328
+    # 前回の復習  L9-L33  #前回の復習
+      ## SQL の基本  L11-L23  #sql-の基本
+        - paragraph  L13
+        - code[sql]  L15-L21
+        - paragraph  L23
+      ## 今日のテーマ  L25-L33  #今日のテーマ
+        - paragraph  L27
+        - paragraph  L29
+        - list[番号付き]  L31-L33
+    # データを探す仕組み  L35-L66  #データを探す仕組み
+      ## 全件走査  L37-L55  #全件走査
+        - paragraph  L39
+        - paragraph  L41
+        ### 本の索引で考える  L43-L49  #本の索引で考える
+          - paragraph  L45
+          - paragraph  L47
+          - paragraph  L49
+        ### ディスクとメモリ  L51-L55  #ディスクとメモリ
+          - paragraph  L53
+          - paragraph  L55
+      ## 検索にかかる時間の比較  L57-L66  #検索にかかる時間の比較
+        - paragraph  L59
+        - table  L61-L64
+        - paragraph  L66
+    # インデックスの仕組み  L68-L131  #インデックスの仕組み
+      ## B-tree  L70-L83  #b-tree
+        - paragraph  L72
+        - paragraph  L74
+        - paragraph  L76
+        - list  L78-L81
+        - paragraph  L83
+      ## B-tree での検索の流れ  L85-L103  #b-tree-での検索の流れ
+        - paragraph  L87
+        ### 1. 根から始める  L89-L91  #1-根から始める
+          - paragraph  L91
+        ### 2. 中間のノードをたどる  L93-L95  #2-中間のノードをたどる
+          - paragraph  L95
+        ### 3. 葉で行の場所を得る  L97-L99  #3-葉で行の場所を得る
+          - paragraph  L99
+        ### 4. 合計の読み込み  L101-L103  #4-合計の読み込み
+          - paragraph  L103
+      ## 範囲検索  L105-L114  #範囲検索
+        - paragraph  L107
+        - code[sql]  L109-L112
+        - paragraph  L114
+      ## ハッシュインデックス  L116-L131  #ハッシュインデックス
+        - paragraph  L118
+        - paragraph  L120
+        ### 得意なこと  L121-L123  #得意なこと
+          - list  L122-L123
+        ### 苦手なこと  L125-L131  #苦手なこと
+          - list  L126-L129
+          - paragraph  L131
+    # インデックスの設計  L133-L218  #インデックスの設計
+      - paragraph  L135
+      ## インデックスを作る  L137-L146  #インデックスを作る
+        - paragraph  L139
+        - code[sql]  L141-L144
+        - paragraph  L146
+      ## 複合インデックス  L148-L181  #複合インデックス
+        - paragraph  L150
+        - code[sql]  L152-L155
+        ### 列の順番が重要  L157-L171  #列の順番が重要
+          - paragraph  L159
+          - paragraph  L161
+          - list  L163-L165
+          - paragraph  L167
+          - list  L169
+          - paragraph  L171
+        ### 順番の決め方  L173-L181  #順番の決め方
+          - paragraph  L175
+          - list[番号付き]  L177-L179
+          - paragraph  L181
+      ## インデックスの使えない書き方  L183-L200  #インデックスの使えない書き方
+        - paragraph  L185
+        - list  L187-L198
+        - paragraph  L200
+      ## インデックスのコスト  L202-L218  #インデックスのコスト
+        - paragraph  L204
+        ### 書き込みが遅くなる  L206-L208  #書き込みが遅くなる
+          - paragraph  L208
+        ### 容量が増える  L210-L212  #容量が増える
+          - paragraph  L212
+        ### 判断の基準  L214-L218  #判断の基準
+          - list  L216-L218
+    # 実行計画を読む  L220-L304  #実行計画を読む
+      ## EXPLAIN  L222-L234  #explain
+        - paragraph  L224
+        - code[sql]  L226-L232
+        - paragraph  L234
+      ## 実行計画の例  L236-L255  #実行計画の例
+        - paragraph  L238
+        - code[text]  L240-L253
+        - paragraph  L255
+      ## 改善後の実行計画  L257-L272  #改善後の実行計画
+        - paragraph  L259
+        - code[text]  L261-L270
+        - paragraph  L272
+      ## 実行計画で見るべき項目  L274-L291  #実行計画で見るべき項目
+        - table  L276-L291
+      ## 遅いクエリを直す手順  L293-L304  #遅いクエリを直す手順
+        - list[番号付き]  L295-L302
+        - paragraph  L304
+    # まとめ  L306-L328  #まとめ
+      ## 今日のまとめ  L308-L314  #今日のまとめ
+        - list  L310-L314
+      ## 次回予告  L316-L318  #次回予告
+        - paragraph  L318
+      ## 課題  L320-L328  #課題
+        - paragraph  L322
+        - list[番号付き]  L324-L326
+        - paragraph  L328

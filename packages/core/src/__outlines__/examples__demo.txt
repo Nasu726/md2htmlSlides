@@ -1,0 +1,59 @@
+meta
+  title: Markdownで作るスライド
+  subtitle: PowerPointにうんざりしたので
+  authors: 山田 太郎（○○大学）
+  affiliation: ○○大学
+  date: today
+  event: 社内勉強会
+  footer: 構文仕様 v0.1 サンプル
+  theme=clean aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=auto paginate=true
+diagnostics
+  (なし)
+sections
+  (先頭)  L11-L122
+    - comment  L12-L17
+    - paragraph  L19
+    # はじめに  L21-L42  #はじめに
+      ## なぜ作るのか  L23-L33  #なぜ作るのか
+        - paragraph  L25
+        - list  L27-L30
+        - quote  L32-L33
+      ## 目指すもの {layout=split}  L35-L42  #目指すもの-layoutsplit
+        - paragraph  L37
+        - paragraph  L39
+        - list  L41-L42
+    # 使い方  L44-L122  #使い方
+      ## 書き方の基本  L46-L62  #書き方の基本
+        - paragraph  L48-L49
+        ### 見出しで区切る  L51-L54  #見出しで区切る
+          - paragraph  L53-L54
+        ### 明示的に区切る  L56-L58  #明示的に区切る
+          - paragraph  L58
+        ### まとめる  L60-L62  #まとめる
+          - paragraph  L62
+      ## 比較  L64-L74  #比較
+        - paragraph  L66
+        ### Before  L67-L69  #before
+          - list  L68-L69
+        ### After  L71-L74  #after
+          - list  L72-L74
+      ## クイズ  L76-L82  #クイズ
+        - paragraph  L78
+        - paragraph  L80
+        - paragraph  L82
+      ## 理由は3つ  L84-L94  #理由は3つ
+        - paragraph  L86
+        - list  L87-L90
+        - paragraph  L92-L94
+      ## 仕組み  L96-L102  #仕組み
+        - code[mermaid]  L98-L102
+      ## デモ動画  L104-L106  #デモ動画
+        - paragraph  L106
+      ## 写真と一言  L108-L122  #写真と一言
+        - paragraph  L110
+        - paragraph  L112
+        - rule[---]  L114
+        - comment  L116
+        - paragraph  L118
+        - paragraph  L120
+        - paragraph  L122
