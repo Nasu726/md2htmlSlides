@@ -35,7 +35,10 @@ test('コードブロックが潰れずに表示される', async ({ page }) => 
 });
 
 test('あふれたスライドは文字を小さくして収める', async ({ page }) => {
-  const items = Array.from({ length: 16 }, (_, i) => `- 項目 ${i + 1}`).join('\n');
+  // 2段組にならない長さの項目（短い項目が多いリストは2段組になって収まる）
+  const items = Array.from({ length: 16 }, (_, i) => `- 長めの説明が入った項目 ${i + 1}`).join(
+    '\n',
+  );
   const deck = buildSlides(parseDeck(`## 長いリスト\n\n${items}\n`));
   await page.setContent(renderDeckHtml(deck));
   const fit = await page.locator('.mds-slide').getAttribute('data-fit');

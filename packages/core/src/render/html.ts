@@ -5,9 +5,16 @@ import { md } from '../md/instance.js';
 import type { RenderEnv } from '../md/media.js';
 import type { MediaProbe } from '../media.js';
 import type { Slide, SlideDeck } from '../slides.js';
-import type { LayoutName } from '../syntax/elements.js';
 import { BASE_CSS } from './base-css.js';
 import { FIT_SCRIPT } from './fit.js';
+import {
+  chooseLayout,
+  isFigureCode,
+  isMediaBlock,
+  isShortList,
+  subheadingGroups,
+  type LayoutChoice,
+} from './layout.js';
 import { phraseBreaks } from './phrase.js';
 import { renderTitleSlide } from './title.js';
 
@@ -16,9 +23,6 @@ export const SLIDE_SIZES = {
   '4:3': [960, 720],
   '16:10': [1280, 800],
 } as const;
-
-/** M1 で描けるレイアウト。ほかのレイアウトの指定は M2 までは stack で描く。 */
-const M1_LAYOUTS: readonly LayoutName[] = ['stack', 'title', 'section'];
 
 export interface RenderOptions {
   /** `{hidden}` のスライドも出す（エディタのプレビュー用） */
@@ -89,25 +93,35 @@ export function renderSlide(
       env.assetUrl,
     );
   }
-  const layout = chooseLayout(slide);
+  const choice = chooseLayout(slide, deck.slideLevel, env.probe);
+  const { layout } = choice;
   const classes = ['mds-slide', `layout-${layout}`, ...(slide.attrs?.classes ?? [])];
   const parts: string[] = [];
 
-  if (slide.chapter && layout === 'stack') {
-    parts.push(`<p class="mds-chapter">${esc(slide.chapter)}</p>`);
-  }
-  if (slide.heading) {
+  // 章の名前と見出し。statement と media では、引き継いだ見出し（続き）は出さない（§4.5）
+  const titled =
+    layout === 'stack' || layout === 'split' || layout === 'columns' || layout === 'grid';
+  if (slide.chapter && titled) parts.push(`<p class="mds-chapter">${esc(slide.chapter)}</p>`);
+  if (slide.heading && (titled || !slide.heading.continued)) {
     const tag = layout === 'section' ? 'h1' : 'h2';
     const continued = slide.heading.continued ? '<span class="mds-continued">（続き）</span>' : '';
     parts.push(
       `<${tag} class="mds-title">${phraseBreaks(md.renderInline(slide.heading.raw), deck.meta.lang)}${continued}</${tag}>`,
     );
   }
-  const blocks = renderBlocks(slide.blocks, deck.slideLevel, env);
+  const body = renderBody(slide, choice, deck.slideLevel, env);
   // 自動分割で決めた倍率で文字を小さくする（縮小のスクリプトは、ここから始めて足りなければさらに縮める）
   const scale = slide.scale && slide.scale < 1 ? slide.scale : undefined;
-  const scaleAttrs = scale ? ` data-scale="${scale}" style="--mds-fit:${scale}"` : '';
-  if (blocks) parts.push(`<div class="mds-body"${scaleAttrs}>\n${blocks}</div>`);
+  const style = [
+    ...(scale ? [`--mds-fit:${scale}`] : []),
+    ...(choice.ratio ? [`--mds-split:${choice.ratio[0]}fr ${choice.ratio[1]}fr`] : []),
+    ...(choice.columns ? [`--mds-cols:${choice.columns}`] : []),
+  ];
+  const bodyAttrs =
+    (scale ? ` data-scale="${scale}"` : '') +
+    (style.length > 0 ? ` style="${style.join(';')}"` : '') +
+    (choice.mediaLeft ? ' data-media="left"' : '');
+  if (body) parts.push(`<div class="mds-body"${bodyAttrs}>\n${body}</div>`);
   parts.push(renderFooter(slide, deck, position));
 
   const attrs = [
@@ -121,15 +135,44 @@ export function renderSlide(
   return `<section ${attrs.join(' ')}>\n${parts.join('\n')}\n</section>`;
 }
 
-function chooseLayout(slide: Slide): LayoutName {
-  const requested = slide.attrs?.values.layout;
-  if (typeof requested === 'string' && M1_LAYOUTS.includes(requested as LayoutName)) {
-    return requested as LayoutName;
+/** レイアウトに合わせて本文を組む（§5.1）。 */
+function renderBody(
+  slide: Slide,
+  choice: LayoutChoice,
+  slideLevel: number,
+  env: RenderEnv,
+): string {
+  const blocks = slide.blocks;
+  const html = (list: Block[]) => renderBlocks(list, slideLevel, env);
+  switch (choice.layout) {
+    case 'split': {
+      // 文章とメディア（またはコード）を左右に並べる
+      const isMedia = (b: Block) => isMediaBlock(b) || isFigureCode(b) || b.kind === 'code';
+      const media = blocks.filter(isMedia);
+      const text = blocks.filter((b) => !isMedia(b));
+      if (media.length === 0) return html(blocks);
+      return `<div class="mds-split-text">\n${html(text)}</div>\n<div class="mds-split-media">\n${html(media)}</div>\n`;
+    }
+    case 'grid': {
+      // 画像を格子に並べる（文章は上に置く）
+      const media = blocks.filter((b) => isMediaBlock(b) || isFigureCode(b));
+      const text = blocks.filter((b) => !media.includes(b));
+      return `${html(text)}<div class="mds-grid">\n${html(media)}</div>\n`;
+    }
+    case 'columns': {
+      // 小見出しごとにカードにする（小見出しがなければブロックごと）
+      const visible = blocks.filter((b) => b.kind !== 'comment');
+      const groups = subheadingGroups(visible, slideLevel) ?? visible.map((b) => [b]);
+      const level = slideLevel + 1;
+      const cards = groups.map((group, i) => {
+        const heading = visible.filter((b) => b.kind === 'heading' && b.level === level)[i];
+        return `<div class="mds-card">\n${html(heading ? [heading, ...group] : group)}</div>\n`;
+      });
+      return `<div class="mds-columns">\n${cards.join('')}</div>\n`;
+    }
+    default:
+      return html(blocks);
   }
-  if (slide.kind === 'title') return 'title';
-  if (slide.kind === 'section') return 'section';
-  const visible = slide.blocks.some((b) => b.kind !== 'comment' && b.kind !== 'pause');
-  return visible ? 'stack' : 'section';
 }
 
 function renderFooter(
@@ -167,6 +210,11 @@ function renderBlock(block: Block, slideLevel: number, env: RenderEnv): string {
     }
     case 'container':
       return renderContainer(block, slideLevel, env);
+    case 'list':
+      // 短い項目が多いリストは2段組にする
+      return isShortList(block)
+        ? `<div class="mds-list-cols">\n${md.render(block.raw, env)}</div>\n`
+        : md.render(block.raw, env);
     default:
       return md.render(block.raw, env);
   }

@@ -11,6 +11,7 @@
 import type { Block } from '../ir.js';
 import { md } from '../md/instance.js';
 import { renderBlocks, renderSlide } from '../render/html.js';
+import { isMediaBlock, isShortList } from '../render/layout.js';
 import type { Slide, SlideDeck } from '../slides.js';
 
 export interface SplitWeights {
@@ -66,6 +67,8 @@ export interface Atom {
   group?: { id: number; index: number; count: number; head?: string };
   /** 今いる小見出しの原子の位置 */
   subheading?: number;
+  /** 画像だけの段落が続いたもの（格子に並べるので分けない）の画像の数 */
+  gallery?: number;
 }
 
 const SKIP = new Set<Block['kind']>(['comment', 'slide-attrs', 'directive']);
@@ -81,7 +84,7 @@ export function atomize(blocks: Block[]): Atom[] {
     if (block.kind === 'heading') {
       subheading = atoms.length;
       atoms.push({ block, kind: 'heading' });
-    } else if (block.kind === 'list') {
+    } else if (block.kind === 'list' && !isShortList(block)) {
       const lines = block.raw.split('\n');
       const items = md
         .parse(block.raw, {})
@@ -107,10 +110,22 @@ export function atomize(blocks: Block[]): Atom[] {
           group: { id: group, index, count: rows.length, head: headRaw },
         });
       });
+    } else if (isMediaBlock(block) && atoms.at(-1)?.gallery) {
+      // 画像だけの段落が続いたら、1つの原子にまとめる（grid で並べる）
+      const prev = atoms.at(-1)!;
+      prev.block = {
+        ...prev.block,
+        raw: `${prev.block.raw}\n\n${block.raw}`,
+        media: [...(prev.block.media ?? []), ...(block.media ?? [])],
+        src: { start: prev.block.src.start, end: block.src.end },
+      };
+      prev.gallery! += 1;
     } else {
-      push({ block, kind: block.kind });
+      push({ block, kind: block.kind, ...(isMediaBlock(block) ? { gallery: 1 } : {}) });
     }
   }
+  // 1つだけの画像の段落は、ふつうの原子にもどす
+  for (const atom of atoms) if (atom.gallery === 1) delete atom.gallery;
   return atoms;
 }
 
@@ -192,7 +207,8 @@ export function splitAtoms(
       const text = sum + extra;
       const needed = text > 0 ? (m.avail - gaps) / text : 1; // この倍率まで縮めれば収まる
       const single = j - i === 1;
-      if (needed < w.minScale && !single) break; // i を前に戻すほど内容が増えるので打ち切る
+      // i を前に戻すほど内容が増えるので打ち切る（まだ1つも収め方がなければ、あふれを覚悟で続ける）
+      if (needed < w.minScale && !single && best[j]! < Infinity) break;
       const penalty = i === 0 ? 0 : breakPenalty(atoms, i, w);
       if (penalty === Infinity || best[i] === Infinity) continue;
       const floor = single ? w.atomMinScale : w.minScale;
@@ -253,8 +269,26 @@ export function planSplit(deck: SlideDeck): SplitPlan {
     const one: Block = { kind: 'paragraph', raw: 'x', hash: '', src: slide.src };
     plan.targets.push({ index, atoms });
     plan.jobs.push({
-      skeleton: renderSlide({ ...slide, blocks: [one] }, deck, { page: 1, total: 1 }),
-      atoms: atoms.map((a) => renderBlocks([a.block], deck.slideLevel, { lang: deck.meta.lang })),
+      // 本文の高さは stack で測る（1行だけの本文は statement に自動で選ばれてしまうため）
+      skeleton: renderSlide(
+        {
+          ...slide,
+          blocks: [one],
+          attrs: {
+            classes: slide.attrs?.classes ?? [],
+            values: { ...slide.attrs?.values, layout: 'stack' },
+          },
+        },
+        deck,
+        { page: 1, total: 1 },
+      ),
+      atoms: atoms.map((a) => {
+        const html = renderBlocks([a.block], deck.slideLevel, { lang: deck.meta.lang });
+        // 続いた画像は格子に並べるので、格子の高さで測る
+        if (!a.gallery) return html;
+        const cols = a.gallery <= 3 ? a.gallery : a.gallery === 4 ? 2 : 3;
+        return `<div class="mds-grid" style="--mds-cols:${cols}">${html}</div>`;
+      }),
       heads: atoms.map((a) =>
         a.group?.head
           ? renderBlocks([{ ...a.block, raw: a.group.head }], deck.slideLevel, {

@@ -274,6 +274,98 @@ body { margin: 0; background: #d1d5db; }
 }
 .layout-section .mds-body { flex: none; color: var(--mds-muted); }
 
+/* statement：一文や引用を中央に大きく（§5.1） */
+.layout-statement { justify-content: center; }
+.layout-statement > .mds-title {
+  font-size: var(--mds-fs-small);
+  color: var(--mds-accent);
+  letter-spacing: 0.04em;
+}
+.layout-statement > .mds-title::after { display: none; }
+.layout-statement .mds-body {
+  flex: none;
+  font-size: calc(1.6em * var(--mds-fit, 1));
+  font-weight: 700;
+  line-height: 1.45;
+  text-wrap: balance;
+  word-break: auto-phrase;
+}
+.layout-statement .mds-body blockquote {
+  padding: 0 0 0 0.8em;
+  border-left-width: 8px;
+  color: var(--mds-fg);
+}
+
+/* media：画像・動画・図を大きく。見出しは上に小さく、キャプションは重ねる */
+.layout-media > .mds-title { font-size: var(--mds-fs-small); color: var(--mds-muted); }
+.layout-media > .mds-title::after { display: none; }
+.layout-media .mds-media figcaption {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: 0.25em 0.8em;
+  border-radius: 6px;
+  background: rgb(15 23 42 / 0.72);
+  color: #fff;
+}
+.layout-media .mds-media { position: relative; }
+
+/* split：文章とメディアを左右に（比は --mds-split、data-media="left" で左右を入れ替える） */
+.layout-split .mds-body {
+  display: grid;
+  grid-template-columns: var(--mds-split, 1fr 1fr);
+  gap: calc(var(--mds-gap) * 2);
+  align-items: center;
+}
+.layout-split .mds-body[data-media='left'] { direction: rtl; }
+.layout-split .mds-body[data-media='left'] > * { direction: ltr; }
+.mds-split-text, .mds-split-media {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mds-gap);
+}
+.mds-split-text > *, .mds-split-media > * { margin: 0; flex: none; }
+.mds-split-media { align-self: stretch; justify-content: center; }
+.mds-split-media > .mds-media-group.is-flex { flex: 1 1 0; }
+
+/* grid：画像を格子に */
+.mds-grid {
+  flex: 1 1 0;
+  min-height: var(--mds-media-min);
+  display: grid;
+  grid-template-columns: repeat(var(--mds-cols, 2), minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: var(--mds-gap);
+}
+.mds-grid > .mds-media-group { display: contents; }
+
+/* columns：小見出しごとのカード */
+.mds-columns {
+  display: grid;
+  grid-template-columns: repeat(var(--mds-cols, 3), minmax(0, 1fr));
+  gap: calc(var(--mds-gap) * 1.2);
+  align-items: stretch;
+}
+.mds-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  min-width: 0;
+  padding: 0.8em 1em;
+  border-radius: var(--mds-radius);
+  background: var(--mds-surface);
+}
+.mds-card > * { margin: 0; }
+.mds-card h3, .mds-card h4 { color: var(--mds-accent); }
+
+/* 短い項目が多いリストは2段組 */
+.mds-list-cols > ul, .mds-list-cols > ol { display: block; columns: 2; column-gap: 2.5em; }
+.mds-list-cols li { break-inside: avoid; margin-bottom: 0.25em; }
+
 /* タイトルスライド（構文仕様 §2.2） */
 .layout-title { justify-content: center; }
 .mds-titleblock {
