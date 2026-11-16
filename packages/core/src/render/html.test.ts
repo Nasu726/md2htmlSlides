@@ -34,6 +34,17 @@ describe('renderDeckHtml', () => {
     expect(render('---\npaginate: false\n---\n## A\n\n本文')).not.toContain('mds-page');
   });
 
+  it('{.class align=center} はクラスと縦方向の中央揃えになる', () => {
+    const html = render('## A {.highlight align=center}\n\n本文です。\n\n- 1\n- 2');
+    expect(sections(html)[0]).toContain('class="mds-slide layout-stack align-center highlight"');
+  });
+
+  it('media=left の split は、画像を先（左）に置く', () => {
+    const full = render('## A {layout=split media=left}\n\n本文\n\n![a](a.png)');
+    const html = full.slice(full.indexOf('<main'));
+    expect(html.indexOf('mds-split-media')).toBeLessThan(html.indexOf('mds-split-text'));
+  });
+
   it('{hidden} のスライドは既定では出さない', () => {
     const md = '## A\n\n本文\n\n## B {hidden}\n\n本文';
     expect(sections(render(md))).toHaveLength(1);

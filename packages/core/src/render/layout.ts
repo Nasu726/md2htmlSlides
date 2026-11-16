@@ -27,10 +27,22 @@ export const isFigureCode = (b: Block) =>
 const visibleMedia = (b: Block) => (b.media ?? []).filter((m) => m.attrs?.values.bg === undefined);
 const onlyImages = (b: Block) => b.raw.replace(IMAGE, '').trim() === '';
 
-/** 画像・動画だけの段落か（背景だけの段落は除く）。 */
+/**
+ * 画像・動画だけの段落か（背景だけの段落は除く）。
+ * `width=` で幅を固定した画像は、伸縮させずに文章と同じ流れに置くので含めない。
+ */
 export function isMediaBlock(b: Block): boolean {
-  return b.kind === 'paragraph' && visibleMedia(b).length > 0 && onlyImages(b);
+  const media = visibleMedia(b);
+  return (
+    b.kind === 'paragraph' &&
+    media.length > 0 &&
+    media.every((m) => m.attrs?.values.width === undefined) &&
+    onlyImages(b)
+  );
 }
+
+/** 一文だけか（文末以外に句点・感嘆符・疑問符がない）。 */
+const singleSentence = (b: Block) => !/[。！？!?]/.test(b.raw.trim().replace(/[。！？!?]+$/, ''));
 
 const isBackgroundOnly = (b: Block) =>
   b.kind === 'paragraph' &&
@@ -66,11 +78,14 @@ export function isShortList(b: Block): boolean {
 export function chooseLayout(slide: Slide, slideLevel: number, probe?: MediaProbe): LayoutChoice {
   const values = slide.attrs?.values ?? {};
   const mediaLeft = values.media === 'left';
+  // ratio= は「左：右」。自動で決めた比は「文章：メディア」なので、メディアが左なら入れ替える
   const ratio = parseRatio(values.ratio);
+  const orient = (auto: [number, number]): [number, number] =>
+    ratio ?? (mediaLeft ? [auto[1], auto[0]] : auto);
   const requested = values.layout;
   if (typeof requested === 'string' && (LAYOUTS as readonly string[]).includes(requested)) {
     const layout = requested as LayoutName;
-    if (layout === 'split') return { layout, ratio: ratio ?? [1, 1], mediaLeft };
+    if (layout === 'split') return { layout, ratio: orient([1, 1]), mediaLeft };
     if (layout === 'columns' || layout === 'grid') {
       const groups = subheadingGroups(
         slide.blocks.filter((b) => !HIDDEN.has(b.kind)),
@@ -92,7 +107,8 @@ export function chooseLayout(slide: Slide, slideLevel: number, probe?: MediaProb
   const only = blocks.length === 1 ? blocks[0]! : undefined;
 
   // statement：短い一文、または引用だけ
-  if (only?.kind === 'paragraph' && !isMediaBlock(only) && textLength(only) <= 80) {
+  const statement = only?.kind === 'paragraph' && !isMediaBlock(only) && !only.media?.length;
+  if (statement && singleSentence(only) && textLength(only) <= 80) {
     return { layout: 'statement' };
   }
   if (only?.kind === 'quote' && textLength(only) <= 140) return { layout: 'statement' };
@@ -114,14 +130,14 @@ export function chooseLayout(slide: Slide, slideLevel: number, probe?: MediaProb
     if (code) {
       // 最長行が60文字を超えるコードは、左右に並べずに上下に積む
       const longest = Math.max(...code.raw.split('\n').map((line) => line.length));
-      if (longest <= 62) return { layout: 'split', ratio: ratio ?? [1, 1], mediaLeft };
+      if (longest <= 62) return { layout: 'split', ratio: orient([1, 1]), mediaLeft };
     } else if (mediaCount === 1) {
       const block = media[0]!;
       const aspect = isFigureCode(block) ? undefined : aspectOf(visibleMedia(block)[0]?.src, probe);
       // とても横長（2.2:1 以上）なら上下に積む。縦長なら文章 60：メディア 40
       if (aspect === undefined || aspect < 2.2) {
         const auto: [number, number] = aspect !== undefined && aspect < 1 ? [3, 2] : [1, 1];
-        return { layout: 'split', ratio: ratio ?? auto, mediaLeft };
+        return { layout: 'split', ratio: orient(auto), mediaLeft };
       }
     }
   }

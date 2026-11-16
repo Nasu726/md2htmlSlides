@@ -319,8 +319,10 @@ body { margin: 0; background: #d1d5db; }
   gap: calc(var(--mds-gap) * 2);
   align-items: center;
 }
-.layout-split .mds-body[data-media='left'] { direction: rtl; }
-.layout-split .mds-body[data-media='left'] > * { direction: ltr; }
+/* {align=center}：本文を縦方向の中央に置く */
+.mds-slide.align-center { justify-content: center; }
+.mds-slide.align-center > .mds-body { flex: none; }
+.mds-slide.align-top { justify-content: flex-start; }
 .mds-split-text, .mds-split-media {
   min-width: 0;
   min-height: 0;

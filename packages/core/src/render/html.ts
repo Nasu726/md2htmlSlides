@@ -95,7 +95,13 @@ export function renderSlide(
   }
   const choice = chooseLayout(slide, deck.slideLevel, env.probe);
   const { layout } = choice;
-  const classes = ['mds-slide', `layout-${layout}`, ...(slide.attrs?.classes ?? [])];
+  const align = slide.attrs?.values.align;
+  const classes = [
+    'mds-slide',
+    `layout-${layout}`,
+    ...(align === 'center' || align === 'top' ? [`align-${align}`] : []),
+    ...(slide.attrs?.classes ?? []),
+  ];
   const parts: string[] = [];
 
   // 章の名前と見出し。statement と media では、引き継いだ見出し（続き）は出さない（§4.5）
@@ -151,7 +157,10 @@ function renderBody(
       const media = blocks.filter(isMedia);
       const text = blocks.filter((b) => !isMedia(b));
       if (media.length === 0) return html(blocks);
-      return `<div class="mds-split-text">\n${html(text)}</div>\n<div class="mds-split-media">\n${html(media)}</div>\n`;
+      const textHtml = `<div class="mds-split-text">\n${html(text)}</div>\n`;
+      const mediaHtml = `<div class="mds-split-media">\n${html(media)}</div>\n`;
+      // 並びは左から。比（--mds-split）も左：右
+      return choice.mediaLeft ? mediaHtml + textHtml : textHtml + mediaHtml;
     }
     case 'grid': {
       // 画像を格子に並べる（文章は上に置く）
