@@ -21,8 +21,21 @@ describe('属性 {…}', () => {
   it('画像の直後（空白なし）の属性は、その画像に付く', () => {
     const [p] = blocksOf('## A\n\n![](a.jpg){bg=left dim=0.4} ![b](b.png "説明"){step}');
     expect(p!.media).toEqual([
-      { src: 'a.jpg', alt: '', attrs: { values: { bg: 'left', dim: '0.4' }, classes: [] } },
-      { src: 'b.png', alt: 'b', title: '説明', attrs: { values: { step: true }, classes: [] } },
+      {
+        kind: 'image',
+        src: 'a.jpg',
+        alt: '',
+        line: 3,
+        attrs: { values: { bg: 'left', dim: '0.4' }, classes: [] },
+      },
+      {
+        kind: 'image',
+        src: 'b.png',
+        alt: 'b',
+        line: 3,
+        title: '説明',
+        attrs: { values: { step: true }, classes: [] },
+      },
     ]);
   });
 

@@ -9,6 +9,7 @@ import type { ContainerMeta } from './md/container.js';
 import type { DirectiveMeta } from './md/directive.js';
 import type { ParseEnv } from './md/env.js';
 import { md } from './md/instance.js';
+import { mediaKind } from './media.js';
 import { detectSlideLevel, scanHeadings } from './slide-level.js';
 import { SlugRegistry } from './slug.js';
 import { closest } from './suggest.js';
@@ -28,6 +29,7 @@ interface Context {
   tokens: Token[];
   bodyLines: string[];
   range: (map: [number, number]) => SourceRange;
+  diagnostics: Diagnostic[];
 }
 
 /** Markdown の文字列を、節のツリーとブロックからなる中間表現（IR）にする。 */
@@ -53,7 +55,7 @@ export function parseDeck(source: string): Deck {
     while (last > map[0] && (bodyLines[last] ?? '').trim() === '') last--;
     return { start: split.bodyStartLine + map[0], end: split.bodyStartLine + last };
   };
-  const ctx: Context = { tokens, bodyLines, range };
+  const ctx: Context = { tokens, bodyLines, range, diagnostics };
 
   const slugs = new SlugRegistry();
   const root: MutableSection = {
@@ -131,8 +133,11 @@ function readBlock(ctx: Context, i: number): [Block | undefined, number] {
     case 'paragraph_open': {
       if (meta?.attrs) block.attrs = meta.attrs;
       if (meta?.slideAttrs) block.attrs = meta.slideAttrs;
-      const media = readMedia(tokens[i + 1]);
-      if (media.length > 0 && kind === 'paragraph') block.media = media;
+      const media = readMedia(tokens[i + 1], raw.split('\n'), src.start);
+      if (media.length > 0 && kind === 'paragraph') {
+        block.media = media;
+        checkAltText(media, ctx.diagnostics);
+      }
       break;
     }
     case 'fence': {
@@ -233,20 +238,44 @@ function readHeading(open: Token, inline: Token | undefined, src: SourceRange): 
   };
 }
 
-function readMedia(inline: Token | undefined): MediaRef[] {
+/**
+ * 段落の中の画像・動画を読む。行番号は、`![` が出てくる順に画像と対応させて求める。
+ */
+function readMedia(inline: Token | undefined, lines: string[], startLine: number): MediaRef[] {
+  const starts: number[] = [];
+  lines.forEach((line, j) => {
+    const count = line.match(/(?<!\\)!\[/g)?.length ?? 0;
+    for (let k = 0; k < count; k++) starts.push(startLine + j);
+  });
   const media: MediaRef[] = [];
   for (const child of inline?.children ?? []) {
     if (child.type !== 'image') continue;
+    const src = String(child.attrGet('src') ?? '');
     const title = child.attrGet('title');
     const attrs = (child.meta as { attrs?: Attrs } | null)?.attrs;
     media.push({
-      src: String(child.attrGet('src') ?? ''),
+      kind: mediaKind(src),
+      src,
       alt: child.content,
+      line: starts[media.length] ?? startLine,
       ...(title ? { title: String(title) } : {}),
       ...(attrs ? { attrs } : {}),
     });
   }
   return media;
+}
+
+/** 代替テキストのない画像・動画を警告する（背景は飾りなので除く。構文仕様 §6.1）。 */
+function checkAltText(media: MediaRef[], diagnostics: Diagnostic[]): void {
+  for (const item of media) {
+    if (item.alt.trim() !== '' || item.attrs?.values.bg !== undefined) continue;
+    diagnostics.push({
+      severity: 'warning',
+      code: 'media/no-alt',
+      message: `代替テキストがありません。![説明](${item.src}) のように、内容を短く書いてください`,
+      line: item.line,
+    });
+  }
 }
 
 function isOnlyComments(html: string): boolean {

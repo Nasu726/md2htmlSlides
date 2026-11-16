@@ -51,7 +51,7 @@ sections
         - code[mermaid]  L98-L102
       ## デモ動画  L104-L106  #デモ動画
         - paragraph  L106
-            image ../fixtures/assets/demo.mp4 alt="操作のデモ" {autoplay loop muted}
+            video ../fixtures/assets/demo.mp4 alt="操作のデモ" {autoplay loop muted}
       ## 写真と一言  L108-L122  #写真と一言
         - paragraph  L110
             image ../fixtures/assets/portrait-3x4.png {bg=left}

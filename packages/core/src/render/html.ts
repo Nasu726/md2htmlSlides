@@ -2,6 +2,8 @@ import { themeCss } from '@mds/themes';
 import type { Attrs } from '../attrs.js';
 import type { Block } from '../ir.js';
 import { md } from '../md/instance.js';
+import type { RenderEnv } from '../md/media.js';
+import type { MediaProbe } from '../media.js';
 import type { Slide, SlideDeck } from '../slides.js';
 import type { LayoutName } from '../syntax/elements.js';
 import { BASE_CSS } from './base-css.js';
@@ -26,6 +28,8 @@ export interface RenderOptions {
   fit?: boolean;
   /** 収まらなかったスライドに印を付ける（開発・プレビュー用） */
   debug?: boolean;
+  /** 画像・動画のファイルを調べる関数（縦横比を先に決め、見つからないものは枠だけにする） */
+  probe?: MediaProbe;
   /** 文書の最後に入れるスクリプト（発表用の runtime など）。縮小のスクリプトの後に実行する */
   scripts?: string[];
 }
@@ -41,7 +45,9 @@ export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): st
   if (meta.accent) style.push(`--mds-accent:${meta.accent}`);
   const custom = options.customCss ? `@scope (.mds-deck) {\n${options.customCss}\n}` : '';
   const body = slides
-    .map((slide, i) => renderSlide(slide, deck, { page: i + 1, total: slides.length }))
+    .map((slide, i) =>
+      renderSlide(slide, deck, { page: i + 1, total: slides.length }, { probe: options.probe }),
+    )
     .join('\n');
   return `<!doctype html>
 <html lang="${esc(meta.lang)}">
@@ -67,9 +73,10 @@ export function renderSlide(
   slide: Slide,
   deck: SlideDeck,
   position: { page: number; total: number },
+  env: RenderEnv = {},
 ): string {
   if (slide.kind === 'title') {
-    return renderTitleSlide(slide, deck, (blocks) => renderBlocks(blocks, deck.slideLevel));
+    return renderTitleSlide(slide, deck, (blocks) => renderBlocks(blocks, deck.slideLevel, env));
   }
   const layout = chooseLayout(slide);
   const classes = ['mds-slide', `layout-${layout}`, ...(slide.attrs?.classes ?? [])];
@@ -85,7 +92,7 @@ export function renderSlide(
       `<${tag} class="mds-title">${md.renderInline(slide.heading.raw)}${continued}</${tag}>`,
     );
   }
-  const blocks = renderBlocks(slide.blocks, deck.slideLevel);
+  const blocks = renderBlocks(slide.blocks, deck.slideLevel, env);
   if (blocks) parts.push(`<div class="mds-body">\n${blocks}</div>`);
   parts.push(renderFooter(slide, deck, position));
 
@@ -127,11 +134,11 @@ function renderFooter(
 }
 
 /** ブロックの並びを HTML にする。コンテナは IR から、それ以外は元の Markdown から描く。 */
-export function renderBlocks(blocks: Block[], slideLevel: number): string {
-  return blocks.map((block) => renderBlock(block, slideLevel)).join('');
+export function renderBlocks(blocks: Block[], slideLevel: number, env: RenderEnv = {}): string {
+  return blocks.map((block) => renderBlock(block, slideLevel, env)).join('');
 }
 
-function renderBlock(block: Block, slideLevel: number): string {
+function renderBlock(block: Block, slideLevel: number, env: RenderEnv): string {
   switch (block.kind) {
     case 'comment':
     case 'pause':
@@ -144,17 +151,17 @@ function renderBlock(block: Block, slideLevel: number): string {
       return `<h${level}${attrString(block.attrs)}>${md.renderInline(stripTrailingAttrs(raw))}</h${level}>\n`;
     }
     case 'container':
-      return renderContainer(block, slideLevel);
+      return renderContainer(block, slideLevel, env);
     default:
-      return md.render(block.raw);
+      return md.render(block.raw, env);
   }
 }
 
-function renderContainer(block: Block, slideLevel: number): string {
+function renderContainer(block: Block, slideLevel: number, env: RenderEnv): string {
   const children = block.children ?? [];
   const name = block.name ?? 'div';
   const attrs = attrString(block.attrs, [`mds-c`, `mds-c-${name}`]);
-  if (name !== 'row') return `<div${attrs}>\n${renderBlocks(children, slideLevel)}</div>\n`;
+  if (name !== 'row') return `<div${attrs}>\n${renderBlocks(children, slideLevel, env)}</div>\n`;
 
   // :::row：見出しがあれば見出しごとに1列、なければブロックごとに1列（構文仕様 §4.1）
   const columns: Block[][] = [];
@@ -173,7 +180,7 @@ function renderContainer(block: Block, slideLevel: number): string {
         .join(' ')}"`
     : '';
   const cols = columns
-    .map((col) => `<div class="mds-col">\n${renderBlocks(col, slideLevel)}</div>\n`)
+    .map((col) => `<div class="mds-col">\n${renderBlocks(col, slideLevel, env)}</div>\n`)
     .join('');
   return `<div${attrs}${style}>\n${cols}</div>\n`;
 }

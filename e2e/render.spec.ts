@@ -45,3 +45,30 @@ test('あふれたスライドは文字を小さくして収める', async ({ pa
     .evaluate((el) => el.scrollHeight > el.clientHeight + 1);
   expect(overflow).toBe(false);
 });
+
+test('画像だけの段落は、空いた領域いっぱいに縦横比を保って広がる', async ({ page }) => {
+  // 縦横比は調べる関数から渡すので、画像を読み込まなくても大きさが決まる
+  const probe = () => ({ exists: true, width: 1600, height: 900 });
+  const deck = buildSlides(parseDeck('## A\n\n本文\n\n![a](a.png "キャプション")'));
+  await page.setContent(renderDeckHtml(deck, { probe }));
+  const box = await page.locator('.mds-media img').boundingBox();
+  const body = await page.locator('.mds-body').boundingBox();
+  const caption = await page.locator('.mds-media figcaption').boundingBox();
+  if (!box || !body || !caption) throw new Error('要素が見つからない');
+  expect(box.width / box.height).toBeCloseTo(16 / 9, 1);
+  expect(box.height).toBeGreaterThan(body.height * 0.6);
+  // キャプションは画像のすぐ下にあり、本文の領域からはみ出さない
+  expect(caption.y - (box.y + box.height)).toBeLessThan(20);
+  expect(caption.y + caption.height).toBeLessThanOrEqual(body.y + body.height + 1);
+});
+
+test('width= の画像は、指定した幅で表示する', async ({ page }) => {
+  const probe = () => ({ exists: true, width: 300, height: 100 });
+  const deck = buildSlides(parseDeck('## A\n\n![a](a.png){width=50%}'));
+  await page.setContent(renderDeckHtml(deck, { probe }));
+  const box = await page.locator('.mds-media img').boundingBox();
+  const body = await page.locator('.mds-body').boundingBox();
+  if (!box || !body) throw new Error('要素が見つからない');
+  expect(box.width / body.width).toBeCloseTo(0.5, 2);
+  expect(box.width / box.height).toBeCloseTo(3, 1);
+});
