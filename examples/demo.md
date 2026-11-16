@@ -2,17 +2,21 @@
 title: Markdownで作るスライド
 subtitle: PowerPointにうんざりしたので
 author: 山田 太郎
+affiliation: ○○大学
 date: today
+event: 社内勉強会 #12
 theme: clean
 footer: 構文仕様 v0.1 サンプル
 ---
 
 <!--
   構文仕様 v0.1（docs/syntax.md）の構文を一通り使ったサンプル。
-  画像・動画は未同梱。実装後はゴールデンテストの入力としても使う。
-  frontmatter に title があるので、1枚目のタイトルスライドは自動で作られる。
+  画像・動画は fixtures/assets/ の仮素材を使う。テスト用の資料は fixtures/ にある。
+  ::maketitle の位置に、フロントマターのタイトル情報からタイトルスライドが作られる。
   見出しの構成（# 章 → ## 節）から slideLevel は自動で 2 になる。
 -->
+
+::maketitle
 
 # はじめに
 
@@ -30,7 +34,7 @@ PowerPoint は高機能だが、ちょっとした発表資料を作るには重
 
 ## 目指すもの {layout=split}
 
-![エディタとプレビューを並べた画面](./assets/editor.png "編集しながらプレビュー")
+![エディタとプレビューを並べた画面](../fixtures/assets/landscape-16x9.png "編集しながらプレビュー")
 
 Markdown を書くだけで、区切り・配置・デザインはアプリが決める。
 
@@ -99,11 +103,11 @@ flowchart LR
 
 ## デモ動画
 
-![操作のデモ](./assets/demo.mp4){autoplay loop muted}
+![操作のデモ](../fixtures/assets/demo.mp4){autoplay loop muted}
 
 ## 写真と一言
 
-![](./assets/portrait.jpg){bg=left}
+![](../fixtures/assets/portrait-3x4.png){bg=left}
 
 道具は、使う人が意識しなくなったときに完成する。
 
@@ -111,7 +115,7 @@ flowchart LR
 
 <!-- 見出しのないスライド。statement レイアウトなので、引き継いだ節の見出しは表示されない -->
 
-![](./assets/sunset.jpg){bg dim=0.5}
+![](../fixtures/assets/bg-dark.jpg){bg dim=0.5}
 
 {layout=statement}
 

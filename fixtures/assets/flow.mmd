@@ -1,0 +1,7 @@
+flowchart TD
+  Start([開始]) --> Input[/Markdownを読む/]
+  Input --> Parse[パース]
+  Parse --> Split{1枚に収まる?}
+  Split -- はい --> Render[描画]
+  Split -- いいえ --> Paginate[分割] --> Render
+  Render --> End([スライド])
