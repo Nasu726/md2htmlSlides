@@ -1,6 +1,8 @@
-import type { Block, MediaRef } from '../ir.js';
+import type { Block } from '../ir.js';
 import { md } from '../md/instance.js';
 import type { Slide, SlideDeck } from '../slides.js';
+import type { RenderEnv } from '../md/media.js';
+import { findBackground, isBackgroundBlock, renderBackground } from './background.js';
 import { phraseBreaks } from './phrase.js';
 
 const esc = (text: string) => md.utils.escapeHtml(text);
@@ -35,29 +37,16 @@ export function renderTitleSlide(
   slide: Slide,
   deck: SlideDeck,
   renderBlocks: (blocks: Block[]) => string,
-  /** 書き出し先での URL に置き換える関数 */
-  assetUrl: (src: string) => string = (src) => src,
+  /** 書き出し先での URL・ファイルの情報（背景の明るさ） */
+  env: RenderEnv = {},
 ): string {
   const { meta } = deck;
   const variant = slide.attrs?.values.variant === 'left' ? 'left' : 'center';
 
   // 背景にする画像（`{bg}`・`{bg=left}`・`{bg=right}`）と、それ以外の補足
-  let background: MediaRef | undefined;
-  const extra: Block[] = [];
-  for (const block of slide.blocks) {
-    const bg = block.media?.find((m) => m.attrs?.values.bg !== undefined);
-    if (bg && !background) background = bg;
-    const onlyBackground =
-      block.kind === 'paragraph' &&
-      (block.media ?? []).length > 0 &&
-      block.media!.every((m) => m.attrs?.values.bg !== undefined);
-    if (!onlyBackground) extra.push(block);
-  }
-  const bgPosition = background
-    ? background.attrs!.values.bg === true
-      ? 'full'
-      : String(background.attrs!.values.bg)
-    : undefined;
+  const background = findBackground(slide.blocks);
+  const extra = slide.blocks.filter((b) => !isBackgroundBlock(b));
+  const assetUrl = env.assetUrl ?? ((src: string) => src);
 
   const title = slide.titleOverride?.title ?? meta.title ?? '';
   const subtitle = slide.titleOverride?.subtitle ?? meta.subtitle;
@@ -75,16 +64,15 @@ export function renderTitleSlide(
   if (meta.date) parts.push(`<p class="mds-date">${esc(formatDate(meta.date, meta.lang))}</p>`);
   if (extra.length > 0) parts.push(`<div class="mds-title-extra">\n${renderBlocks(extra)}</div>`);
 
+  const bg = background ? renderBackground(background, env) : undefined;
   const classes = [
     'mds-slide',
     'layout-title',
     `variant-${variant}`,
-    ...(bgPosition ? [`has-bg-${bgPosition}`] : []),
+    ...(bg?.classes ?? []),
     ...(slide.attrs?.classes ?? []),
   ];
-  const bgHtml = background
-    ? renderBackground({ ...background, src: assetUrl(background.src) }, bgPosition!)
-    : '';
+  const bgHtml = bg?.html ?? '';
   return `<section class="${classes.map(esc).join(' ')}" data-id="${esc(slide.id)}" data-kind="title" data-src="${slide.src.start}-${slide.src.end}"${slide.hidden ? ' data-hidden=""' : ''}>
 ${bgHtml}<div class="mds-titleblock">
 ${parts.join('\n')}
@@ -122,12 +110,4 @@ function renderAuthors(deck: SlideDeck): string[] {
     );
   }
   return out;
-}
-
-function renderBackground(media: MediaRef, position: string): string {
-  const url = media.src.replace(/["'()\\\s]/g, (c) => encodeURIComponent(c));
-  const dim = media.attrs?.values.dim;
-  const overlay =
-    typeof dim === 'string' ? `<div class="mds-bg-dim" style="opacity:${Number(dim)}"></div>` : '';
-  return `<div class="mds-bg mds-bg-${position}" style="background-image:url('${esc(url)}')">${overlay}</div>\n`;
 }

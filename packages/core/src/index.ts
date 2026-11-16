@@ -89,3 +89,11 @@ export {
   type RenderOptions,
 } from './render/html.js';
 export { formatDate, renderTitleSlide } from './render/title.js';
+export {
+  averageLuminance,
+  findBackground,
+  isBackgroundBlock,
+  renderBackground,
+  type Background,
+  type BackgroundPosition,
+} from './render/background.js';

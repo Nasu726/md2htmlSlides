@@ -2,6 +2,8 @@ import {
   applySplit,
   buildSlides,
   checkMediaFiles,
+  collectMedia,
+  isLocalPath,
   parseDeck,
   planSplit,
   renderDeckHtml,
@@ -61,8 +63,25 @@ export async function renderFile(
     }
   }
   registerDeckAssets(deck, assets);
+
+  // 背景の明るさを測る（全面の背景の上の文字色を選ぶため）
+  const luminance = new Map<string, number>();
+  if (measurer) {
+    const backgrounds = collectMedia(deck)
+      .filter((m) => m.attrs?.values.bg !== undefined && isLocalPath(m.src))
+      .map((m) => decodeSrc(m.src));
+    const measured = await measurer.luminance(backgrounds.map((src) => resolve(assets.root, src)));
+    for (const src of backgrounds) {
+      const value = measured.get(resolve(assets.root, src));
+      if (value !== undefined) luminance.set(src, value);
+    }
+  }
   const renderOptions: RenderOptions = {
-    probe: (src) => assets.probe(src),
+    probe: (src) => {
+      const info = assets.probe(src);
+      const value = luminance.get(src);
+      return info && value !== undefined ? { ...info, luminance: value } : info;
+    },
     assetUrl: (src) => assets.url(src),
     ...(customCss !== undefined ? { customCss } : {}),
   };
@@ -80,6 +99,14 @@ export async function renderFile(
   const html = renderDeckHtml(slides, { ...options, ...renderOptions });
   diagnostics.sort((a, b) => a.line - b.line);
   return { html, deck, slides, assets, diagnostics, ...(cssFile ? { cssFile } : {}) };
+}
+
+function decodeSrc(src: string): string {
+  try {
+    return decodeURI(src);
+  } catch {
+    return src;
+  }
 }
 
 export interface BuildOptions {

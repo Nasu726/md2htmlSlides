@@ -408,18 +408,45 @@ body { margin: 0; background: #d1d5db; }
 .variant-center .mds-titleblock { align-items: center; text-align: center; }
 .variant-center .mds-authors, .variant-center .mds-affiliations { justify-content: center; }
 .variant-left .mds-titleblock { align-items: flex-start; }
-.mds-bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+/* 背景（構文仕様 §6.2）：全面・左半分・右半分。中身は背景の上に重ねる */
+.mds-bg { position: absolute; inset: 0; overflow: hidden; background: #000; }
+.mds-bg-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background-size: cover;
+  background-position: center;
+}
+.mds-bg.fit-contain .mds-bg-media { object-fit: contain; background-size: contain; background-repeat: no-repeat; }
 .mds-bg-dim { position: absolute; inset: 0; background: #000; }
 .mds-bg-left { right: 50%; }
 .mds-bg-right { left: 50%; }
-/* 余白の % は内容の幅が基準になるので、スライドの幅（--mds-w）から計算する */
+.mds-slide > :not(.mds-bg, .mds-footer) { position: relative; z-index: 1; }
+.mds-slide > .mds-footer { z-index: 1; }
+/* 左右の半分が背景のときは、本文を残りの半分に置く（余白の % は内容の幅が基準なので --mds-w から計算する） */
+.mds-slide.has-bg-left:not(.layout-title) { padding-left: calc(var(--mds-w) / 2 + 48px); }
+.mds-slide.has-bg-right:not(.layout-title) { padding-right: calc(var(--mds-w) / 2 + 48px); }
 .has-bg-left .mds-titleblock { margin-left: calc(var(--mds-w) / 2 - var(--mds-pad-x) + 48px); }
 .has-bg-right .mds-titleblock { margin-right: calc(var(--mds-w) / 2 - var(--mds-pad-x) + 48px); }
 /* 半分が背景のときは幅が半分になるので、タイトルを少し小さくする */
-.has-bg-left .mds-title, .has-bg-right .mds-title { font-size: calc(var(--mds-fs-title) * 0.78); }
-.has-bg-full { color: #fff; }
-.has-bg-full .mds-subtitle, .has-bg-full .mds-affiliations, .has-bg-full .mds-date,
-.has-bg-full .mds-title-extra { color: rgb(255 255 255 / 0.8); }
+.layout-title.has-bg-left .mds-title, .layout-title.has-bg-right .mds-title { font-size: calc(var(--mds-fs-title) * 0.78); }
+/* 全面の背景の上の文字：暗い背景には明るい文字、明るい背景には暗い文字（明るさは CLI が測る） */
+.mds-slide.bg-tone-dark {
+  --mds-fg: #ffffff;
+  --mds-muted: rgb(255 255 255 / 0.82);
+  --mds-surface: rgb(255 255 255 / 0.14);
+  color: var(--mds-fg);
+}
+.mds-slide.bg-tone-dark > :not(.mds-bg) { text-shadow: 0 1px 4px rgb(0 0 0 / 0.55); }
+.mds-slide.bg-tone-light {
+  --mds-fg: #0f172a;
+  --mds-muted: #334155;
+  --mds-surface: rgb(255 255 255 / 0.55);
+  color: var(--mds-fg);
+}
+.mds-slide.bg-tone-light > :not(.mds-bg) { text-shadow: 0 1px 3px rgb(255 255 255 / 0.75); }
 
 /* 縮小しても収まらなかったスライド（M2 の自動分割までの目印。debug のときだけ表示） */
 .mds-deck[data-debug] .mds-slide[data-overflow] { outline: 4px dashed #dc2626; outline-offset: -4px; }
