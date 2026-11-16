@@ -1,23 +1,18 @@
-import MarkdownIt, { type Token } from 'markdown-it';
+import type { Token } from 'markdown-it';
 import type { Attrs } from './attrs.js';
 import type { Diagnostic } from './diagnostics.js';
 import { parseMeta, splitFrontmatter } from './frontmatter.js';
 import { hashString } from './hash.js';
 import type { Block, BlockKind, Deck, Heading, MediaRef, SectionNode, SourceRange } from './ir.js';
-import { attrsPlugin, type BlockMeta } from './md/attrs.js';
-import { containerPlugin, type ContainerMeta } from './md/container.js';
-import { directivePlugin, type DirectiveMeta } from './md/directive.js';
+import type { BlockMeta } from './md/attrs.js';
+import type { ContainerMeta } from './md/container.js';
+import type { DirectiveMeta } from './md/directive.js';
 import type { ParseEnv } from './md/env.js';
+import { md } from './md/instance.js';
 import { detectSlideLevel, scanHeadings } from './slide-level.js';
 import { SlugRegistry } from './slug.js';
 import { closest } from './suggest.js';
 import { DIRECTIVE_NAMES } from './syntax/elements.js';
-
-/** 生 HTML は許可する（構文仕様 §9）。表と打ち消し線は既定で有効。 */
-const md = new MarkdownIt({ html: true, linkify: false, typographer: false })
-  .use(containerPlugin)
-  .use(directivePlugin)
-  .use(attrsPlugin);
 
 interface MutableSection {
   id: string;

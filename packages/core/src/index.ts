@@ -51,3 +51,13 @@ export {
   type AttrValueSpec,
   type LayoutName,
 } from './syntax/elements.js';
+export { md } from './md/instance.js';
+export { BASE_CSS } from './render/base-css.js';
+export { FIT_SCRIPT, fitSlides } from './render/fit.js';
+export {
+  SLIDE_SIZES,
+  renderBlocks,
+  renderDeckHtml,
+  renderSlide,
+  type RenderOptions,
+} from './render/html.js';
