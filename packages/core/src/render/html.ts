@@ -131,7 +131,9 @@ export function renderSlide(
     (scale ? ` data-scale="${scale}"` : '') +
     (style.length > 0 ? ` style="${style.join(';')}"` : '') +
     (choice.mediaLeft ? ' data-media="left"' : '');
-  if (body) parts.push(`<div class="mds-body"${bodyAttrs}>\n${body}</div>`);
+  // ステップの番号を文書順に決める（data-steps：最初の表示から最後までの操作の回数）
+  const numbered = numberSteps(body);
+  if (body) parts.push(`<div class="mds-body"${bodyAttrs}>\n${numbered.html}</div>`);
   parts.push(renderFooter(slide, deck, position));
 
   const attrs = [
@@ -140,6 +142,7 @@ export function renderSlide(
     `data-kind="${slide.kind}"`,
     `data-src="${slide.src.start}-${slide.src.end}"`,
     ...(slide.attrs?.id ? [`id="${esc(slide.attrs.id)}"`] : []),
+    ...(numbered.steps > 0 ? [`data-steps="${numbered.steps}"`] : []),
     ...(slide.hidden ? ['data-hidden=""'] : []),
   ];
   return `<section ${attrs.join(' ')}>\n${parts.join('\n')}\n</section>`;
@@ -168,7 +171,8 @@ function renderBody(
     }
     case 'grid': {
       // 画像を格子に並べる（文章は上に置く）
-      const media = blocks.filter((b) => isMediaBlock(b) || isFigureCode(b));
+      // `. . .` は画像の並びの中の位置に残す（問題の画像 → . . . → 答えの画像）
+      const media = blocks.filter((b) => isMediaBlock(b) || isFigureCode(b) || b.kind === 'pause');
       const text = blocks.filter((b) => !media.includes(b));
       return `${html(text)}<div class="mds-grid">\n${html(media)}</div>\n`;
     }
@@ -205,7 +209,62 @@ function renderFooter(
 
 /** ブロックの並びを HTML にする。コンテナは IR から、それ以外は元の Markdown から描く。 */
 export function renderBlocks(blocks: Block[], slideLevel: number, env: RenderEnv = {}): string {
-  return blocks.map((block) => renderBlock(block, slideLevel, env)).join('');
+  // `. . .` の後ろは、次の `. . .` までを1つのステップにまとめる（構文仕様 §5.1）
+  const parts: string[] = [];
+  let group: string[] | undefined;
+  const flush = () => {
+    if (group && group.length > 0) {
+      parts.push(`<div class="mds-step-group" data-mds-step="auto">\n${group.join('')}</div>\n`);
+    }
+  };
+  for (const block of blocks) {
+    if (block.kind === 'pause') {
+      flush();
+      group = [];
+      continue;
+    }
+    (group ?? parts).push(renderBlock(block, slideLevel, env));
+  }
+  flush();
+  return parts.join('');
+}
+
+/** 箇条書きのトップレベルの項目に、ステップの印を付ける（入れ子の項目は親と一緒に出る）。 */
+function markTopLevelItems(html: string): string {
+  let depth = 0;
+  return html.replace(
+    /<(\/?)(ul|ol|li)\b([^>]*)>/g,
+    (tag, close: string, name: string, rest: string) => {
+      if (name !== 'li') {
+        depth += close ? -1 : 1;
+        return tag;
+      }
+      if (close || depth !== 1 || rest.includes('data-mds-step')) return tag;
+      return `<li data-mds-step="auto"${rest}>`;
+    },
+  );
+}
+
+/**
+ * ステップの番号を決める（構文仕様 §5.3）。スライドの中を文書順にたどり、自動の印には
+ * 「それまでの最大の番号＋1」、明示の番号はそのまま使い、最後に欠けを詰めて 1・2・3… にする。
+ */
+export function numberSteps(html: string): { html: string; steps: number } {
+  const marks: number[] = [];
+  let max = 0;
+  for (const m of html.matchAll(/data-mds-step="([^"]*)"/g)) {
+    const explicit = Number.parseInt(m[1]!, 10);
+    const n = m[1] === 'auto' || !(explicit > 0) ? max + 1 : explicit;
+    marks.push(n);
+    max = Math.max(max, n);
+  }
+  const order = [...new Set(marks)].sort((a, b) => a - b);
+  const rank = new Map(order.map((n, i) => [n, i + 1]));
+  let i = 0;
+  return {
+    html: html.replace(/data-mds-step="[^"]*"/g, () => `data-step="${rank.get(marks[i++]!)}"`),
+    steps: order.length,
+  };
 }
 
 function renderBlock(block: Block, slideLevel: number, env: RenderEnv): string {
@@ -237,6 +296,17 @@ function renderContainer(block: Block, slideLevel: number, env: RenderEnv): stri
   const children = block.children ?? [];
   const name = block.name ?? 'div';
   const attrs = attrString(block.attrs, [`mds-c`, `mds-c-${name}`]);
+  if (name === 'steps') {
+    // :::steps：リストはトップレベルの項目ごと、それ以外はブロックごとに1ステップ（§5.2）
+    const items = children
+      .filter((b) => b.kind !== 'comment')
+      .map((b) => {
+        const html = renderBlock(b, slideLevel, env);
+        if (b.kind === 'list') return markTopLevelItems(html);
+        return `<div class="mds-step-group" data-mds-step="auto">\n${html}</div>\n`;
+      });
+    return `<div${attrs}>\n${items.join('')}</div>\n`;
+  }
   if (name !== 'row') return `<div${attrs}>\n${renderBlocks(children, slideLevel, env)}</div>\n`;
 
   // :::row：見出しがあれば見出しごとに1列、なければブロックごとに1列（構文仕様 §4.1）
@@ -255,8 +325,15 @@ function renderContainer(block: Block, slideLevel: number, env: RenderEnv): stri
         .map((n) => `minmax(0,${n}fr)`)
         .join(' ')}"`
     : '';
+  // 列の最後に `. . .` があれば、次の列をあとから出す（§5.1）
+  let afterPause = false;
   const cols = columns
-    .map((col) => `<div class="mds-col">\n${renderBlocks(col, slideLevel, env)}</div>\n`)
+    .map((col) => {
+      const step = afterPause ? ' data-mds-step="auto"' : '';
+      const visible = col.filter((b) => b.kind !== 'comment');
+      afterPause = visible.at(-1)?.kind === 'pause';
+      return `<div class="mds-col"${step}>\n${renderBlocks(col, slideLevel, env)}</div>\n`;
+    })
     .join('');
   return `<div${attrs}${style}>\n${cols}</div>\n`;
 }

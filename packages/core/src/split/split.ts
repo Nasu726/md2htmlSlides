@@ -265,6 +265,8 @@ export function planSplit(deck: SlideDeck): SplitPlan {
   if (deck.meta.split === 'manual') return plan;
   deck.slides.forEach((slide, index) => {
     if (slide.kind !== 'content' || slide.attrs?.values.keep !== undefined) return;
+    // `. . .` でつながった範囲は同じスライドに保つ（構文仕様 §5.1）
+    if (slide.blocks.some((b) => b.kind === 'pause')) return;
     const atoms = atomize(slide.blocks);
     if (atoms.length === 0) return;
     const one: Block = { kind: 'paragraph', raw: 'x', hash: '', src: slide.src };

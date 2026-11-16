@@ -104,9 +104,12 @@ export function renderMedia(
     ...(attrs?.classes ?? []),
   ];
   const id = attrs?.id ? ` id="${esc(attrs.id)}"` : '';
+  const step = attrs?.values.step;
+  const stepAttr =
+    step === undefined ? '' : ` data-mds-step="${step === true ? 'auto' : esc(String(step))}"`;
   const style = width ? ` style="width:${esc(width)}"` : '';
   const figcaption = caption ? `<figcaption>${esc(caption)}</figcaption>` : '';
-  return `<figure class="${classes.map(esc).join(' ')}"${id}${style}><div class="mds-media-frame">${element}</div>${figcaption}</figure>`;
+  return `<figure class="${classes.map(esc).join(' ')}"${id}${stepAttr}${style}><div class="mds-media-frame">${element}</div>${figcaption}</figure>`;
 }
 
 function mediaElement(

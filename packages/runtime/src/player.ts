@@ -172,21 +172,24 @@ export function startPlayer(doc: Document): void {
   };
 
   let index = -1;
+  let step = 0;
   let overview = false;
   let digits = '';
   let digitsTimer = 0;
 
-  const pageFromHash = (): number | undefined => {
-    const m = /^#\/([^/]+)/.exec(win.location.hash);
+  // URL：#/12（12枚目）、#/12/2（12枚目の2ステップ目）、#/見出しのID
+  const pageFromHash = (): [number, number] | undefined => {
+    const m = /^#\/([^/]+)(?:\/(\d+))?/.exec(win.location.hash);
     if (!m) return undefined;
     const value = decodeURIComponent(m[1]!);
-    if (/^\d+$/.test(value)) return Number(value) - 1;
+    const at = Number(m[2] ?? 0);
+    if (/^\d+$/.test(value)) return [Number(value) - 1, at];
     const found = slides.findIndex((slide) => slide.dataset.id === value || slide.id === value);
-    return found >= 0 ? found : undefined;
+    return found >= 0 ? [found, at] : undefined;
   };
 
   const writeHash = () => {
-    const hash = `#/${index + 1}`;
+    const hash = `#/${index + 1}${step > 0 ? `/${step}` : ''}`;
     if (win.location.hash === hash) return;
     // <base href> があっても同じ文書のままにするため、今の URL から組み立てる
     const url = win.location.href.split('#')[0] + hash;
@@ -204,8 +207,27 @@ export function startPlayer(doc: Document): void {
     }
   };
 
-  const go = (target: number) => {
+  // 段階的表示：今のステップより後の要素を隠す（構文仕様 §5）
+  const stepsOf = (k: number) => Number(slides[k]?.dataset.steps ?? 0);
+  const showSteps = (slide: HTMLElement, upTo: number) => {
+    for (const el of Array.from(slide.querySelectorAll<HTMLElement>('[data-step]'))) {
+      el.toggleAttribute('data-step-hidden', Number(el.dataset.step) > upTo);
+    }
+  };
+
+  const go = (target: number, targetStep = 0) => {
     const next = Math.max(0, Math.min(slides.length - 1, target));
+    step = Math.max(0, Math.min(stepsOf(next), targetStep));
+    const slide = slides[next]!;
+    if (next === index) {
+      showSteps(slide, overview ? Infinity : step); // 同じスライドの中ではフェードで出す
+    } else {
+      // 別のスライドに移るときは、隠す要素を一瞬で隠す（表示した後に消えていくのを防ぐ）
+      slide.setAttribute('data-no-anim', '');
+      showSteps(slide, overview ? Infinity : step);
+      void slide.offsetWidth;
+      slide.removeAttribute('data-no-anim');
+    }
     if (next !== index) {
       const previous = slides[index];
       if (previous) playMedia(previous, false);
@@ -225,8 +247,18 @@ export function startPlayer(doc: Document): void {
     writeHash();
   };
 
+  /** 次のステップ。最後のステップなら次のスライドへ */
+  const forward = () => (step < stepsOf(index) ? go(index, step + 1) : go(index + 1, 0));
+  /** 前のステップ。最初なら前のスライドを、すべて表示した状態で */
+  const back = () => {
+    if (step > 0) go(index, step - 1);
+    else if (index > 0) go(index - 1, stepsOf(index - 1));
+  };
+
   const setOverview = (on: boolean) => {
     overview = on;
+    // 一覧ではすべてのステップを表示する
+    slides.forEach((slide, k) => showSteps(slide, on ? Infinity : k === index ? step : 0));
     deck.classList.toggle('is-presenting', !on);
     deck.classList.toggle('is-overview', on);
     doc.documentElement.classList.toggle('mds-presenting', !on);
@@ -287,16 +319,17 @@ export function startPlayer(doc: Document): void {
       key === 'PageDown' ||
       key === 'Enter'
     ) {
-      go(index + 1);
+      forward();
     } else if (key === ' ') {
-      go(index + (event.shiftKey ? -1 : 1));
+      if (event.shiftKey) back();
+      else forward();
     } else if (
       key === 'ArrowLeft' ||
       key === 'ArrowUp' ||
       key === 'PageUp' ||
       key === 'Backspace'
     ) {
-      go(index - 1);
+      back();
     } else if (key === 'Home') {
       go(0);
     } else if (key === 'End') {
@@ -347,7 +380,10 @@ export function startPlayer(doc: Document): void {
       const dx = t.clientX - touch.x;
       const dy = t.clientY - touch.y;
       touch = undefined;
-      if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.5) go(index + (dx < 0 ? 1 : -1));
+      if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        if (dx < 0) forward();
+        else back();
+      }
     },
     { passive: true },
   );
@@ -363,22 +399,26 @@ export function startPlayer(doc: Document): void {
   win.addEventListener('resize', fit);
   win.addEventListener('hashchange', () => {
     const page = pageFromHash();
-    if (page !== undefined) go(page);
+    if (page !== undefined) go(page[0], page[1]);
   });
 
   fit();
   setOverview(false);
   slides.forEach((slide) => playMedia(slide, false));
-  go(pageFromHash() ?? 0);
+  const start = pageFromHash() ?? [0, 0];
+  go(start[0], start[1]);
 
   // ほかのスクリプト（発表者ビュー・テスト）から操作できるようにする
   Object.assign(win, {
     mdsPlayer: {
       go: (page: number) => go(page - 1),
-      next: () => go(index + 1),
-      prev: () => go(index - 1),
+      next: forward,
+      prev: back,
       get page() {
         return index + 1;
+      },
+      get step() {
+        return step;
       },
       get total() {
         return slides.length;
