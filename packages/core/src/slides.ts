@@ -36,6 +36,11 @@ export interface Slide {
   /** `{hidden}`：エディタには出すが、発表と書き出しでは除く */
   hidden: boolean;
   src: SourceRange;
+  /**
+   * タイトルスライドの文字（フロントマターの title の代わり）。
+   * フロントマターに title がなく、先頭の唯一の H1 をタイトルにしたときに使う（構文仕様 §2.2）
+   */
+  titleOverride?: { title: string; subtitle?: string };
 }
 
 export interface SlideDeck {
@@ -64,13 +69,94 @@ export function buildSlides(deck: Deck): SlideDeck {
     deck.meta.slideLevel === 'auto'
       ? detectSlideLevel(headingSummaries(deck.root))
       : deck.meta.slideLevel;
+  const { meta, root } = deck;
+  const diagnostics = [...deck.diagnostics];
   const builder = new Builder(slideLevel);
-  builder.emit(deck.root.blocks, {
-    baseId: 'start',
-    start: deck.root.src.start,
-  });
-  for (const child of deck.root.children) builder.visit(child, undefined);
-  return { meta: deck.meta, slideLevel, slides: builder.slides, diagnostics: deck.diagnostics };
+
+  // タイトルスライド（構文仕様 §2.2）
+  const maketitles = findMaketitles(root);
+  if (maketitles.length > 0 && !meta.title) {
+    for (const block of maketitles) {
+      diagnostics.push({
+        severity: 'warning',
+        code: 'maketitle/no-title',
+        message: '::maketitle がありますが、フロントマターに title がありません',
+        line: block.src.start,
+      });
+    }
+  }
+  const first = root.children[0];
+  const titleH1 =
+    first?.level === 1 &&
+    first.level < slideLevel &&
+    root.children.filter((s) => s.level === 1).length === 1 &&
+    root.blocks.every((b) => b.kind === 'comment')
+      ? first
+      : undefined;
+  let skip: SectionNode | undefined;
+  if (meta.titleSlide !== false && maketitles.length === 0) {
+    if (meta.title) {
+      // 先頭の H1 がタイトルと同じ文言なら、その H1 は別のスライドにしない
+      const same = titleH1 && titleH1.heading!.text.trim() === meta.title.trim();
+      builder.titleSlide({
+        start: deck.frontmatter?.start ?? root.src.start,
+        end: same ? titleH1.src.start : (deck.frontmatter?.end ?? root.src.start),
+        blocks: same ? titleH1.blocks : [],
+      });
+      if (same) skip = titleH1;
+    } else if (titleH1) {
+      // 先頭の唯一の H1 をタイトル、直後の短い段落を副題にする
+      const [lead, ...rest] = titleH1.blocks;
+      const subtitle =
+        lead?.kind === 'paragraph' &&
+        !lead.media &&
+        !lead.raw.includes('\n') &&
+        lead.raw.length <= 100
+          ? lead.raw
+          : undefined;
+      builder.titleSlide({
+        start: titleH1.src.start,
+        end: subtitle ? lead!.src.end : titleH1.src.start,
+        blocks: subtitle ? rest : titleH1.blocks,
+        override: { title: titleH1.heading!.text, ...(subtitle ? { subtitle } : {}) },
+      });
+      skip = titleH1;
+    }
+  }
+
+  builder.emit(root.blocks, { baseId: 'start', start: root.src.start });
+  for (const child of root.children) {
+    if (child === skip) {
+      // タイトルにした H1 は章ではないので、子のスライドに章の名前を付けない
+      for (const grandchild of child.children) builder.visit(grandchild, undefined);
+    } else {
+      builder.visit(child, undefined);
+    }
+  }
+  return { meta, slideLevel, slides: builder.slides, diagnostics };
+}
+
+/** 文書の中の ::maketitle と :::maketitle を探す。 */
+function findMaketitles(section: SectionNode): Block[] {
+  const found: Block[] = [];
+  const visit = (blocks: Block[]) => {
+    for (const block of blocks) {
+      if (
+        block.name === 'maketitle' &&
+        (block.kind === 'directive' || block.kind === 'container')
+      ) {
+        found.push(block);
+      } else if (block.children) {
+        visit(block.children);
+      }
+    }
+  };
+  const walk = (s: SectionNode) => {
+    visit(s.blocks);
+    s.children.forEach(walk);
+  };
+  walk(section);
+  return found;
 }
 
 /** IR の見出しのツリーを、slideLevel の判定に使う列にする（文書の順）。 */
@@ -119,6 +205,24 @@ class Builder {
       ...(section.attrs ? { attrs: section.attrs } : {}),
       kind: 'content',
       ...(chapter ? { chapter } : {}),
+    });
+  }
+
+  /** 自動で作るタイトルスライド。 */
+  titleSlide(options: {
+    start: number;
+    end: number;
+    blocks: Block[];
+    override?: { title: string; subtitle?: string };
+  }): void {
+    this.slides.push({
+      id: this.uniqueId('title'),
+      kind: 'title',
+      blocks: options.blocks.filter((b) => b.kind !== 'comment'),
+      notes: [],
+      hidden: false,
+      src: { start: options.start, end: Math.max(options.start, options.end) },
+      ...(options.override ? { titleOverride: options.override } : {}),
     });
   }
 

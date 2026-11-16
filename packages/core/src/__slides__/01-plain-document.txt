@@ -1,18 +1,17 @@
 slideLevel: 2
 slides: 8
-  1. [section] # チーム開発のための Git 運用ガイド  L1-L3  #チーム開発のための-git-運用ガイド
-       paragraph
-  2. [content] ## 目的  L5-L15  #目的  章=チーム開発のための Git 運用ガイド
+  1. [title] (見出しなし)  L1-L3  #title
+  2. [content] ## 目的  L5-L15  #目的
        paragraph, paragraph, list, paragraph
-  3. [content] ## ブランチ戦略  L17-L37  #ブランチ戦略  章=チーム開発のための Git 運用ガイド
+  3. [content] ## ブランチ戦略  L17-L37  #ブランチ戦略
        ###main ブランチ, paragraph, ###作業ブランチ, paragraph, paragraph, ###命名規則, table
-  4. [content] ## コミットのルール  L39-L73  #コミットのルール  章=チーム開発のための Git 運用ガイド
+  4. [content] ## コミットのルール  L39-L73  #コミットのルール
        paragraph, code[text], paragraph, list, paragraph, ###良い例と悪い例, code[text]
-  5. [content] ## プルリクエスト  L75-L106  #プルリクエスト  章=チーム開発のための Git 運用ガイド
+  5. [content] ## プルリクエスト  L75-L106  #プルリクエスト
        ###作成前のチェック, list, ###レビューの観点, paragraph, list, paragraph, ###マージの方法, paragraph, quote
-  6. [content] ## よくあるトラブル  L108-L139  #よくあるトラブル  章=チーム開発のための Git 運用ガイド
+  6. [content] ## よくあるトラブル  L108-L139  #よくあるトラブル
        ###コンフリクトが起きた, paragraph, code[bash], paragraph, ###間違えて main にコミットした, paragraph, code[bash], paragraph, ###大きなファイルをコミットした, paragraph
-  7. [content] ## コマンド早見表  L141-L160  #コマンド早見表  章=チーム開発のための Git 運用ガイド
+  7. [content] ## コマンド早見表  L141-L160  #コマンド早見表
        table
-  8. [content] ## 付録：参考資料  L164-L168  #付録参考資料  章=チーム開発のための Git 運用ガイド
+  8. [content] ## 付録：参考資料  L164-L168  #付録参考資料
        list

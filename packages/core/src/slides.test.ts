@@ -14,7 +14,7 @@ describe('buildSlides', () => {
     const deck = slidesOf('# 題\n\n導入\n\n## A\n\n本文\n\n### 小\n\n本文\n\n## B\n\n本文');
     expect(deck.slideLevel).toBe(2);
     expect(summary('# 題\n\n導入\n\n## A\n\n本文\n\n### 小\n\n本文\n\n## B\n\n本文')).toEqual([
-      'section:題:1',
+      'title:-:0',
       'content:A:3',
       'content:B:1',
     ]);
@@ -83,6 +83,38 @@ describe('buildSlides', () => {
 
   it('コメントだけの前置きはスライドにしない', () => {
     expect(summary('<!-- メモ -->\n\n## A\n\n本文')).toEqual(['content:A:1']);
+  });
+
+  it('タイトル：title があれば先頭に自動で作り、同じ文言の H1 は別のスライドにしない', () => {
+    expect(summary('---\ntitle: 題\n---\n# 題\n\n## A\n\n本文')).toEqual([
+      'title:-:0',
+      'content:A:1',
+    ]);
+    expect(summary('---\ntitle: 題\n---\n## A\n\n本文')).toEqual(['title:-:0', 'content:A:1']);
+  });
+
+  it('タイトル：title がなければ先頭の唯一の H1 をタイトル、直後の短い段落を副題にする', () => {
+    const deck = slidesOf('# 発表\n\n副題です\n\n## A\n\n本文');
+    expect(deck.slides[0]).toMatchObject({
+      kind: 'title',
+      titleOverride: { title: '発表', subtitle: '副題です' },
+    });
+    expect(deck.slides[1]!.chapter).toBeUndefined();
+  });
+
+  it('タイトル：::maketitle があれば自動では作らず、titleSlide: false でも作らない', () => {
+    expect(summary('---\ntitle: 題\n---\n## A\n\n本文\n\n::maketitle')).toEqual([
+      'content:A:1',
+      'title:-:0',
+    ]);
+    expect(summary('---\ntitle: 題\ntitleSlide: false\n---\n## A\n\n本文')).toEqual([
+      'content:A:1',
+    ]);
+  });
+
+  it('::maketitle があるのに title がなければ警告する', () => {
+    const deck = slidesOf('## A\n\n本文\n\n::maketitle');
+    expect(deck.diagnostics.map((d) => [d.code, d.line])).toEqual([['maketitle/no-title', 5]]);
   });
 
   it('フロントマターの slideLevel を使う', () => {

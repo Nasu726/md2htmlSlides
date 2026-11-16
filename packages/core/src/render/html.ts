@@ -6,6 +6,7 @@ import type { Slide, SlideDeck } from '../slides.js';
 import type { LayoutName } from '../syntax/elements.js';
 import { BASE_CSS } from './base-css.js';
 import { FIT_SCRIPT } from './fit.js';
+import { renderTitleSlide } from './title.js';
 
 export const SLIDE_SIZES = {
   '16:9': [1280, 720],
@@ -64,6 +65,9 @@ export function renderSlide(
   deck: SlideDeck,
   position: { page: number; total: number },
 ): string {
+  if (slide.kind === 'title') {
+    return renderTitleSlide(slide, deck, (blocks) => renderBlocks(blocks, deck.slideLevel));
+  }
   const layout = chooseLayout(slide);
   const classes = ['mds-slide', `layout-${layout}`, ...(slide.attrs?.classes ?? [])];
   const parts: string[] = [];
@@ -71,9 +75,7 @@ export function renderSlide(
   if (slide.chapter && layout === 'stack') {
     parts.push(`<p class="mds-chapter">${esc(slide.chapter)}</p>`);
   }
-  if (slide.kind === 'title') {
-    parts.push(renderTitleInfo(deck));
-  } else if (slide.heading) {
+  if (slide.heading) {
     const tag = layout === 'section' ? 'h1' : 'h2';
     const continued = slide.heading.continued ? '<span class="mds-continued">（続き）</span>' : '';
     parts.push(
@@ -104,14 +106,6 @@ function chooseLayout(slide: Slide): LayoutName {
   if (slide.kind === 'section') return 'section';
   const visible = slide.blocks.some((b) => b.kind !== 'comment' && b.kind !== 'pause');
   return visible ? 'stack' : 'section';
-}
-
-/** タイトルスライドの最小限の表示（所属の番号・日付の整形・variant などは #17）。 */
-function renderTitleInfo(deck: SlideDeck): string {
-  const { meta } = deck;
-  const lines = [`<h1 class="mds-title">${esc(meta.title ?? '')}</h1>`];
-  if (meta.subtitle) lines.push(`<p class="mds-subtitle">${esc(meta.subtitle)}</p>`);
-  return lines.join('\n');
 }
 
 function renderFooter(
