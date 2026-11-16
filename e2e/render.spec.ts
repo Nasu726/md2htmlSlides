@@ -5,7 +5,9 @@ import { readFileSync } from 'node:fs';
 const fixture = (name: string) =>
   readFileSync(new URL(`../fixtures/${name}`, import.meta.url), 'utf8');
 
-test('01-plain-document：8枚のスライドを 1280×720 で描く', async ({ page }) => {
+test('01-plain-document：先頭の H1 がタイトルスライドになり、8枚を 1280×720 で描く', async ({
+  page,
+}) => {
   const deck = buildSlides(parseDeck(fixture('01-plain-document.md')));
   await page.setContent(renderDeckHtml(deck));
   const slides = page.locator('.mds-slide');
@@ -20,7 +22,8 @@ test('01-plain-document：8枚のスライドを 1280×720 で描く', async ({ 
     expect(Math.round(box.width)).toBe(1280);
     expect(Math.round(box.height)).toBe(720);
   }
-  await expect(slides.first()).toHaveClass(/layout-section/);
+  await expect(slides.first()).toHaveClass(/layout-title/);
+  await expect(slides.first().locator('.mds-page')).toHaveCount(0);
   await expect(slides.nth(1).locator('.mds-page')).toHaveText('2 / 8');
 });
 

@@ -61,3 +61,4 @@ export {
   renderSlide,
   type RenderOptions,
 } from './render/html.js';
+export { formatDate, renderTitleSlide } from './render/title.js';

@@ -181,10 +181,50 @@ body { margin: 0; background: #d1d5db; }
 }
 .layout-section .mds-body { flex: none; color: var(--mds-muted); }
 
-/* タイトルスライド（中身は #17） */
+/* タイトルスライド（構文仕様 §2.2） */
 .layout-title { justify-content: center; }
-.layout-title .mds-title { font-size: var(--mds-fs-title); }
-.layout-title .mds-subtitle { margin: 0; font-size: 1.1em; color: var(--mds-muted); }
+.mds-titleblock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+}
+.mds-titleblock > * { margin: 0; }
+.layout-title .mds-title { font-size: var(--mds-fs-title); line-height: 1.2; }
+.mds-subtitle { font-size: 1.15em; color: var(--mds-muted); text-wrap: balance; word-break: auto-phrase; }
+.mds-event {
+  font-size: var(--mds-fs-small);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--mds-accent);
+}
+.mds-logo { height: 44px; width: auto; align-self: inherit; }
+.mds-authors { display: flex; flex-wrap: wrap; gap: 0 1.2em; margin-top: 0.8em !important; }
+.mds-affiliations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.2em;
+  font-size: 0.72em;
+  color: var(--mds-muted);
+}
+.mds-titleblock sup { font-size: 0.6em; margin-left: 0.1em; }
+.mds-date { font-size: 0.8em; color: var(--mds-muted); }
+.mds-title-extra { font-size: 0.7em; color: var(--mds-muted); }
+.variant-center .mds-titleblock { align-items: center; text-align: center; }
+.variant-center .mds-authors, .variant-center .mds-affiliations { justify-content: center; }
+.variant-left .mds-titleblock { align-items: flex-start; }
+.mds-bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.mds-bg-dim { position: absolute; inset: 0; background: #000; }
+.mds-bg-left { right: 50%; }
+.mds-bg-right { left: 50%; }
+/* 余白の % は内容の幅が基準になるので、スライドの幅（--mds-w）から計算する */
+.has-bg-left .mds-titleblock { margin-left: calc(var(--mds-w) / 2 - var(--mds-pad-x) + 48px); }
+.has-bg-right .mds-titleblock { margin-right: calc(var(--mds-w) / 2 - var(--mds-pad-x) + 48px); }
+/* 半分が背景のときは幅が半分になるので、タイトルを少し小さくする */
+.has-bg-left .mds-title, .has-bg-right .mds-title { font-size: calc(var(--mds-fs-title) * 0.78); }
+.has-bg-full { color: #fff; }
+.has-bg-full .mds-subtitle, .has-bg-full .mds-affiliations, .has-bg-full .mds-date,
+.has-bg-full .mds-title-extra { color: rgb(255 255 255 / 0.8); }
 
 /* 縮小しても収まらなかったスライド（M2 の自動分割までの目印。debug のときだけ表示） */
 .mds-deck[data-debug] .mds-slide[data-overflow] { outline: 4px dashed #dc2626; outline-offset: -4px; }
