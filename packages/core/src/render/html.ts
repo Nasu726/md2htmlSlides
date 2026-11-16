@@ -30,6 +30,8 @@ export interface RenderOptions {
   debug?: boolean;
   /** 画像・動画のファイルを調べる関数（縦横比を先に決め、見つからないものは枠だけにする） */
   probe?: MediaProbe;
+  /** 文書の最後に入れるスクリプト（発表用の runtime など）。縮小のスクリプトの後に実行する */
+  scripts?: string[];
 }
 
 const esc = (text: string) => md.utils.escapeHtml(text);
@@ -59,8 +61,9 @@ export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): st
 <main class="mds-deck theme-${meta.theme}" style="${style.join(';')}"${options.debug ? ' data-debug=""' : ''}>
 ${body}
 </main>
-${options.fit === false ? '' : `<script>${FIT_SCRIPT}</script>`}
-</body>
+${[...(options.fit === false ? [] : [FIT_SCRIPT]), ...(options.scripts ?? [])]
+  .map((script) => `<script>${script.replace(/<\/(script)/gi, '<\\/$1')}</script>\n`)
+  .join('')}</body>
 </html>
 `;
 }
