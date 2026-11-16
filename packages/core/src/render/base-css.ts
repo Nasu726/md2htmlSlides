@@ -123,8 +123,102 @@ body { margin: 0; background: #d1d5db; }
   color: var(--mds-muted);
 }
 .mds-body hr { width: 100%; border: none; border-top: 2px solid var(--mds-border); }
-/* 画像が本文を押し出さないように高さを抑える（空いた領域に合わせた伸縮は #18） */
-.mds-body img { max-width: 100%; max-height: calc(var(--mds-h) * 0.55); object-fit: contain; }
+
+/*
+ * 画像・動画（構文仕様 §6.1、設計プラン §5.4）
+ * 画像・動画だけの段落（.mds-media-group）は、空いた領域いっぱいに縦横比を保って伸縮する。
+ * 最小の高さは --mds-media-min。すべてに width= があれば（.is-rigid）幅から高さを決める。
+ */
+.mds-slide { --mds-media-min: calc(var(--mds-h) * 0.28); }
+.mds-media-group {
+  display: flex;
+  justify-content: center;
+  gap: calc(var(--mds-gap) * 1.2);
+  min-width: 0;
+}
+.mds-media-group.is-flex { flex: 1 1 0; min-height: var(--mds-media-min); }
+.mds-body > .mds-c:has(.mds-media-group.is-flex),
+.mds-col > .mds-c:has(.mds-media-group.is-flex) { flex: 1 1 0; min-height: var(--mds-media-min); }
+.mds-c-row:has(.mds-media-group.is-flex) { align-items: stretch; }
+.mds-media {
+  margin: 0;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
+  container-type: size;
+}
+.mds-media:has(> figcaption) { --mds-cap-h: 1.4em; }
+.mds-media.is-fixed { flex: none; max-width: 100%; }
+.mds-media-frame {
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 縦横比がわからないものは、空いた領域いっぱいの枠に contain で収める */
+.mds-media-frame:not(:has(> .has-ratio)) { flex: 1 1 0; }
+.mds-media-frame > * {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border: 0;
+}
+/* 縦横比がわかるものは、キャプションの分を除いた領域に収まる大きさにする（角丸が中身に沿う） */
+.mds-media-frame > .has-ratio {
+  width: min(100cqw, (100cqh - var(--mds-cap-h, 0px)) * var(--mds-ar));
+  height: auto;
+  aspect-ratio: var(--mds-ar);
+  border-radius: var(--mds-radius);
+}
+.mds-media-frame > video, .mds-media-frame > iframe {
+  border-radius: var(--mds-radius);
+  background: #000;
+}
+.is-rigid .mds-media { container-type: normal; }
+.is-rigid .mds-media-frame > * { width: 100%; height: auto; }
+.mds-media.fit-cover .mds-media-frame { flex: 1 1 0; }
+.mds-media.fit-cover .mds-media-frame > * {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  object-fit: cover;
+}
+.mds-media figcaption {
+  flex: none;
+  font-size: 0.66em;
+  line-height: 1.4;
+  color: var(--mds-muted);
+  text-align: center;
+  text-wrap: balance;
+  word-break: auto-phrase;
+}
+/* 見つからないファイルは枠だけを出す */
+.mds-media-placeholder {
+  width: 100%;
+  height: 100%;
+  min-height: 3em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--mds-border);
+  border-radius: var(--mds-radius);
+  background: var(--mds-surface);
+  color: var(--mds-muted);
+  font-size: 0.7em;
+}
+.is-rigid .mds-media-placeholder { aspect-ratio: 16 / 9; }
+/* 文中の画像 */
+.mds-body :is(p, li, td, th, a) > img {
+  max-width: 100%;
+  max-height: calc(var(--mds-h) * 0.45);
+  vertical-align: middle;
+}
 
 .mds-alert {
   padding: 0.55em 0.9em;
@@ -153,7 +247,6 @@ body { margin: 0; background: #d1d5db; }
   gap: var(--mds-gap);
   min-width: 0;
 }
-.mds-col img { width: 100%; }
 
 .mds-footer {
   position: absolute;

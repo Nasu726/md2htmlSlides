@@ -15,6 +15,18 @@ export {
 } from './frontmatter.js';
 export { hashString } from './hash.js';
 export type { Block, BlockKind, Deck, Heading, MediaRef, SectionNode, SourceRange } from './ir.js';
+export {
+  checkMediaFiles,
+  collectMedia,
+  embedUrl,
+  isLocalPath,
+  mediaKind,
+  mediaSize,
+  type MediaInfo,
+  type MediaKind,
+  type MediaProbe,
+} from './media.js';
+export type { RenderEnv } from './md/media.js';
 export { formatOutline } from './outline.js';
 export { parseDeck } from './parse.js';
 export { SlugRegistry, slugify } from './slug.js';

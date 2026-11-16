@@ -3,6 +3,13 @@ import type { Attrs } from '../attrs.js';
 import { attrsPlugin, type BlockMeta } from './attrs.js';
 import { containerPlugin } from './container.js';
 import { directivePlugin } from './directive.js';
+import {
+  mediaPlugin,
+  renderMedia,
+  renderMediaGroupInline,
+  type MediaGroupMeta,
+  type RenderEnv,
+} from './media.js';
 
 /**
  * パースと描画で共有する markdown-it。
@@ -12,6 +19,7 @@ export const md: MarkdownIt = markdownIt({ html: true, linkify: false, typograph
   .use(containerPlugin)
   .use(directivePlugin)
   .use(attrsPlugin)
+  .use(mediaPlugin)
   .use(alertsPlugin)
   .use(renderRules);
 
@@ -48,26 +56,43 @@ function applyAttrs(token: Token, attrs: Attrs | undefined): void {
   if (attrs.id) token.attrSet('id', attrs.id);
 }
 
-/** 描画の規則：属性のクラス、表示しない段落、アラート、背景の画像、コンテナ。 */
+/** 描画の規則：属性のクラス、表示しない段落、アラート、画像・動画、コンテナ。 */
 function renderRules(instance: MarkdownIt): void {
   const rules = instance.renderer.rules;
   const self = instance.renderer;
 
+  type ParagraphMeta = BlockMeta & MediaGroupMeta;
+  const paragraphMeta = (token: Token | undefined) =>
+    token?.type === 'paragraph_open' ? (token.meta as ParagraphMeta | null) : null;
   const hiddenParagraph = (token: Token | undefined) => {
-    const meta = token?.meta as (BlockMeta & { empty?: boolean }) | null | undefined;
+    const meta = paragraphMeta(token);
     return Boolean(meta?.pause || meta?.slideAttrs || meta?.empty);
   };
   rules.paragraph_open = (tokens, idx, options) => {
     const token = tokens[idx]!;
     if (hiddenParagraph(token)) return '';
-    applyAttrs(token, (token.meta as BlockMeta | null)?.attrs);
+    const meta = paragraphMeta(token);
+    if (meta?.mediaGroup) {
+      // 画像・動画だけの段落は、figure を並べる箱にする
+      token.tag = 'div';
+      token.attrJoin('class', `mds-media-group is-${meta.mediaGroup}`);
+    }
+    applyAttrs(token, meta?.attrs);
     return self.renderToken(tokens, idx, options);
   };
-  rules.paragraph_close = (tokens, idx, options) =>
-    hiddenParagraph(tokens[idx - 2]) ? '' : self.renderToken(tokens, idx, options);
+  rules.paragraph_close = (tokens, idx, options) => {
+    const open = tokens[idx - 2];
+    if (hiddenParagraph(open)) return '';
+    if (paragraphMeta(open)?.mediaGroup) tokens[idx]!.tag = 'div';
+    return self.renderToken(tokens, idx, options);
+  };
   rules.inline = (tokens, idx, options, env) => {
-    if (hiddenParagraph(tokens[idx - 1])) return '';
-    return self.renderInline(tokens[idx]!.children ?? [], options, env);
+    const open = tokens[idx - 1];
+    if (hiddenParagraph(open)) return '';
+    const children = tokens[idx]!.children ?? [];
+    return paragraphMeta(open)?.mediaGroup
+      ? renderMediaGroupInline(self, children, options, (env ?? {}) as RenderEnv)
+      : self.renderInline(children, options, env);
   };
   rules.heading_open = (tokens, idx, options) => {
     applyAttrs(tokens[idx]!, (tokens[idx]!.meta as BlockMeta | null)?.attrs);
@@ -94,17 +119,8 @@ function renderRules(instance: MarkdownIt): void {
     return self.renderToken(tokens, idx, options);
   };
 
-  const image = rules.image!;
-  rules.image = (tokens, idx, options, env, renderer) => {
-    const token = tokens[idx]!;
-    const attrs = (token.meta as { attrs?: Attrs } | null)?.attrs;
-    // 背景にする画像は本文に出さない（背景の描画は M2）
-    if (attrs?.values.bg !== undefined) return '';
-    if (typeof attrs?.values.width === 'string')
-      token.attrSet('style', `width:${attrs.values.width}`);
-    applyAttrs(token, attrs);
-    return image(tokens, idx, options, env, renderer);
-  };
+  rules.image = (tokens, idx, _options, env) =>
+    renderMedia(instance, tokens, idx, env as RenderEnv | undefined);
 
   rules.mds_container_open = (tokens, idx) =>
     `<div class="mds-c mds-c-${instance.utils.escapeHtml(tokens[idx]!.info)}">\n`;

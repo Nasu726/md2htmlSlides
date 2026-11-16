@@ -66,7 +66,7 @@ function writeBlocks(blocks: Block[], depth: number, out: string[]): void {
     out.push(`${indent}- ${describe(block)}`);
     for (const media of block.media ?? []) {
       out.push(
-        `${indent}    image ${media.src}` +
+        `${indent}    ${media.kind} ${media.src}` +
           (media.alt ? ` alt="${media.alt}"` : '') +
           (media.title ? ` title="${media.title}"` : '') +
           (media.attrs ? ` ${formatAttrs(media.attrs)}` : ''),

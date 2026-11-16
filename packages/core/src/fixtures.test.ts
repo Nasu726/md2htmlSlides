@@ -68,9 +68,15 @@ describe('fixtures の資料を IR に変換する', () => {
     expect(titles).toContain('水平線');
   });
 
-  it('警告が出るのは 11-edge-cases だけ', () => {
+  it('07-media：代替テキストのない画像を警告する（背景は除く）', () => {
+    const codes = parse('fixtures/07-media.md').diagnostics.map((d) => [d.code, d.line]);
+    expect(codes).toEqual([['media/no-alt', 104]]);
+  });
+
+  it('警告が出るのは 07-media と 11-edge-cases だけ', () => {
+    const expected = ['fixtures/07-media.md', 'fixtures/11-edge-cases.md'];
     const noisy = files.filter(
-      (path) => path !== 'fixtures/11-edge-cases.md' && parse(path).diagnostics.length > 0,
+      (path) => !expected.includes(path) && parse(path).diagnostics.length > 0,
     );
     expect(noisy).toEqual([]);
   });

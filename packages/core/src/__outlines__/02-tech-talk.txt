@@ -18,7 +18,7 @@ sections
       - paragraph  L16
     ## 自己紹介 {layout=split}  L19-L25  #自己紹介
       - paragraph  L21
-          image ./assets/square.png
+          image ./assets/square.png alt="プロフィール写真"
       - list  L23-L25
     ## 今日の話  L27-L32  #今日の話
       - list[番号付き]  L29-L32
