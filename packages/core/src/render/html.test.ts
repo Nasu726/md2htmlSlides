@@ -9,7 +9,8 @@ const sections = (html: string) => html.match(/<section [^>]*>/g) ?? [];
 
 describe('renderDeckHtml', () => {
   it('スライドごとに section を出し、レイアウトのクラスを付ける', () => {
-    const html = render('# 章\n\n導入\n\n## A\n\n本文\n\n# 章2\n\n## B\n\n本文');
+    const body = '本文\n\n- 1\n- 2';
+    const html = render(`# 章\n\n導入\n\n## A\n\n${body}\n\n# 章2\n\n## B\n\n${body}`);
     expect(sections(html).map((s) => /layout-(\w+)/.exec(s)?.[1])).toEqual([
       'section',
       'stack',
@@ -27,7 +28,7 @@ describe('renderDeckHtml', () => {
   });
 
   it('続きのスライドには（続き）を付け、ページ番号を出す', () => {
-    const html = render('## A\n\n前半\n\n---\n\n後半');
+    const html = render('## A\n\n前半\n\n- a\n- b\n\n---\n\n後半\n\n- c\n- d');
     expect(html).toContain('（続き）');
     expect(html).toContain('<span class="mds-page">2 / 2</span>');
     expect(render('---\npaginate: false\n---\n## A\n\n本文')).not.toContain('mds-page');

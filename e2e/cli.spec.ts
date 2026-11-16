@@ -30,6 +30,7 @@ test('mds build は計測して自動で分割し、fixtures の目安の枚数�
   const cases: Array<[string, number, number]> = [
     ['01-plain-document', 12, 17],
     ['03-long-lecture', 30, 40],
+    ['04-layouts', 20, 21],
   ];
   for (const [name, min, max] of cases) {
     const result = await build(join(fixtures, `${name}.md`), {
