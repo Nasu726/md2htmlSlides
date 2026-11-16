@@ -15,6 +15,7 @@ import {
   subheadingGroups,
   type LayoutChoice,
 } from './layout.js';
+import { findBackground, renderBackground } from './background.js';
 import { phraseBreaks } from './phrase.js';
 import { renderTitleSlide } from './title.js';
 
@@ -90,19 +91,22 @@ export function renderSlide(
       slide,
       deck,
       (blocks) => renderBlocks(blocks, deck.slideLevel, env),
-      env.assetUrl,
+      env,
     );
   }
   const choice = chooseLayout(slide, deck.slideLevel, env.probe);
   const { layout } = choice;
   const align = slide.attrs?.values.align;
+  const background = findBackground(slide.blocks);
+  const bg = background ? renderBackground(background, env) : undefined;
   const classes = [
     'mds-slide',
     `layout-${layout}`,
     ...(align === 'center' || align === 'top' ? [`align-${align}`] : []),
+    ...(bg?.classes ?? []),
     ...(slide.attrs?.classes ?? []),
   ];
-  const parts: string[] = [];
+  const parts: string[] = bg ? [bg.html.trimEnd()] : [];
 
   // 章の名前と見出し。statement と media では、引き継いだ見出し（続き）は出さない（§4.5）
   const titled =

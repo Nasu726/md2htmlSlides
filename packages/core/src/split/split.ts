@@ -11,6 +11,7 @@
 import type { Block } from '../ir.js';
 import { md } from '../md/instance.js';
 import { renderBlocks, renderSlide } from '../render/html.js';
+import { isBackgroundBlock } from '../render/background.js';
 import { isMediaBlock, isShortList } from '../render/layout.js';
 import type { Slide, SlideDeck } from '../slides.js';
 
@@ -320,8 +321,12 @@ export function applySplit(
 }
 
 function toSlides(slide: Slide, atoms: Atom[], pages: Page[]): Slide[] {
+  // 背景は、分割した続きのスライドにも同じものを使う（構文仕様 §6.2）
+  const backgrounds = atoms.map((a) => a.block).filter(isBackgroundBlock);
   return pages.map((page, k) => {
     const blocks: Block[] = [];
+    const own = atoms.slice(page.start, page.end).map((a) => a.block);
+    blocks.push(...backgrounds.filter((b) => !own.includes(b)));
     if (page.subheading !== undefined) {
       const h = atoms[page.subheading]!.block;
       blocks.push({ ...h, raw: `${h.raw.replace(/\s+$/, '')}（続き）` });

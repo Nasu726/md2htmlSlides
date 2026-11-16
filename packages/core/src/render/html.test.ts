@@ -69,7 +69,10 @@ describe('renderDeckHtml', () => {
     expect(html).toContain('<p class="big">強調</p>');
     expect(html).not.toContain('メモ');
     expect(html).not.toContain('. . .');
-    expect(html).not.toContain('bg.jpg');
+    // 背景の画像は本文ではなく、背景として描く
+    const body = /<div class="mds-body"[\s\S]*?<\/div>/.exec(html)![0];
+    expect(body).not.toContain('bg.jpg');
+    expect(html).toContain("background-image:url('bg.jpg')");
   });
 
   it('カスタム CSS はデッキの中だけに効かせる', () => {

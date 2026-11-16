@@ -46,6 +46,8 @@ export interface MediaInfo {
   exists: boolean;
   width?: number;
   height?: number;
+  /** 背景に使うときの明るさ（0〜1。CLI がブラウザで測る） */
+  luminance?: number;
 }
 
 /**
