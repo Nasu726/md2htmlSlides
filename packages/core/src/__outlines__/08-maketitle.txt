@@ -11,15 +11,18 @@ diagnostics
 sections
   (先頭)  L17-L51
     - comment  L18-L22
-    - paragraph  L24
+    - slide-attrs {layout=statement}  L24
     - quote  L26
-    - paragraph  L28-L29
-    - paragraph  L31
-    - paragraph  L33-L36
+    - :::maketitle {variant=left}  L28-L36
+      - paragraph  L29
+          image ./assets/cover.jpg {bg=right}
+      - paragraph  L31
+      - :::notes  L33-L35
+        - paragraph  L34
     ## 背景  L38-L40  #背景
       - paragraph  L40
     ## 提案手法  L42-L44  #提案手法
       - paragraph  L44
     ## まとめ  L46-L51  #まとめ
       - list  L48-L49
-      - paragraph  L51
+      - ::maketitle  L51

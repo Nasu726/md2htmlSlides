@@ -14,48 +14,59 @@ sections
       - rule[---]  L19
     ## 次の節  L21-L23  #次の節
       - paragraph  L23
-    ## 1枚に収める {keep}  L25-L42  #1枚に収める-keep
+    ## 1枚に収める {keep}  L25-L50  #1枚に収める
       - paragraph  L27
       - list  L29-L38
       - paragraph  L40
-      - paragraph  L42
-    ## 2つの節を1枚に（前半）  L43-L45  #2つの節を1枚に前半
-      - paragraph  L45
-    ## 2つの節を1枚に（後半）  L47-L50  #2つの節を1枚に後半
-      - paragraph  L49-L50
+      - :::keep  L42-L50
+        - ## 2つの節を1枚に（前半）  L43
+        - paragraph  L45
+        - ## 2つの節を1枚に（後半）  L47
+        - paragraph  L49
     ## 一部だけまとめる  L52-L64  #一部だけまとめる
       - paragraph  L54
-      - paragraph  L56-L57
-      - list  L59-L62
+      - :::keep  L56-L62
+        - paragraph  L57
+        - list  L59-L61
       - paragraph  L64
     ## 比率を指定して横に並べる  L66-L72  #比率を指定して横に並べる
-      - paragraph  L68-L69
-      - paragraph  L71-L72
+      - :::row {ratio=2:1}  L68-L72
+        - paragraph  L69
+        - paragraph  L71
+            image ./assets/square.png alt="右の列"
     ## 入れ子で横に並べる  L74-L92  #入れ子で横に並べる
-      - paragraph  L76-L77
-      ### プランA  L78-L85  #プランa
-        - paragraph  L80
-        - paragraph  L82-L83
-        - paragraph  L85
-      ### プランB  L86-L92  #プランb
-        - paragraph  L88
-        - paragraph  L90-L92
+      - :::row  L76-L92
+        - :::stack  L77-L83
+          - ### プランA  L78
+          - paragraph  L80
+              image ./assets/grid-1.png alt="プランA"
+          - paragraph  L82
+        - :::stack  L85-L91
+          - ### プランB  L86
+          - paragraph  L88
+              image ./assets/grid-2.png alt="プランB"
+          - paragraph  L90
     ## 縦に並べる  L94-L102  #縦に並べる
       - paragraph  L96
-      - paragraph  L98-L99
-      - paragraph  L101-L102
-    ## レイアウトと比率を指定する {layout=split media=left ratio=2:3}  L104-L108  #レイアウトと比率を指定する-layoutsplit-medialeft-ratio23
+      - :::stack  L98-L102
+        - paragraph  L99
+        - paragraph  L101
+            image ./assets/portrait-3x4.png alt="新しい画面"
+    ## レイアウトと比率を指定する {layout=split media=left ratio=2:3}  L104-L108  #レイアウトと比率を指定する
       - paragraph  L106
+          image ./assets/landscape-16x9.png alt="左に置く画像"
       - paragraph  L108
-    ## 自動の判定を上書きする {layout=stack}  L110-L112  #自動の判定を上書きする-layoutstack
+    ## 自動の判定を上書きする {layout=stack}  L110-L112  #自動の判定を上書きする
       - paragraph  L112
-    ## 発表しない {hidden}  L114-L116  #発表しない-hidden
+    ## 発表しない {hidden}  L114-L116  #発表しない
       - paragraph  L116
-    ## クラスと揃え {.highlight align=center}  L118-L120  #クラスと揃え-highlight-aligncenter
+    ## クラスと揃え {.highlight align=center}  L118-L120  #クラスと揃え
       - paragraph  L120
     ## 画像の幅を固定する  L122-L132  #画像の幅を固定する
       - paragraph  L124
+          image ./assets/landscape-16x9.png alt="固定幅の画像" {width=40%}
       - paragraph  L126
       - rule[---]  L128
-      - paragraph  L130
+      - slide-attrs {layout=media}  L130
       - paragraph  L132
+          image ./assets/wide-3x1.png alt="見出しのないメディアのスライド"

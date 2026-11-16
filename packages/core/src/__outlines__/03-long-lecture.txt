@@ -36,6 +36,7 @@ sections
       ## B-tree  L70-L83  #b-tree
         - paragraph  L72
         - paragraph  L74
+            image ./assets/landscape-16x9.png alt="B-tree の構造" title="B-tree：根から葉までの深さが一定に保たれる"
         - paragraph  L76
         - list  L78-L81
         - paragraph  L83
@@ -55,12 +56,12 @@ sections
         - paragraph  L114
       ## ハッシュインデックス  L116-L131  #ハッシュインデックス
         - paragraph  L118
-        - paragraph  L120
-        ### 得意なこと  L121-L123  #得意なこと
+        - :::row  L120-L129
+          - ### 得意なこと  L121
           - list  L122-L123
-        ### 苦手なこと  L125-L131  #苦手なこと
-          - list  L126-L129
-          - paragraph  L131
+          - ### 苦手なこと  L125
+          - list  L126-L128
+        - paragraph  L131
     # インデックスの設計  L133-L218  #インデックスの設計
       - paragraph  L135
       ## インデックスを作る  L137-L146  #インデックスを作る

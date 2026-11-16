@@ -7,49 +7,65 @@ sections
   (先頭)  L6-L112
     ## キャプション付きの画像  L7-L9  #キャプション付きの画像
       - paragraph  L9
+          image ./assets/landscape-16x9.png alt="横長の画像" title="タイトル属性はキャプションになる"
     ## SVG の画像  L11-L15  #svg-の画像
       - paragraph  L13
+          image ./assets/logo.svg alt="ロゴ"
       - paragraph  L15
     ## 動画（操作ボタンあり）  L17-L19  #動画操作ボタンあり
       - paragraph  L19
+          image ./assets/demo.mp4 alt="デモ動画" {controls poster=./assets/poster.jpg}
     ## 動画（自動再生・ループ・消音）  L21-L23  #動画自動再生ループ消音
       - paragraph  L23
+          image ./assets/demo.mp4 alt="ループ動画" {autoplay loop muted}
     ## YouTube の埋め込み  L25-L29  #youtube-の埋め込み
       - paragraph  L27
+          image https://www.youtube.com/watch?v=dQw4w9WgXcQ alt="紹介動画"
       - paragraph  L29
     ## 全面の背景画像（暗い）  L31-L35  #全面の背景画像暗い
       - paragraph  L33
+          image ./assets/bg-dark.jpg {bg}
       - paragraph  L35
     ## 全面の背景画像（明るい）  L37-L41  #全面の背景画像明るい
       - paragraph  L39
+          image ./assets/bg-bright.jpg {bg}
       - paragraph  L41
     ## 背景を暗くする  L43-L47  #背景を暗くする
       - paragraph  L45
+          image ./assets/bg-bright.jpg {bg dim=0.6}
       - paragraph  L47
     ## 背景をぼかす  L49-L53  #背景をぼかす
       - paragraph  L51
+          image ./assets/landscape-16x9.png {bg blur=8 dim=0.3}
       - paragraph  L53
     ## 背景を contain で収める  L55-L59  #背景を-contain-で収める
       - paragraph  L57
+          image ./assets/portrait-3x4.png {bg fit=contain}
       - paragraph  L59
     ## 左半分を画像にする  L61-L69  #左半分を画像にする
       - paragraph  L63
+          image ./assets/portrait-3x4.png {bg=left}
       - paragraph  L65
       - list  L67-L69
     ## 右半分を画像にする  L71-L75  #右半分を画像にする
       - paragraph  L73
+          image ./assets/cover.jpg {bg=right}
       - paragraph  L75
     ## 背景の動画  L77-L81  #背景の動画
       - paragraph  L79
+          image ./assets/loop-bg.mp4 {bg dim=0.4}
       - paragraph  L81
     ## 背景と内容の多いスライド  L83-L100  #背景と内容の多いスライド
       - paragraph  L85
+          image ./assets/bg-dark.jpg {bg dim=0.5}
       - paragraph  L87
       - list  L89-L98
       - paragraph  L100
     ## 代替テキストのない画像  L102-L106  #代替テキストのない画像
       - paragraph  L104
+          image ./assets/square.png
       - paragraph  L106
     ## 存在しない画像  L108-L112  #存在しない画像
       - paragraph  L110
+          image ./assets/not-found.png alt="存在しない"
       - paragraph  L112

@@ -4,6 +4,10 @@ meta
 diagnostics
   L5 warning frontmatter/unknown-key: 未知のキー「unknownKey」は無視します
   L18 warning heading/setext-dash: 「---」の前に空行がないため、17行目が見出しになりました。スライドを区切るなら「---」の前に空行を入れてください
+  L22 warning attrs/unknown-key: 未知の属性「lyout」。「layout」のことですか？
+  L36 warning container/unknown: 未知のコンテナ「colums」。中身は普通に表示します
+  L42 warning container/unclosed: 「:::row」を閉じる「:::」がありません。45行目の見出しの直前で閉じたものとして扱います
+  L47 warning directive/unknown: 未定義の指示「::toc」。文字のまま表示します
 sections
   (先頭)  L8-L125
     - comment  L9-L13
@@ -17,9 +21,11 @@ sections
       - paragraph  L30
       - paragraph  L32
     ## 未知のコンテナ  L34-L38  #未知のコンテナ
-      - paragraph  L36-L38
+      - :::colums  L36-L38
+        - paragraph  L37
     ## 閉じていないコンテナ  L40-L43  #閉じていないコンテナ
-      - paragraph  L42-L43
+      - :::row  L42-L43
+        - paragraph  L43
     ## 未知の指示  L45-L49  #未知の指示
       - paragraph  L47
       - paragraph  L49
@@ -43,6 +49,8 @@ sections
         - paragraph  L90
     ## 背景が2つ  L92-L97  #背景が2つ
       - paragraph  L94-L95
+          image ./assets/bg-dark.jpg {bg}
+          image ./assets/bg-bright.jpg {bg}
       - paragraph  L97
     ## 生 HTML  L99-L103  #生-html
       - html  L101-L103

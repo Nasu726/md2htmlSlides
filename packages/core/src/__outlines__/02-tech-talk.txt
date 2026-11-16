@@ -12,26 +12,31 @@ diagnostics
   (なし)
 sections
   (先頭)  L12-L184
-    - paragraph  L13-L14
-    - paragraph  L16-L17
-    ## 自己紹介 {layout=split}  L19-L25  #自己紹介-layoutsplit
+    - :::maketitle {variant=left}  L13-L17
+      - paragraph  L14
+          image ./assets/cover.jpg {bg=right}
+      - paragraph  L16
+    ## 自己紹介 {layout=split}  L19-L25  #自己紹介
       - paragraph  L21
+          image ./assets/square.png
       - list  L23-L25
     ## 今日の話  L27-L32  #今日の話
       - list[番号付き]  L29-L32
     # 何が遅かったのか  L34-L66  #何が遅かったのか
       ## 状況  L36-L48  #状況
         - list  L38-L40
-        - paragraph  L42
+        - pause  L42
         - quote  L44
-        - paragraph  L46-L48
+        - :::notes  L46-L48
+          - paragraph  L47
       ## クイズ  L50-L66  #クイズ
         - paragraph  L52
-        - paragraph  L54-L55
-        - paragraph  L57
-        - paragraph  L59
-        - paragraph  L61-L62
-        - paragraph  L64
+        - :::row  L54-L62
+          - paragraph  L55
+          - paragraph  L57
+          - paragraph  L59
+          - paragraph  L61
+        - pause  L64
         - paragraph  L66
     # どう測ったのか  L68-L99  #どう測ったのか
       ## 工程ごとの所要時間  L70-L78  #工程ごとの所要時間
@@ -43,28 +48,29 @@ sections
       ## 変更の全体像  L103-L113  #変更の全体像
         - code[mermaid]  L105-L113
       ## やったこと  L115-L122  #やったこと
-        - paragraph  L117
-        - list  L118-L122
+        - :::steps  L117-L122
+          - list  L118-L121
       ## 型チェックのキャッシュ  L124-L138  #型チェックのキャッシュ
         - paragraph  L126
         - code[json]  L128-L136
         - paragraph  L138
       ## Before / After  L140-L154  #before--after
-        - paragraph  L142
-        ### Before  L143-L147  #before
+        - :::row  L142-L154
+          - ### Before  L143
           - list  L144-L147
-        ### After  L149-L154  #after
-          - list  L150-L154
+          - ### After  L149
+          - list  L150-L153
     # 結果と残った課題  L156-L184  #結果と残った課題
-      ## 結果 {layout=statement}  L158-L160  #結果-layoutstatement
+      ## 結果 {layout=statement}  L158-L160  #結果
         - paragraph  L160
       ## 残った課題  L162-L170  #残った課題
         - list  L164-L166
-        - paragraph  L168
+        - pause  L168
         - paragraph  L170
       ## まとめ  L172-L184  #まとめ
         - list  L174-L176
         - rule[---]  L178
         - paragraph  L180
-        - paragraph  L182
+            image ./assets/bg-dark.jpg {bg dim=0.3}
+        - slide-attrs {layout=statement}  L182
         - paragraph  L184

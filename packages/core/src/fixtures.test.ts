@@ -31,6 +31,21 @@ describe('fixtures の資料を IR に変換する', () => {
     expect(codes).toContainEqual(['heading/setext-dash', 18]);
   });
 
+  it('11-edge-cases：追加構文の書き間違いを警告する（fixtures/README.md の表）', () => {
+    const deck = parse('fixtures/11-edge-cases.md');
+    const codes = deck.diagnostics.map((d) => [d.code, d.line]);
+    expect(codes).toContainEqual(['attrs/unknown-key', 22]);
+    expect(codes).toContainEqual(['container/unknown', 36]);
+    expect(codes).toContainEqual(['container/unclosed', 42]);
+    expect(codes).toContainEqual(['directive/unknown', 47]);
+    // 文中の {name} とエスケープした \{step} は警告しない
+    expect(codes.filter(([code]) => code === 'attrs/unknown-key')).toHaveLength(1);
+    // 閉じていない :::row のあとの節も崩れない
+    const titles = deck.root.children.map((s) => s.heading?.text);
+    expect(titles).toContain('未知の指示');
+    expect(titles).toContain('水平線');
+  });
+
   it('警告が出るのは 11-edge-cases だけ', () => {
     const noisy = files.filter(
       (path) => path !== 'fixtures/11-edge-cases.md' && parse(path).diagnostics.length > 0,

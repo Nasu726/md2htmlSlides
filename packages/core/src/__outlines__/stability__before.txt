@@ -13,6 +13,7 @@ sections
       - list  L17-L19
       - rule[---]  L21
       - paragraph  L23
-    ## 節C {layout=split media=left}  L25-L29  #節c-layoutsplit-medialeft
+    ## 節C {layout=split media=left}  L25-L29  #節c
       - paragraph  L27
+          image ../assets/square.png
       - paragraph  L29
