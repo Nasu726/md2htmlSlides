@@ -50,6 +50,21 @@ export {
 } from './slides.js';
 export { formatSlides } from './slides-outline.js';
 export {
+  DEFAULT_WEIGHTS,
+  applySplit,
+  atomize,
+  breakPenalty,
+  measureJobs,
+  planSplit,
+  splitAtoms,
+  type Atom,
+  type MeasureJob,
+  type Measurement,
+  type Page,
+  type SplitPlan,
+  type SplitWeights,
+} from './split/split.js';
+export {
   ATTRIBUTE_KEYS,
   ATTRIBUTE_KEY_NAMES,
   CONTAINERS,

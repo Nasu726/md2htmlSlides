@@ -5,7 +5,8 @@ import { parseArgs } from 'node:util';
 import { build, formatDiagnostic } from './build.js';
 import { startDev } from './dev.js';
 
-export { build, formatDiagnostic, measure, renderFile, type BuildResult } from './build.js';
+export { build, checkOverflow, formatDiagnostic, renderFile, type BuildResult } from './build.js';
+export { ChromiumMeasurer } from './measurer.js';
 export { createAssets, type Assets } from './assets.js';
 export { startDev, type DevServer } from './dev.js';
 
@@ -19,7 +20,7 @@ export const HELP = `mds — Markdown から HTML スライドを作る
 
 使い方:
   mds build <file.md> [-o <dir>]   静的な HTML を書き出す（既定の書き出し先は dist/）
-        --no-measure               ヘッドレス Chromium での確認を省く
+        --no-measure               ヘッドレス Chromium での計測（自動分割と確認）を省く
   mds dev <file.md> [-p <port>]    プレビューを開き、保存するたびに反映する（既定のポートは 3000）
         --host <host>              待ち受けるアドレス（既定は 127.0.0.1）
   mds --version                    バージョンを表示する
@@ -98,6 +99,7 @@ export async function main(argv: readonly string[], io: Io = defaultIo): Promise
   }
   const server = await startDev(file, {
     port,
+    measure: !args.values['no-measure'],
     ...(args.values.host ? { host: args.values.host } : {}),
     log: (line) => io.out(`${line}\n`),
   });
