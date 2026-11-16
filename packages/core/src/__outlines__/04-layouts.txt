@@ -18,7 +18,7 @@ sections
       - code[mermaid]  L28-L31
     ## 動画だけ → media  L33-L35  #動画だけ--media
       - paragraph  L35
-          image ./assets/demo.mp4 alt="デモ動画" {autoplay loop muted}
+          video ./assets/demo.mp4 alt="デモ動画" {autoplay loop muted}
     ## 画像4枚 → grid  L37-L41  #画像4枚--grid
       - paragraph  L39
       - paragraph  L41
@@ -56,7 +56,7 @@ sections
       - paragraph  L96
       - list  L98-L100
       - paragraph  L102
-          image ./assets/demo.mp4 alt="操作の流れ" {controls}
+          video ./assets/demo.mp4 alt="操作の流れ" {controls}
     ## 分量の近い小見出し3つ → columns  L104-L116  #分量の近い小見出し3つ--columns
       ### 速い  L106-L108  #速い
         - paragraph  L108

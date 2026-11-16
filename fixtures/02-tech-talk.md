@@ -18,7 +18,7 @@ footer: "#frontend_lt"
 
 ## 自己紹介 {layout=split}
 
-![](./assets/square.png)
+![プロフィール写真](./assets/square.png)
 
 - 山田 太郎
 - 開発基盤チームで CI と開発環境を担当

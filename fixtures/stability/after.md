@@ -35,6 +35,6 @@ after.md では、この節にだけ文章と項目を追加する。追加し�
 
 ## 節C {layout=split media=left}
 
-![](../assets/square.png)
+![節C の図](../assets/square.png)
 
 この節は after.md でも変えない。指定したレイアウトも変わらない。

@@ -2,7 +2,7 @@ meta
   title: 画像・動画・背景テスト
   theme=clean aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=false paginate=true
 diagnostics
-  (なし)
+  L104 warning media/no-alt: 代替テキストがありません。![説明](./assets/square.png) のように、内容を短く書いてください
 sections
   (先頭)  L6-L112
     ## キャプション付きの画像  L7-L9  #キャプション付きの画像
@@ -14,13 +14,13 @@ sections
       - paragraph  L15
     ## 動画（操作ボタンあり）  L17-L19  #動画操作ボタンあり
       - paragraph  L19
-          image ./assets/demo.mp4 alt="デモ動画" {controls poster=./assets/poster.jpg}
+          video ./assets/demo.mp4 alt="デモ動画" {controls poster=./assets/poster.jpg}
     ## 動画（自動再生・ループ・消音）  L21-L23  #動画自動再生ループ消音
       - paragraph  L23
-          image ./assets/demo.mp4 alt="ループ動画" {autoplay loop muted}
+          video ./assets/demo.mp4 alt="ループ動画" {autoplay loop muted}
     ## YouTube の埋め込み  L25-L29  #youtube-の埋め込み
       - paragraph  L27
-          image https://www.youtube.com/watch?v=dQw4w9WgXcQ alt="紹介動画"
+          youtube https://www.youtube.com/watch?v=dQw4w9WgXcQ alt="紹介動画"
       - paragraph  L29
     ## 全面の背景画像（暗い）  L31-L35  #全面の背景画像暗い
       - paragraph  L33
@@ -53,7 +53,7 @@ sections
       - paragraph  L75
     ## 背景の動画  L77-L81  #背景の動画
       - paragraph  L79
-          image ./assets/loop-bg.mp4 {bg dim=0.4}
+          video ./assets/loop-bg.mp4 {bg dim=0.4}
       - paragraph  L81
     ## 背景と内容の多いスライド  L83-L100  #背景と内容の多いスライド
       - paragraph  L85

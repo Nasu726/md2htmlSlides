@@ -16,5 +16,5 @@ sections
       - paragraph  L34
     ## 節C {layout=split media=left}  L36-L40  #節c
       - paragraph  L38
-          image ../assets/square.png
+          image ../assets/square.png alt="節C の図"
       - paragraph  L40

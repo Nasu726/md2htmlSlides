@@ -1,6 +1,7 @@
 import type { Attrs } from './attrs.js';
 import type { Diagnostic } from './diagnostics.js';
 import type { DeckMeta } from './frontmatter.js';
+import type { MediaKind } from './media.js';
 
 /** 元のファイルでの行の範囲（1 から始まり、両端を含む）。 */
 export interface SourceRange {
@@ -32,10 +33,13 @@ export type BlockKind =
   | 'pause'
   | 'slide-attrs';
 
-/** 段落の中の画像（`![alt](src "title"){属性}`）。動画の判定は #18 で加える。 */
+/** 段落の中の画像・動画（`![alt](src "title"){属性}`）。種類は拡張子と URL で決める。 */
 export interface MediaRef {
+  kind: MediaKind;
   src: string;
   alt: string;
+  /** 1 から始まる、元のファイルでの行番号 */
+  line: number;
   title?: string;
   attrs?: Attrs;
 }
