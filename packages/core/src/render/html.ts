@@ -32,6 +32,8 @@ export interface RenderOptions {
   probe?: MediaProbe;
   /** 文書の最後に入れるスクリプト（発表用の runtime など）。縮小のスクリプトの後に実行する */
   scripts?: string[];
+  /** 画像・動画・ロゴのパスを、書き出し先での URL に置き換える関数 */
+  assetUrl?: (src: string) => string;
 }
 
 const esc = (text: string) => md.utils.escapeHtml(text);
@@ -43,11 +45,13 @@ export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): st
   const slides = options.includeHidden ? deck.slides : deck.slides.filter((s) => !s.hidden);
   const style = [`--mds-w:${width}px`, `--mds-h:${height}px`];
   if (meta.accent) style.push(`--mds-accent:${meta.accent}`);
+  const env: RenderEnv = {
+    ...(options.probe ? { probe: options.probe } : {}),
+    ...(options.assetUrl ? { assetUrl: options.assetUrl } : {}),
+  };
   const custom = options.customCss ? `@scope (.mds-deck) {\n${options.customCss}\n}` : '';
   const body = slides
-    .map((slide, i) =>
-      renderSlide(slide, deck, { page: i + 1, total: slides.length }, { probe: options.probe }),
-    )
+    .map((slide, i) => renderSlide(slide, deck, { page: i + 1, total: slides.length }, env))
     .join('\n');
   return `<!doctype html>
 <html lang="${esc(meta.lang)}">
@@ -76,7 +80,12 @@ export function renderSlide(
   env: RenderEnv = {},
 ): string {
   if (slide.kind === 'title') {
-    return renderTitleSlide(slide, deck, (blocks) => renderBlocks(blocks, deck.slideLevel, env));
+    return renderTitleSlide(
+      slide,
+      deck,
+      (blocks) => renderBlocks(blocks, deck.slideLevel, env),
+      env.assetUrl,
+    );
   }
   const layout = chooseLayout(slide);
   const classes = ['mds-slide', `layout-${layout}`, ...(slide.attrs?.classes ?? [])];

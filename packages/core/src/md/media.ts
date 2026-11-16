@@ -9,6 +9,8 @@ import { embedUrl, mediaKind, type MediaInfo, type MediaKind, type MediaProbe } 
 export type RenderEnv = {
   /** ファイルを調べる関数（見つからない画像に枠だけを出す・縦横比を先に決めるのに使う） */
   probe?: MediaProbe;
+  /** 書き出し先での URL に置き換える関数（素材をコピーする CLI が使う） */
+  assetUrl?: (src: string) => string;
 };
 
 /** 画像・動画だけからなる段落に付ける印。 */
@@ -78,14 +80,15 @@ export function renderMedia(
   const kind = mediaKind(src);
   const info = kind === 'image' || kind === 'video' ? env?.probe?.(decodePath(src)) : undefined;
   const width = widthOf(token);
+  const url = (path: string) => (env?.assetUrl ? env.assetUrl(path) : path);
 
   if (!meta?.figure) {
     // 文中の画像：縦横比で伸縮しない。属性のクラスと ID、幅だけを付ける
-    const element = mediaElement(esc, kind, src, alt, attrs, info, false);
+    const element = mediaElement(esc, kind, src, alt, attrs, info, false, url);
     const extra = classAndId(esc, attrs) + (width ? ` style="width:${esc(width)}"` : '');
     return element.replace(/^<(\w+)/, (_, tag: string) => `<${tag}${extra}`);
   }
-  const element = mediaElement(esc, kind, src, alt, attrs, info, true);
+  const element = mediaElement(esc, kind, src, alt, attrs, info, true, url);
 
   const title = token.attrGet('title');
   const caption =
@@ -113,6 +116,8 @@ function mediaElement(
   info: MediaInfo | undefined,
   /** figure の中に置く（枠に合わせて伸縮する） */
   framed: boolean,
+  /** 書き出し先での URL */
+  url: (path: string) => string,
 ): string {
   const flag = (name: string) => attrs?.values[name] !== undefined;
   if (info?.exists === false) {
@@ -136,17 +141,17 @@ function mediaElement(
       ? ` class="has-ratio" style="--mds-ar:${(info.width / info.height).toFixed(4)}" width="${info.width}" height="${info.height}"`
       : '';
   if (kind === 'video') {
-    const parts = [`src="${esc(src)}"`];
+    const parts = [`src="${esc(url(src))}"`];
     // 再生の方法を何も指定しなければ、操作ボタンを出す（再生できなくならないように）
     if (flag('controls') || !flag('autoplay')) parts.push('controls');
     for (const name of ['autoplay', 'loop', 'muted']) if (flag(name)) parts.push(name);
     parts.push('playsinline', 'preload="metadata"');
     const poster = attrs?.values.poster;
-    if (typeof poster === 'string') parts.push(`poster="${esc(poster)}"`);
+    if (typeof poster === 'string') parts.push(`poster="${esc(url(poster))}"`);
     if (alt) parts.push(`aria-label="${esc(alt)}"`);
     return `<video${ratio} ${parts.join(' ')}></video>`;
   }
-  return `<img src="${esc(src)}" alt="${esc(alt)}"${ratio}>`;
+  return `<img src="${esc(url(src))}" alt="${esc(alt)}"${ratio}>`;
 }
 
 function classAndId(esc: (s: string) => string, attrs: Attrs | undefined): string {
