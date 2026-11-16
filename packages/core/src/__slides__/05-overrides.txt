@@ -10,7 +10,7 @@ slides: 16
        paragraph
   5. [content] ## 1枚に収める  L25-L40  #1枚に収める  {keep}
        paragraph, list, paragraph
-  6. [content] ## 2つの節を1枚に（前半）  L42-L50  #1枚に収める-2
+  6. [content] ## 2つの節を1枚に（前半）  L42-L50  #2つの節を1枚に前半
        :::keep(paragraph, ##2つの節を1枚に（後半）, paragraph)
   7. [content] ## 一部だけまとめる  L52-L64  #一部だけまとめる
        paragraph, :::keep(paragraph, list), paragraph

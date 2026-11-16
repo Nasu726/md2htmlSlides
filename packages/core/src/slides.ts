@@ -4,6 +4,7 @@ import type { DeckMeta } from './frontmatter.js';
 import { hashString } from './hash.js';
 import type { Block, Deck, SectionNode, SourceRange } from './ir.js';
 import { detectSlideLevel, type HeadingSummary } from './slide-level.js';
+import { slugify } from './slug.js';
 
 /**
  * - `title`：タイトルスライド（`::maketitle`。中身の描画は #17）
@@ -62,6 +63,8 @@ interface Segment {
   /** 節の最初の区切り（見出しだけでもスライドにする） */
   first: boolean;
   start: number;
+  /** 節とは別の ID（`:::keep` で節をまとめたときは、まとめた見出しから作る） */
+  id?: string;
 }
 
 /**
@@ -299,6 +302,7 @@ class Builder {
           blocks: [{ ...block, children: block.children!.slice(1) }],
           first: true,
           start: block.src.start,
+          id: slugify(lead.text ?? '') || options.baseId,
         });
         current = continuation(block.src.end + 1);
         continue;
@@ -337,7 +341,9 @@ class Builder {
     }
     const ends = [segment.start, ...segment.blocks.map((b) => b.src.end)];
     const id = this.uniqueId(
-      segment.kind === 'title' ? 'title' : page === 1 ? baseId : `${baseId}-${page}`,
+      segment.kind === 'title'
+        ? 'title'
+        : (segment.id ?? (page === 1 ? baseId : `${baseId}-${page}`)),
     );
     return {
       id,
