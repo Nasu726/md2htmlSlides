@@ -1,0 +1,19 @@
+{
+  "name": "@mds/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "コマンドライン（mds build / mds dev）",
+  "type": "module",
+  "bin": {
+    "mds": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@mds/core": "workspace:*"
+  }
+}

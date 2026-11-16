@@ -1,0 +1,10 @@
+# 文書とテスト用の資料は、表の桁揃えなどを人が決めているので整形しない
+*.md
+fixtures/
+docs/
+examples/
+pnpm-lock.yaml
+dist/
+coverage/
+test-results/
+playwright-report/
