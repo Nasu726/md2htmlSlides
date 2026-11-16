@@ -105,6 +105,8 @@ describe('mds build', () => {
   });
 });
 
+// サーバーの動きだけを確かめる（Chromium での計測と自動分割は e2e で確かめる。
+// 単体テストでブラウザを起動すると、環境によって起動だけで時間切れになるため）
 describe('mds dev', () => {
   let server: DevServer | undefined;
   afterEach(async () => {
@@ -114,7 +116,7 @@ describe('mds dev', () => {
 
   it('プレビュー・発表の画面・素材を返し、フォルダの外は返さない', async () => {
     const root = project({ 'slides.md': '## はじめに\n\n![図](a.png)\n', 'a.png': png });
-    server = await startDev(join(root, 'slides.md'), { port: 0 });
+    server = await startDev(join(root, 'slides.md'), { port: 0, measure: false });
     const preview = await (await fetch(server.url)).text();
     expect(preview).toContain('<h2 class="mds-title">はじめに</h2>');
     expect(preview).toContain("new EventSource('/__mds/events')");
@@ -127,7 +129,7 @@ describe('mds dev', () => {
 
   it('資料を保存すると、読み込み直しを知らせる', async () => {
     const root = project({ 'slides.md': '## 前\n\n本文\n' });
-    server = await startDev(join(root, 'slides.md'), { port: 0 });
+    server = await startDev(join(root, 'slides.md'), { port: 0, measure: false });
     const response = await fetch(`${server.url}__mds/events`);
     const reader = response.body!.getReader();
     const decoder = new TextDecoder();
@@ -150,7 +152,7 @@ describe('mds dev', () => {
 
   it('警告があれば、プレビューの右下に一覧を出す', async () => {
     const root = project({ 'slides.md': '## A\n\n![](a.png)\n', 'a.png': png });
-    server = await startDev(join(root, 'slides.md'), { port: 0 });
+    server = await startDev(join(root, 'slides.md'), { port: 0, measure: false });
     const html = await (await fetch(server.url)).text();
     expect(html).toContain('<aside class="mds-dev-panel" role="status"><p>警告 1 件</p>');
     expect(html).toContain('slides.md:3</b> 代替テキストがありません');

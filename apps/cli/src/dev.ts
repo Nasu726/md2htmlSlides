@@ -214,7 +214,10 @@ export async function startDev(mdFile: string, options: DevOptions = {}): Promis
       clearTimeout(timer);
       for (const watcher of watchers) watcher.close();
       for (const client of clients) client.end();
-      await new Promise<void>((ok) => server.close(() => ok()));
+      // ブラウザの keep-alive の接続が切れるのを待たずに止める
+      const closed = new Promise<void>((ok) => server.close(() => ok()));
+      server.closeAllConnections();
+      await closed;
       await measurer?.close();
     },
   };
