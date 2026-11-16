@@ -120,4 +120,13 @@ describe('buildSlides', () => {
   it('フロントマターの slideLevel を使う', () => {
     expect(slidesOf('---\nslideLevel: 3\n---\n## A\n\n### B\n\n本文').slideLevel).toBe(3);
   });
+
+  it(':::keep で節をまとめたスライドの ID は、まとめた最初の見出しから作る（#51）', () => {
+    const deck = buildSlides(
+      parseDeck(
+        '## 前\n\n本文\n\n:::keep\n## まとめ（前半）\n\nA\n\n## まとめ（後半）\n\nB\n:::\n',
+      ),
+    );
+    expect(deck.slides.map((s) => s.id)).toEqual(['前', 'まとめ前半']);
+  });
 });
