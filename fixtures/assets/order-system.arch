@@ -1,0 +1,45 @@
+# 注文処理システムの構成（fixtures/13-arch.md で使う）
+direction: right
+
+user   ユーザー       [user]
+group クラウド
+  web    Webサーバー  [server]
+  api    注文API      [server]
+  db     注文DB       [database]
+  queue  キュー       [queue]
+  worker ワーカー     [server]
+pay    決済サービス   [external]
+
+user -> web -> api
+api -> db
+api -> queue -> worker
+worker -> pay
+
+scenario 正常時
+  step 注文を送る
+    user -> web -> api : POST /orders
+  step 在庫を確認して保存する
+    api -> db
+      | INSERT INTO orders
+      | VALUES (42, 'book')
+    db: 保存済み
+  step 決済を依頼する
+    api -> queue -> worker : 決済ジョブ
+    worker -> pay
+  step 結果を返す
+    pay --> worker
+    api --> web --> user : 201 Created
+
+scenario 決済の障害
+  step 注文を送る
+    user -> web -> api
+    api -> queue -> worker : 決済ジョブ
+  step 決済サービスが応答しない
+    worker -> pay
+    pay: 障害 !
+  step 3回リトライして失敗する
+    worker -> pay x3
+    worker: 失敗 !
+    note: リトライの間隔は指数的に延びる
+  step 失敗を通知する
+    api --> web --> user : 500

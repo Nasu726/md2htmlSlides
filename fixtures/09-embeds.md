@@ -153,14 +153,19 @@ export function lastSlide(slides: Slide[]) {
 }
 ```
 
-## DynamicArchitectViewer（M4）
+## 動く構成図（M4）
 
-<!--
-  .dav ファイルは未同梱。構文を推測で書かないため、M4 の検証（S4）で
-  公式リポジトリの examples から取得して ./assets/architecture.dav に置く。
-  それまでは「ファイルが見つからない」警告が出るのが期待どおりの動作。
--->
+小さな構成図をコードブロックに直接書く例。詳しいテストは `13-arch.md` にある。
 
-![システム構成と処理の流れ](./assets/architecture.dav){step}
+```arch
+browser ブラウザ [client]
+api     API      [server]
 
-図の各ステップは、発表者のページ送りと同期して再生する。
+browser -> api
+
+scenario 呼び出し
+  step リクエストを送る
+    browser -> api : GET /items
+  step 結果を返す
+    api --> browser : 200 OK
+```
