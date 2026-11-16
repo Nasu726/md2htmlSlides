@@ -1,0 +1,24 @@
+meta
+  title: 日本語組版テスト
+  theme=clean aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=false paginate=true
+diagnostics
+  (なし)
+sections
+  (先頭)  L7-L67
+    ## 長い見出しは文節の切れ目で改行し、各行の長さをできるだけ揃えて表示する  L8-L10  #長い見出しは文節の切れ目で改行し各行の長さをできるだけ揃えて表示する
+      - paragraph  L10
+    ## 禁則処理  L12-L14  #禁則処理
+      - paragraph  L14
+    ## 和欧混在  L16-L18  #和欧混在
+      - paragraph  L18
+    ## 全角と半角  L20-L22  #全角と半角
+      - paragraph  L22
+    ## 長い一文  L24-L26  #長い一文
+      - paragraph  L26
+    ## 箇条書きの折り返し  L28-L33  #箇条書きの折り返し
+      - list  L30-L33
+    ## 縦に長い表  L35-L61  #縦に長い表
+      - table  L37-L61
+    ## 絵文字と記号  L63-L67  #絵文字と記号
+      - paragraph  L65
+      - paragraph  L67

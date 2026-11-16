@@ -1,0 +1,55 @@
+meta
+  theme=clean aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=auto paginate=true
+diagnostics
+  (なし)
+sections
+  (先頭)  L1-L168
+    # チーム開発のための Git 運用ガイド  L1-L168  #チーム開発のための-git-運用ガイド
+      - paragraph  L3
+      ## 目的  L5-L15  #目的
+        - paragraph  L7
+        - paragraph  L9
+        - list  L11-L13
+        - paragraph  L15
+      ## ブランチ戦略  L17-L37  #ブランチ戦略
+        ### main ブランチ  L19-L21  #main-ブランチ
+          - paragraph  L21
+        ### 作業ブランチ  L23-L27  #作業ブランチ
+          - paragraph  L25
+          - paragraph  L27
+        ### 命名規則  L29-L37  #命名規則
+          - table  L31-L37
+      ## コミットのルール  L39-L73  #コミットのルール
+        - paragraph  L41
+        - code[text]  L43-L47
+        - paragraph  L49
+        - list  L51-L58
+        - paragraph  L60
+        ### 良い例と悪い例  L62-L73  #良い例と悪い例
+          - code[text]  L64-L73
+      ## プルリクエスト  L75-L106  #プルリクエスト
+        ### 作成前のチェック  L77-L83  #作成前のチェック
+          - list  L79-L83
+        ### レビューの観点  L85-L100  #レビューの観点
+          - paragraph  L87
+          - list[番号付き]  L89-L98
+          - paragraph  L100
+        ### マージの方法  L102-L106  #マージの方法
+          - paragraph  L104
+          - quote  L106
+      ## よくあるトラブル  L108-L139  #よくあるトラブル
+        ### コンフリクトが起きた  L110-L123  #コンフリクトが起きた
+          - paragraph  L112
+          - code[bash]  L114-L121
+          - paragraph  L123
+        ### 間違えて main にコミットした  L125-L135  #間違えて-main-にコミットした
+          - paragraph  L127
+          - code[bash]  L129-L133
+          - paragraph  L135
+        ### 大きなファイルをコミットした  L137-L139  #大きなファイルをコミットした
+          - paragraph  L139
+      ## コマンド早見表  L141-L162  #コマンド早見表
+        - table  L143-L160
+        - rule[---]  L162
+      ## 付録：参考資料  L164-L168  #付録参考資料
+        - list  L166-L168

@@ -1,0 +1,19 @@
+meta
+  title: 安定性テスト
+  theme=clean aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=false paginate=true
+diagnostics
+  (なし)
+sections
+  (先頭)  L5-L40
+    ## 節A  L6-L11  #節a
+      - paragraph  L8
+      - list  L10-L11
+    ## 節B  L13-L34  #節b
+      - paragraph  L15
+      - list  L17-L28
+      - paragraph  L30
+      - rule[---]  L32
+      - paragraph  L34
+    ## 節C {layout=split media=left}  L36-L40  #節c-layoutsplit-medialeft
+      - paragraph  L38
+      - paragraph  L40

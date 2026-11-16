@@ -9,5 +9,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
+  },
+  "dependencies": {
+    "@mds/themes": "workspace:*",
+    "markdown-it": "^15.0.3",
+    "yaml": "^2.9.1"
   }
 }

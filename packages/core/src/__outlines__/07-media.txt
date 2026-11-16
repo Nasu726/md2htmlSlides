@@ -1,0 +1,55 @@
+meta
+  title: 画像・動画・背景テスト
+  theme=clean aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=false paginate=true
+diagnostics
+  (なし)
+sections
+  (先頭)  L6-L112
+    ## キャプション付きの画像  L7-L9  #キャプション付きの画像
+      - paragraph  L9
+    ## SVG の画像  L11-L15  #svg-の画像
+      - paragraph  L13
+      - paragraph  L15
+    ## 動画（操作ボタンあり）  L17-L19  #動画操作ボタンあり
+      - paragraph  L19
+    ## 動画（自動再生・ループ・消音）  L21-L23  #動画自動再生ループ消音
+      - paragraph  L23
+    ## YouTube の埋め込み  L25-L29  #youtube-の埋め込み
+      - paragraph  L27
+      - paragraph  L29
+    ## 全面の背景画像（暗い）  L31-L35  #全面の背景画像暗い
+      - paragraph  L33
+      - paragraph  L35
+    ## 全面の背景画像（明るい）  L37-L41  #全面の背景画像明るい
+      - paragraph  L39
+      - paragraph  L41
+    ## 背景を暗くする  L43-L47  #背景を暗くする
+      - paragraph  L45
+      - paragraph  L47
+    ## 背景をぼかす  L49-L53  #背景をぼかす
+      - paragraph  L51
+      - paragraph  L53
+    ## 背景を contain で収める  L55-L59  #背景を-contain-で収める
+      - paragraph  L57
+      - paragraph  L59
+    ## 左半分を画像にする  L61-L69  #左半分を画像にする
+      - paragraph  L63
+      - paragraph  L65
+      - list  L67-L69
+    ## 右半分を画像にする  L71-L75  #右半分を画像にする
+      - paragraph  L73
+      - paragraph  L75
+    ## 背景の動画  L77-L81  #背景の動画
+      - paragraph  L79
+      - paragraph  L81
+    ## 背景と内容の多いスライド  L83-L100  #背景と内容の多いスライド
+      - paragraph  L85
+      - paragraph  L87
+      - list  L89-L98
+      - paragraph  L100
+    ## 代替テキストのない画像  L102-L106  #代替テキストのない画像
+      - paragraph  L104
+      - paragraph  L106
+    ## 存在しない画像  L108-L112  #存在しない画像
+      - paragraph  L110
+      - paragraph  L112

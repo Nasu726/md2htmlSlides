@@ -1,0 +1,29 @@
+meta
+  title: 動く構成図テスト
+  theme=clean aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=false paginate=true
+diagnostics
+  (なし)
+sections
+  (先頭)  L6-L86
+    - comment  L7-L10
+    ## ファイル参照（正常時）  L12-L14  #ファイル参照正常時
+      - paragraph  L14
+    ## ファイル参照（決済の障害）  L16-L18  #ファイル参照決済の障害
+      - paragraph  L18
+    ## シナリオを省略（最初のシナリオ）  L20-L22  #シナリオを省略最初のシナリオ
+      - paragraph  L22
+    ## 動きのない構成図  L24-L26  #動きのない構成図
+      - paragraph  L26
+    ## 説明を図の横に出す（指定）  L28-L30  #説明を図の横に出す指定
+      - paragraph  L30
+    ## コードブロックに直接書く（上から下）  L32-L57  #コードブロックに直接書く上から下
+      - code[arch]  L34-L57
+    ## 段階表示と組み合わせる  L59-L69  #段階表示と組み合わせる
+      - paragraph  L61
+      - paragraph  L63
+      - paragraph  L65
+      - paragraph  L67
+      - paragraph  L69
+    ## 書き間違い  L71-L86  #書き間違い
+      - code[arch]  L73-L84
+      - paragraph  L86

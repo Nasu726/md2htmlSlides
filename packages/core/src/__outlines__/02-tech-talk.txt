@@ -1,0 +1,70 @@
+meta
+  title: CI のビルド時間を 1/10 にした話
+  subtitle: モノレポのキャッシュ設計を見直す
+  authors: 山田 太郎（株式会社サンプル 開発基盤チーム）
+  affiliation: 株式会社サンプル 開発基盤チーム
+  date: 2026-11-20
+  event: Frontend LT Night
+  logo: ./assets/logo.svg
+  footer: #frontend_lt
+  theme=dark aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=auto paginate=true
+diagnostics
+  (なし)
+sections
+  (先頭)  L12-L184
+    - paragraph  L13-L14
+    - paragraph  L16-L17
+    ## 自己紹介 {layout=split}  L19-L25  #自己紹介-layoutsplit
+      - paragraph  L21
+      - list  L23-L25
+    ## 今日の話  L27-L32  #今日の話
+      - list[番号付き]  L29-L32
+    # 何が遅かったのか  L34-L66  #何が遅かったのか
+      ## 状況  L36-L48  #状況
+        - list  L38-L40
+        - paragraph  L42
+        - quote  L44
+        - paragraph  L46-L48
+      ## クイズ  L50-L66  #クイズ
+        - paragraph  L52
+        - paragraph  L54-L55
+        - paragraph  L57
+        - paragraph  L59
+        - paragraph  L61-L62
+        - paragraph  L64
+        - paragraph  L66
+    # どう測ったのか  L68-L99  #どう測ったのか
+      ## 工程ごとの所要時間  L70-L78  #工程ごとの所要時間
+        - table  L72-L78
+      ## 計測に使ったスクリプト  L80-L99  #計測に使ったスクリプト
+        - paragraph  L82
+        - code[ts]  L84-L99
+    # 何を変えたのか  L101-L154  #何を変えたのか
+      ## 変更の全体像  L103-L113  #変更の全体像
+        - code[mermaid]  L105-L113
+      ## やったこと  L115-L122  #やったこと
+        - paragraph  L117
+        - list  L118-L122
+      ## 型チェックのキャッシュ  L124-L138  #型チェックのキャッシュ
+        - paragraph  L126
+        - code[json]  L128-L136
+        - paragraph  L138
+      ## Before / After  L140-L154  #before--after
+        - paragraph  L142
+        ### Before  L143-L147  #before
+          - list  L144-L147
+        ### After  L149-L154  #after
+          - list  L150-L154
+    # 結果と残った課題  L156-L184  #結果と残った課題
+      ## 結果 {layout=statement}  L158-L160  #結果-layoutstatement
+        - paragraph  L160
+      ## 残った課題  L162-L170  #残った課題
+        - list  L164-L166
+        - paragraph  L168
+        - paragraph  L170
+      ## まとめ  L172-L184  #まとめ
+        - list  L174-L176
+        - rule[---]  L178
+        - paragraph  L180
+        - paragraph  L182
+        - paragraph  L184

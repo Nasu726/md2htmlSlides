@@ -1,0 +1,56 @@
+meta
+  title: 異常系・境界値テスト
+  theme=clean aspect=16:9 lang=ja slideLevel=2 split=auto titleSlide=false paginate=true
+diagnostics
+  L5 warning frontmatter/unknown-key: 未知のキー「unknownKey」は無視します
+  L18 warning heading/setext-dash: 「---」の前に空行がないため、17行目が見出しになりました。スライドを区切るなら「---」の前に空行を入れてください
+sections
+  (先頭)  L8-L125
+    - comment  L9-L13
+    ## 空行のない ---  L15  #空行のない----
+    ## この行の直後に空行なしで --- を書くと、この行は見出しになる（下線の見出し）  L17-L20  #この行の直後に空行なしで-----を書くとこの行は見出しになる
+      - paragraph  L20
+    ## 書き間違えた属性 {lyout=split}  L22-L24  #書き間違えた属性-lyoutsplit
+      - paragraph  L24
+    ## 文中の波かっこ  L26-L32  #文中の波かっこ
+      - paragraph  L28
+      - paragraph  L30
+      - paragraph  L32
+    ## 未知のコンテナ  L34-L38  #未知のコンテナ
+      - paragraph  L36-L38
+    ## 閉じていないコンテナ  L40-L43  #閉じていないコンテナ
+      - paragraph  L42-L43
+    ## 未知の指示  L45-L49  #未知の指示
+      - paragraph  L47
+      - paragraph  L49
+    ## 水平線  L51-L61  #水平線
+      - paragraph  L53
+      - rule[***]  L55
+      - paragraph  L57
+      - rule[___]  L59
+      - paragraph  L61
+    ## 連続した ---  L63-L71  #連続した----
+      - paragraph  L65
+      - rule[---]  L67
+      - rule[---]  L69
+      - paragraph  L71
+    ## 1枚に収まらない段落  L73-L75  #1枚に収まらない段落
+      - paragraph  L75
+    ## 深い入れ子のリスト  L77-L84  #深い入れ子のリスト
+      - list  L79-L84
+    ## 見出しのレベルの飛び  L86-L90  #見出しのレベルの飛び
+      #### H4 がいきなり出てくる  L88-L90  #h4-がいきなり出てくる
+        - paragraph  L90
+    ## 背景が2つ  L92-L97  #背景が2つ
+      - paragraph  L94-L95
+      - paragraph  L97
+    ## 生 HTML  L99-L103  #生-html
+      - html  L101-L103
+    ## 脚注とアラート  L105-L113  #脚注とアラート
+      - paragraph  L107
+      - quote  L109-L110
+      - quote  L112-L113
+    ## タスクリストと打ち消し線  L117-L121  #タスクリストと打ち消し線
+      - list  L119-L121
+    ## 空の節  L123  #空の節
+    ##   L125  #section

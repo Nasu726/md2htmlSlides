@@ -1,0 +1,25 @@
+meta
+  title: Markdown スライドの自動レイアウト
+  subtitle: 分割とレイアウトを同時に決める動的計画法
+  authors: 山田 太郎（○○大学 情報学部）, 佐藤 花子（△△株式会社 研究開発部）, 鈴木 一郎（○○大学 情報学部）
+  date: 2026-12-05
+  event: 第15回 文書処理研究会
+  logo: ./assets/logo.svg
+  theme=clean aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=auto paginate=true
+diagnostics
+  (なし)
+sections
+  (先頭)  L17-L51
+    - comment  L18-L22
+    - paragraph  L24
+    - quote  L26
+    - paragraph  L28-L29
+    - paragraph  L31
+    - paragraph  L33-L36
+    ## 背景  L38-L40  #背景
+      - paragraph  L40
+    ## 提案手法  L42-L44  #提案手法
+      - paragraph  L44
+    ## まとめ  L46-L51  #まとめ
+      - list  L48-L49
+      - paragraph  L51
