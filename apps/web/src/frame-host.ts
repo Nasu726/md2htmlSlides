@@ -29,7 +29,7 @@ export function frameHost(
   const resolve = (text: string) =>
     text.replace(ASSET, (whole, key: string) => urls.get(key) ?? whole);
 
-  type Slide = HTMLElement & { mdsHtml?: string };
+  type Slide = HTMLElement & { mdsKey?: string };
   const deckOf = () => doc.querySelector<HTMLElement>('.mds-deck');
   const slidesOf = () => Array.from(deckOf()?.querySelectorAll<Slide>(':scope > .mds-slide') ?? []);
 
@@ -67,9 +67,9 @@ export function frameHost(
     deck.style.setProperty('--mds-preview-zoom', String(zoom));
   };
 
-  /** 受け取った HTML で、スタイルとスライドを差し替える。変わっていないスライドはそのまま残す */
-  const update = (html: string) => {
-    const next = new DOMParser().parseFromString(resolve(html), 'text/html');
+  /** ページの部分（スタイル・言語・デッキの属性）を差し替える */
+  const applyHead = (html: string) => {
+    const next = new DOMParser().parseFromString(html, 'text/html');
     doc.documentElement.lang = next.documentElement.lang;
     const style =
       doc.getElementById('mds-deck-style') ?? doc.head.appendChild(doc.createElement('style'));
@@ -77,8 +77,8 @@ export function frameHost(
     const css = Array.from(next.head.querySelectorAll('style'), (s) => s.textContent).join('\n');
     if (style.textContent !== css) style.textContent = css;
     const nextDeck = next.querySelector<HTMLElement>('.mds-deck');
-    let deck = deckOf();
     if (!nextDeck) return;
+    let deck = deckOf();
     if (!deck) {
       deck = doc.createElement('main');
       doc.body.prepend(deck);
@@ -88,37 +88,80 @@ export function frameHost(
     for (const attr of Array.from(nextDeck.attributes)) deck.setAttribute(attr.name, attr.value);
     if (zoom) deck.style.setProperty('--mds-preview-zoom', zoom);
     deck.setAttribute('data-preview', '');
+  };
 
+  /** スライドの HTML のハッシュから、プレビューにあるスライドを引く */
+  const byKey = new Map<string, Slide>();
+
+  /**
+   * スライドを並べ直す。order はスライドのキー（HTML のハッシュ）の順、slides は新しいスライドの HTML だけ。
+   * 変わっていないスライドは DOM をそのまま残す（再生中の動画や描いた図が動き続ける。設計プラン §11.2）
+   */
+  const update = (head: string | null, order: string[], slides: Array<[string, string]>) => {
+    if (head !== null) applyHead(head);
+    const deck = deckOf();
+    if (!deck) return;
     // 見ていたスライドを、同じ位置に残す
     const anchor = slideInView();
-    const anchorIndex = anchor ? slidesOf().indexOf(anchor) : -1;
+    const before = slidesOf();
+    const anchorIndex = anchor ? before.indexOf(anchor) : -1;
     const anchorTop = anchor?.getBoundingClientRect().top ?? 0;
 
-    const old = new Map<string, Slide[]>();
-    for (const slide of slidesOf()) {
-      const list = old.get(slide.mdsHtml ?? '') ?? [];
-      list.push(slide);
-      old.set(slide.mdsHtml ?? '', list);
+    const created: Slide[] = [];
+    if (slides.length > 0) {
+      const template = doc.createElement('template');
+      template.innerHTML = resolve(slides.map(([, html]) => html).join(''));
+      const nodes = Array.from(template.content.children) as Slide[];
+      slides.forEach(([key], i) => {
+        const node = nodes[i];
+        if (!node) return;
+        node.mdsKey = key;
+        byKey.set(key, node);
+        created.push(node);
+      });
     }
-    const changed: Slide[] = [];
-    const nodes = Array.from(nextDeck.children, (child): Element => {
-      if (!child.classList.contains('mds-slide')) return doc.importNode(child, true);
-      const key = child.outerHTML;
-      const reuse = old.get(key)?.shift();
-      if (reuse) return reuse;
-      const node = doc.importNode(child, true) as Slide;
-      node.mdsHtml = key;
-      changed.push(node);
-      return node;
-    });
-    deck.replaceChildren(...nodes);
+    const next = order.map((key) => byKey.get(key)).filter((node): node is Slide => !!node);
+    const same = next.length === before.length && next.every((node, i) => node === before[i]);
+    if (!same) {
+      // 変わったところだけを入れ替える（全部を入れ直すと、全部のスライドのレイアウトをやり直すことになる）
+      const wanted = new Set<Element>(next);
+      let child = deck.firstElementChild;
+      const skipStale = () => {
+        while (child && !wanted.has(child)) {
+          const stale = child;
+          child = child.nextElementSibling;
+          stale.remove();
+        }
+      };
+      for (const node of next) {
+        skipStale();
+        if (child === node) {
+          child = child.nextElementSibling;
+          continue;
+        }
+        deck.insertBefore(node, child);
+      }
+      skipStale();
+    }
+    const keep = new Set(order);
+    for (const key of [...byKey.keys()]) if (!keep.has(key)) byKey.delete(key);
     fitZoom();
-    if (changed.length > 0) fitSlides(doc);
-    const slides = slidesOf();
-    const target = slides[Math.min(anchorIndex, slides.length - 1)];
-    if (target && anchorIndex >= 0) {
+    for (const node of created) fitSlides(node);
+    const target = next[Math.min(anchorIndex, next.length - 1)];
+    if (target && anchorIndex >= 0 && !same) {
       doc.scrollingElement!.scrollTop += target.getBoundingClientRect().top - anchorTop;
     }
+  };
+
+  /** エディタのカーソルがあるスライドに印を付け、見えていなければ見えるところまで動かす（#74） */
+  const focusSlide = (index: number) => {
+    const slides = slidesOf();
+    for (const [i, slide] of slides.entries()) slide.toggleAttribute('data-editing', i === index);
+    const slide = slides[index];
+    if (!slide) return;
+    const rect = slide.getBoundingClientRect();
+    const height = doc.documentElement.clientHeight;
+    if (rect.top < 0 || rect.bottom > height) slide.scrollIntoView({ block: 'nearest' });
   };
 
   /** 発表：HTML の中の素材の印を、この iframe で作った URL に置き換える */
@@ -150,7 +193,14 @@ export function frameHost(
     | { id: number; type: 'diagrams'; codes: string[]; ids: string[] }
     | { id: number; type: 'measure'; jobs: MeasureJob[] }
     | { id: number; type: 'page'; html: string }
-    | { id: number; type: 'update'; html: string }
+    | {
+        id: number;
+        type: 'update';
+        head: string | null;
+        order: string[];
+        slides: Array<[string, string]>;
+      }
+    | { id: number; type: 'focus'; index: number }
     | { id: number; type: 'show'; slide: string }
     | { id: number; type: 'view' };
 
@@ -210,8 +260,11 @@ export function frameHost(
         return { type: 'done' };
       }
       case 'update':
-        update(m.html);
-        return { type: 'done', slide: slideRef(slideInView()) };
+        update(m.head, m.order, m.slides);
+        return { type: 'done' };
+      case 'focus':
+        focusSlide(m.index);
+        return { type: 'done' };
       case 'show': {
         const slide =
           slidesOf().find((s) => s.dataset.id === m.slide) ?? slidesOf()[Number(m.slide) - 1];
@@ -239,9 +292,20 @@ body { margin: 0; }
 .mds-deck[data-preview] { padding: 16px 0; gap: 16px; }
 .mds-deck[data-preview] > .mds-slide { zoom: var(--mds-preview-zoom, 1); }
 .mds-deck[data-preview] > .mds-slide * { overflow-anchor: none; }
+.mds-deck[data-preview] > .mds-slide { cursor: pointer; content-visibility: auto; }
+/* エディタのカーソルがあるスライド（#74） */
+.mds-deck[data-preview] > .mds-slide[data-editing] { outline: 4px solid #2563eb; outline-offset: 3px; }
 `;
     doc.head.append(style);
     win.addEventListener('resize', fitZoom);
+    // スライドをクリックすると、エディタの対応する行に移る（#74）。リンクや動画の操作は除く
+    doc.addEventListener('click', (event) => {
+      const target = event.target as Element | null;
+      if (target?.closest('a, video, audio, button, input, summary')) return;
+      const slide = target?.closest<Slide>('.mds-deck > .mds-slide');
+      if (!slide) return;
+      send({ type: 'jump', index: slidesOf().indexOf(slide) });
+    });
     // S で、見えているスライドから発表を始める（mds dev のプレビューと同じ。#60）
     doc.addEventListener('keydown', (event) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;

@@ -52,6 +52,8 @@ interface Entry {
 /** 素材の読み込みと、縦横の情報（core の probe に渡す） */
 export class AssetStore {
   private entries = new Map<string, Entry>();
+  /** 読み込んだ素材が増えるたびに増える（縦横が変わると、スライドの HTML が変わるため） */
+  version = 0;
   private loading = new Map<string, Promise<void>>();
 
   constructor(private source: AssetSource) {}
@@ -79,6 +81,7 @@ export class AssetStore {
     } catch {
       blob = undefined;
     }
+    this.version++;
     if (!blob) {
       this.entries.set(key, { info: { exists: false } });
       return;

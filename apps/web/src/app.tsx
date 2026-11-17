@@ -10,6 +10,14 @@ import {
   type AssetSource,
 } from './assets.js';
 import { createEditor, type Editor } from './editor.js';
+import {
+  fixBreak,
+  keepSection,
+  setSlides,
+  setWarnings,
+  slideAt,
+  slideStart,
+} from './slide-gutter.js';
 import { Frame } from './frames.js';
 import { Cancelled, Renderer, type RenderResult } from './renderer.js';
 import { SAMPLE } from './sample.js';
@@ -42,6 +50,8 @@ const result = signal<RenderResult | null>(null);
 const notice = signal<Notice | null>(null);
 const showWarnings = signal(false);
 const dragging = signal(false);
+/** 自動で区切られた位置のメニュー（#74） */
+const breakMenu = signal<{ line: number; x: number; y: number } | null>(null);
 const canOpenFolder = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
 let editor: Editor;
@@ -51,16 +61,33 @@ let text = '';
 // ---- 描画：入力はアニメーションフレームごとにまとめ、描いている間の変更は描き終わってから反映する ----
 let rendering = false;
 let pending = false;
+/** まだプレビューに反映していない、最初の打鍵の時刻 */
+let changedAt: number | undefined;
+/** 打鍵からプレビューに反映されるまでの時間（ミリ秒。設計プラン §11.1。e2e と計測で読む） */
+const latencies: number[] = [];
+(window as unknown as { mdsLatencies: number[] }).mdsLatencies = latencies;
 function scheduleRender(): void {
   if (rendering) {
     pending = true;
     return;
   }
   rendering = true;
+  const since = changedAt;
+  changedAt = undefined;
   requestAnimationFrame(() => {
     renderer
       .render(text)
-      .then((value) => (result.value = value))
+      .then((value) => {
+        result.value = value;
+        if (since !== undefined) {
+          latencies.push(performance.now() - since);
+          if (latencies.length > 200) latencies.shift();
+        }
+        // 行番号欄の目印と警告を、描いた結果に合わせる（#74）
+        setSlides(editor.view, value.map);
+        setWarnings(editor.view, value.diagnostics);
+        focusCursorSlide(true);
+      })
       .catch((error: unknown) => {
         if (error instanceof Cancelled) return; // 別の資料を開いた
         console.error(error);
@@ -88,8 +115,37 @@ function scheduleDraft(): void {
   }, 400);
 }
 
+// ---- カーソルとプレビューの同期（#74、設計プラン §9.2） ----
+let cursorLine = 1;
+let focusedSlide = -1;
+let focusQueued = false;
+/** カーソルのあるスライドを、プレビューで見せる（スライドが変わったときだけ動かす） */
+function focusCursorSlide(force = false): void {
+  if (focusQueued) return;
+  focusQueued = true;
+  requestAnimationFrame(() => {
+    focusQueued = false;
+    const index = slideAt(editor.view, cursorLine);
+    if (index < 0 || (index === focusedSlide && !force)) return;
+    focusedSlide = index;
+    void renderer.focus(index);
+  });
+}
+
+function onCursor(line: number): void {
+  cursorLine = line;
+  focusCursorSlide();
+}
+
+/** プレビューでスライドをクリックした・行番号欄の番号を押した：その行に移る */
+function jumpToSlide(index: number): void {
+  const line = slideStart(editor.view, index);
+  if (line !== undefined) jumpTo(line);
+}
+
 function onChange(next: string): void {
   text = next;
+  changedAt ??= performance.now();
   dirty.value = true;
   scheduleRender();
   scheduleDraft();
@@ -305,14 +361,24 @@ export function App() {
   useEffect(() => {
     renderer = new Renderer(previewRef.current!, hiddenRef.current!);
     renderer.onPresent = (slide) => void present(slide);
+    renderer.onJump = jumpToSlide;
     editor = createEditor(editorRef.current!, {
       text: '',
       onChange,
       onSave: () => void save(),
       onPresent: () => void present(),
+      onCursor,
+      gutter: {
+        onAutoBreak: (line, rect) => (breakMenu.value = { line, x: rect.right + 4, y: rect.top }),
+        onSlide: (index) => {
+          focusedSlide = index;
+          void renderer.focus(index);
+        },
+      },
     });
     void start();
     const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') breakMenu.value = null;
       if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         event.preventDefault();
         void save();
@@ -471,6 +537,38 @@ export function App() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+      {breakMenu.value && (
+        <div
+          class="break-menu"
+          role="menu"
+          style={{ left: `${breakMenu.value.x}px`, top: `${breakMenu.value.y}px` }}
+        >
+          <p>自動で区切られた位置</p>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              fixBreak(editor.view, breakMenu.value!.line);
+              breakMenu.value = null;
+            }}
+          >
+            ここで区切りを固定（<code>---</code> を入れる）
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              keepSection(editor.view, breakMenu.value!.line);
+              breakMenu.value = null;
+            }}
+          >
+            1枚にまとめる（<code>{'{keep}'}</code> を付ける）
+          </button>
+          <button type="button" class="cancel" onClick={() => (breakMenu.value = null)}>
+            閉じる
+          </button>
         </div>
       )}
       {dragging.value && <div class="drop">ここに落とすと開きます（.md と画像・動画）</div>}

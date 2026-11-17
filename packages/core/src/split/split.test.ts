@@ -173,6 +173,25 @@ describe('planSplit・applySplit', () => {
       expect(s.blocks[0]!.raw.startsWith('| a | b |\n|---|---|\n')).toBe(true);
   });
 
+  it('分けたスライドの行の範囲は、そのスライドに入った項目・行の範囲（エディタの目印に使う。#74）', () => {
+    const deck = slidesOf(md);
+    const plan = planSplit(deck);
+    const m1 = uniform(plan.targets[0]!.atoms.length, 100);
+    const m2 = uniform(plan.targets[1]!.atoms.length, 140);
+    m2.heads = m2.heads.map(() => 40);
+    const result = applySplit(deck, plan, [m1, m2]);
+    const pages = result.slides.filter((s) => s.heading?.text === '節');
+    const lines = md.split('\n');
+    // 最初のスライドは見出しから。続きのスライドは、そのスライドの最初の項目の行から
+    expect(pages[0]!.src.start).toBe(1);
+    const first = pages[1]!.blocks.find((b) => b.kind === 'list')!;
+    expect(lines[pages[1]!.src.start - 1]).toBe(first.raw.split('\n')[0]);
+    expect(pages.at(-1)!.src.end).toBe(deck.slides.find((s) => s.heading?.text === '節')!.src.end);
+    const tables = result.slides.filter((s) => s.heading?.text === '表');
+    // 表の続きは、そのスライドの最初の行（見出し行と区切りの行の後）から
+    expect(lines[tables[1]!.src.start - 1]).toBe(tables[1]!.blocks[0]!.raw.split('\n')[2]);
+  });
+
   it('split: manual なら分けない', () => {
     expect(planSplit(slidesOf(`---\nsplit: manual\n---\n\n${md}`)).jobs).toEqual([]);
   });
