@@ -149,6 +149,11 @@ export function breakPenalty(atoms: Atom[], i: number, w: SplitWeights): number 
   return w.block;
 }
 
+/** ブロックに書いた明示のステップ番号（`{step=N}`）。 */
+export function explicitSteps(raw: string): number[] {
+  return Array.from(raw.matchAll(/\{[^}\n]*\bstep=(\d+)[^}\n]*\}/g), (m) => Number(m[1]));
+}
+
 /** スライド1枚ぶんの計測の結果。 */
 export interface Measurement {
   /** 本文の高さ */
@@ -189,6 +194,15 @@ export function splitAtoms(
   const pairGap = atoms.map((a, i) =>
     sameGroup(a, atoms[i + 1]) ? (a.kind === 'table-row' ? 0 : m.listGap) : m.gap,
   );
+  // 明示のステップ番号（{step=N}）の順番を崩す位置では区切らない（#56）。
+  // 分かれたスライドはそれぞれ 1 から数え直すので、区切りの前に、区切りの後と同じか
+  // 大きい番号があると、あとから出るはずの要素が前のスライドに来てしまう
+  const explicit = atoms.map((a) => explicitSteps(a.block.raw));
+  const before: number[] = [-Infinity];
+  explicit.forEach((nums, i) => before.push(Math.max(before[i]!, ...nums)));
+  const after: number[] = Array<number>(n + 1).fill(Infinity);
+  for (let i = n - 1; i >= 0; i--) after[i] = Math.min(after[i + 1]!, ...explicit[i]!);
+  const breaksStepOrder = (i: number) => before[i]! >= after[i]!;
   const best: number[] = Array<number>(n + 1).fill(Infinity);
   const from: number[] = Array<number>(n + 1).fill(-1);
   const pageOf: Page[] = Array<Page>(n + 1);
@@ -210,7 +224,7 @@ export function splitAtoms(
       const single = j - i === 1;
       // i を前に戻すほど内容が増えるので打ち切る（まだ1つも収め方がなければ、あふれを覚悟で続ける）
       if (needed < w.minScale && !single && best[j]! < Infinity) break;
-      const penalty = i === 0 ? 0 : breakPenalty(atoms, i, w);
+      const penalty = i === 0 ? 0 : breaksStepOrder(i) ? Infinity : breakPenalty(atoms, i, w);
       if (penalty === Infinity || best[i] === Infinity) continue;
       const floor = single ? w.atomMinScale : w.minScale;
       const scale = Math.max(floor, Math.min(1, Math.floor(needed * 20) / 20));

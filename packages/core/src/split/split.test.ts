@@ -177,3 +177,29 @@ describe('planSplit・applySplit', () => {
     expect(planSplit(slidesOf(`---\nsplit: manual\n---\n\n${md}`)).jobs).toEqual([]);
   });
 });
+
+describe('ステップと自動分割（#56）', () => {
+  const list = (nums: number[]) =>
+    `## A\n\n${nums.map((n) => `- ${n}番目に出る {step=${n}}`).join('\n')}\n\n## B\n\n本文\n`;
+
+  it('明示の番号が逆順のリストは、途中で分けない（1枚に縮小する）', () => {
+    const atoms = atomize(blocksOf(list([4, 3, 2, 1])));
+    const pages = splitAtoms(atoms, uniform(atoms.length, 150));
+    expect(pages).toHaveLength(1);
+  });
+
+  it('明示の番号が文書の順なら、途中で分けてよい', () => {
+    const atoms = atomize(blocksOf(list([1, 2, 3, 4])));
+    const pages = splitAtoms(atoms, uniform(atoms.length, 150));
+    expect(pages.length).toBeGreaterThan(1);
+  });
+
+  it('同じ番号（同時に出す要素）の間では分けない', () => {
+    const atoms = atomize(blocksOf(list([1, 1, 2, 2])));
+    const pages = splitAtoms(atoms, uniform(atoms.length, 150));
+    expect(pages.map((p) => [p.start, p.end])).toEqual([
+      [0, 2],
+      [2, 4],
+    ]);
+  });
+});
