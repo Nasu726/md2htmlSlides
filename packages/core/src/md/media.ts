@@ -18,10 +18,35 @@ export type RenderEnv = {
    * 対応していない言語なら undefined を返し、色を付けずに出す。
    */
   highlight?: CodeHighlighter;
+  /** 図を描く関数（#71）。なければ ```mermaid はコードのまま、`.mmd` は枠だけを出す */
+  diagram?: DiagramRenderer;
 };
 
 /** コードの色分けをする関数。同期で返す（必要な文法は、呼ぶ側が先に読み込んでおく） */
 export type CodeHighlighter = (code: string, lang: string) => string | undefined;
+
+/** 図にするもの：コードブロック（```mermaid）の中身か、ファイル（`![](flow.mmd)`）のパス */
+export type DiagramInput = { lang: string; code: string } | { lang: string; src: string };
+/** 描いた図（SVG と、その縦横の大きさ）か、構文エラー */
+export type DiagramResult = { svg: string; width: number; height: number } | { error: string };
+/**
+ * 図を描く関数（#71）。CLI が書き出しの前にヘッドレス Chromium で描いておき、ここでは結果を返すだけ。
+ * 描けないとき（Chromium がないなど）は undefined を返す。
+ */
+export type DiagramRenderer = (input: DiagramInput) => DiagramResult | undefined;
+
+/** 図の中身の HTML。SVG は縦横比を保って枠に合わせる（has-ratio） */
+export function diagramHtml(
+  esc: (s: string) => string,
+  result: DiagramResult,
+  label: string,
+): string {
+  if ('error' in result) {
+    return `<div class="mds-diagram-error" role="note"><b>Mermaid の構文エラー</b><span>${esc(result.error)}</span></div>`;
+  }
+  const ratio = result.width > 0 && result.height > 0 ? result.width / result.height : 1.6;
+  return `<div class="mds-diagram has-ratio" style="--mds-ar:${ratio.toFixed(4)}" role="img" aria-label="${esc(label)}">${result.svg}</div>`;
+}
 
 /** 画像・動画だけからなる段落に付ける印。 */
 export type MediaGroupMeta = {
@@ -89,16 +114,19 @@ export function renderMedia(
   const alt = md.renderer.renderInlineAsText(token.children ?? [], md.options, env ?? {});
   const kind = mediaKind(src);
   const info = kind === 'image' || kind === 'video' ? env?.probe?.(decodePath(src)) : undefined;
+  // 図のファイル（.mmd）：描いた図。描けなければファイル名の枠だけを出す（#71）
+  const diagram =
+    kind === 'diagram' ? env?.diagram?.({ lang: 'mermaid', src: decodePath(src) }) : undefined;
   const width = widthOf(token);
   const url = (path: string) => (env?.assetUrl ? env.assetUrl(path) : path);
 
   if (!meta?.figure) {
     // 文中の画像：縦横比で伸縮しない。属性のクラスと ID、幅だけを付ける
-    const element = mediaElement(esc, kind, src, alt, attrs, info, false, url);
+    const element = mediaElement(esc, kind, src, alt, attrs, info, false, url, diagram);
     const extra = classAndId(esc, attrs) + (width ? ` style="width:${esc(width)}"` : '');
     return element.replace(/^<(\w+)/, (_, tag: string) => `<${tag}${extra}`);
   }
-  const element = mediaElement(esc, kind, src, alt, attrs, info, true, url);
+  const element = mediaElement(esc, kind, src, alt, attrs, info, true, url, diagram);
 
   const title = token.attrGet('title');
   const caption =
@@ -131,8 +159,15 @@ function mediaElement(
   framed: boolean,
   /** 書き出し先での URL */
   url: (path: string) => string,
+  /** 図のファイル（.mmd）を描いた結果 */
+  diagram?: DiagramResult,
 ): string {
   const flag = (name: string) => attrs?.values[name] !== undefined;
+  if (kind === 'diagram') {
+    if (diagram) return diagramHtml(esc, diagram, alt || src);
+    const label = alt || decodePath(src).split('/').pop() || src;
+    return `<span class="mds-media-placeholder" role="img" aria-label="${esc(label)}">${esc(label)}</span>`;
+  }
   if (info?.exists === false) {
     // 見つからないファイルは枠だけを出す
     const label = alt || decodePath(src).split('/').pop() || src;

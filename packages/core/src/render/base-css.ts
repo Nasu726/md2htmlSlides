@@ -235,6 +235,25 @@ body { margin: 0; background: #d1d5db; }
   font-size: 0.7em;
 }
 .is-rigid .mds-media-placeholder { aspect-ratio: 16 / 9; }
+/* Mermaid の図（#71）：SVG を縦横比を保って枠に合わせる（Mermaid が付ける max-width は外す） */
+.mds-media-frame > .mds-diagram { border-radius: 0; }
+/* エラーの枠は、中身の高さにして縦の中央に置く（枠いっぱいに伸ばさない） */
+.mds-media-frame:has(> .mds-diagram-error) { align-items: center; }
+.mds-media-frame > .mds-diagram-error { height: auto; }
+.mds-diagram > svg { display: block; width: 100%; height: 100%; max-width: none !important; }
+.mds-diagram-error {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+  padding: 0.6em 0.9em;
+  border: 2px dashed #dc2626;
+  border-radius: var(--mds-radius);
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.7em;
+}
+.mds-diagram-error > span { font-family: var(--mds-font-mono); white-space: pre-wrap; font-size: 0.85em; }
 /* 文中の画像 */
 .mds-body :is(p, li, td, th, a) > img {
   max-width: 100%;

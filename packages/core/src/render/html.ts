@@ -2,7 +2,7 @@ import { themeCss } from '@mds/themes';
 import type { Attrs } from '../attrs.js';
 import type { Block } from '../ir.js';
 import { md } from '../md/instance.js';
-import type { CodeHighlighter, RenderEnv } from '../md/media.js';
+import type { CodeHighlighter, DiagramRenderer, RenderEnv } from '../md/media.js';
 import type { MediaProbe } from '../media.js';
 import type { Slide, SlideDeck } from '../slides.js';
 import { BASE_CSS } from './base-css.js';
@@ -44,6 +44,8 @@ export interface RenderOptions {
   fontCss?: string;
   /** コードの色分け（#68）。色は span の CSS 変数（--mds-code-token-…）で、テーマが決める */
   highlight?: CodeHighlighter;
+  /** 図を描いた結果を返す関数（#71）。```mermaid と `.mmd` を SVG にする */
+  diagram?: DiagramRenderer;
 }
 
 const esc = (text: string) => md.utils.escapeHtml(text);
@@ -60,6 +62,7 @@ export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): st
     ...(options.probe ? { probe: options.probe } : {}),
     ...(options.assetUrl ? { assetUrl: options.assetUrl } : {}),
     ...(options.highlight ? { highlight: options.highlight } : {}),
+    ...(options.diagram ? { diagram: options.diagram } : {}),
   };
   const custom = options.customCss ? `@scope (.mds-deck) {\n${options.customCss}\n}` : '';
   const body = slides
@@ -100,7 +103,7 @@ export function renderSlide(
       env,
     );
   }
-  const choice = chooseLayout(slide, deck.slideLevel, env.probe);
+  const choice = chooseLayout(slide, deck.slideLevel, env.probe, env.diagram);
   const { layout } = choice;
   const align = slide.attrs?.values.align;
   const background = findBackground(slide.blocks);

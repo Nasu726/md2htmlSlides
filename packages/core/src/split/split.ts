@@ -10,6 +10,7 @@
  */
 import type { Block } from '../ir.js';
 import { md } from '../md/instance.js';
+import type { RenderEnv } from '../md/media.js';
 import { renderBlocks, renderSlide } from '../render/html.js';
 import { isBackgroundBlock } from '../render/background.js';
 import { isMediaBlock, isShortList } from '../render/layout.js';
@@ -273,8 +274,11 @@ export interface SplitPlan {
   jobs: MeasureJob[];
 }
 
-/** 分割の対象（普通のスライド。`split: manual` なら対象なし）と、測るものを用意する。 */
-export function planSplit(deck: SlideDeck): SplitPlan {
+/**
+ * 分割の対象（普通のスライド。`split: manual` なら対象なし）と、測るものを用意する。
+ * env は原子の描画に使う（描いた図など。#71）。
+ */
+export function planSplit(deck: SlideDeck, env: RenderEnv = {}): SplitPlan {
   const plan: SplitPlan = { targets: [], jobs: [] };
   if (deck.meta.split === 'manual') return plan;
   deck.slides.forEach((slide, index) => {
@@ -300,7 +304,7 @@ export function planSplit(deck: SlideDeck): SplitPlan {
         { page: 1, total: 1 },
       ),
       atoms: atoms.map((a) => {
-        const html = renderBlocks([a.block], deck.slideLevel, { lang: deck.meta.lang });
+        const html = renderBlocks([a.block], deck.slideLevel, { ...env, lang: deck.meta.lang });
         // 続いた画像は格子に並べるので、格子の高さで測る
         if (!a.gallery) return html;
         const cols = a.gallery <= 3 ? a.gallery : a.gallery === 4 ? 2 : 3;
@@ -309,6 +313,7 @@ export function planSplit(deck: SlideDeck): SplitPlan {
       heads: atoms.map((a) =>
         a.group?.head
           ? renderBlocks([{ ...a.block, raw: a.group.head }], deck.slideLevel, {
+              ...env,
               lang: deck.meta.lang,
             })
           : '',

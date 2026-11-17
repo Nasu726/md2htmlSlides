@@ -4,6 +4,7 @@ import { attrsPlugin, type BlockMeta } from './attrs.js';
 import { containerPlugin } from './container.js';
 import { directivePlugin } from './directive.js';
 import {
+  diagramHtml,
   mediaPlugin,
   renderMedia,
   renderMediaGroupInline,
@@ -145,6 +146,18 @@ function renderRules(instance: MarkdownIt): void {
   rules.fence = (tokens, idx, options, env, renderer) => {
     const token = tokens[idx]!;
     const lang = token.info.trim().split(/\s+/)[0] ?? '';
+    const step = (token.meta as BlockMeta | null)?.attrs?.values.step;
+    const stepAttr =
+      step === undefined ? '' : ` data-mds-step="${step === true ? 'auto' : String(step)}"`;
+    // ```mermaid は図にする（#71）。描けなければ（Chromium がないなど）コードのまま出す
+    const diagram =
+      lang === 'mermaid'
+        ? (env as RenderEnv | undefined)?.diagram?.({ lang, code: token.content })
+        : undefined;
+    if (diagram) {
+      const inner = diagramHtml(instance.utils.escapeHtml, diagram, 'Mermaid の図');
+      return `<div class="mds-media-group is-flex"><figure class="mds-media mds-media-diagram"${stepAttr}><div class="mds-media-frame">${inner}</div></figure></div>\n`;
+    }
     const highlight = (env as RenderEnv | undefined)?.highlight;
     const colored =
       highlight && lang && !FIGURE_LANGS.has(lang) ? highlight(token.content, lang) : undefined;
@@ -155,9 +168,8 @@ function renderRules(instance: MarkdownIt): void {
       env,
       renderer,
     );
-    const step = (tokens[idx]!.meta as BlockMeta | null)?.attrs?.values.step;
     if (step === undefined) return html;
-    return html.replace(/^<pre/, `<pre data-mds-step="${step === true ? 'auto' : String(step)}"`);
+    return html.replace(/^<pre/, `<pre${stepAttr}`);
   };
 
   rules.image = (tokens, idx, _options, env) =>

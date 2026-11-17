@@ -15,7 +15,7 @@ sections
       - code[mermaid]  L34-L39
     ## Mermaid：ファイルを参照する  L41-L43  #mermaidファイルを参照する
       - paragraph  L43
-          image ./assets/flow.mmd alt="処理の流れ"
+          diagram ./assets/flow.mmd alt="処理の流れ"
     ## Mermaid：構文エラー  L45-L53  #mermaid構文エラー
       - code[mermaid]  L47-L51
       - paragraph  L53
