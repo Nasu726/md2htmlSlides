@@ -499,9 +499,45 @@ body { margin: 0; background: #d1d5db; }
 /* 縮小しても収まらなかったスライド（M2 の自動分割までの目印。debug のときだけ表示） */
 .mds-deck[data-debug] .mds-slide[data-overflow] { outline: 4px dashed #dc2626; outline-offset: -4px; }
 
+/* 印刷のときだけ出す、埋め込み動画の代わり（サムネイルとリンク） */
+.mds-print-link { display: none; }
+
+/*
+ * 印刷・PDF（設計プラン §10、S5 #69）。1スライド＝1ページ（@page の大きさは描画のときに入れる）。
+ */
 @media print {
-  body { background: none; }
+  html, body { margin: 0; background: none; }
   .mds-deck { display: block; padding: 0; }
-  .mds-slide { box-shadow: none; break-after: page; }
+  /* 最後のスライドの後に白いページを作らないよう、2枚目からページの前で区切る。
+     影はテーマ（dark など）が付けていても消す（PDF でページ全体のぼかし画像になるため） */
+  .mds-slide { box-shadow: none !important; break-inside: avoid; }
+  .mds-slide ~ .mds-slide { break-before: page; }
+  /* プレビューに出している「隠したスライド」と、収まらない印は印刷しない */
+  .mds-slide[data-hidden] { display: none; }
+  .mds-deck[data-debug] .mds-slide[data-overflow] { outline: none; }
+  /* 段階的表示は最終状態にする。ステップごとのページでは data-step-print-hidden で隠す */
+  [data-step][data-step-hidden], .mds-step-group[data-step-hidden] > * { visibility: visible; opacity: 1; }
+  .mds-slide [data-step][data-step-print-hidden] { visibility: hidden !important; }
+  /* 動画は操作ボタンを出さない（ポスターか最初のフレームだけ） */
+  video::-webkit-media-controls { display: none !important; }
+  /* YouTube・Vimeo の埋め込みは、サムネイルとリンクに置き換える */
+  .mds-media-frame > iframe { display: none; }
+  .mds-print-link, .mds-body a.mds-print-link {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    background: #000 center / cover no-repeat;
+    color: #fff;
+    text-decoration: none;
+    border-radius: var(--mds-radius);
+  }
+  .mds-print-link > span {
+    margin: 0.6em;
+    padding: 0.3em 0.7em;
+    border-radius: 6px;
+    background: rgb(0 0 0 / 0.72);
+    font-size: 0.6em;
+    overflow-wrap: anywhere;
+  }
 }
 `;

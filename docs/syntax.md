@@ -73,10 +73,11 @@ theme: clean
 | `footer` | 文字列 | — | 全スライド共通のフッター |
 | `accent` | 色 | テーマ依存 | アクセントカラーだけを差し替える |
 | `css` | パス | — | カスタムCSS（上級者向け） |
+| `pdf` | `{ steps: final \| each }` | `{ steps: final }` | PDF の書き出し。`each` ならステップごとに別のページにする（§5.5） |
 
 ### 1.2 後から追加する予定のキー
 
-`toc`（目次スライド）、`breadcrumb`（章名の表示）、`continuation`（続きスライドの見出し表示）、`fit`（あふれたときの方針）、`transition`、`fonts`、`colors`（配色一式）、`background`（全スライドの既定背景）、`math`、`mermaid`、`code`、`pdf`、`html`（生HTMLを許可するか）。
+`toc`（目次スライド）、`breadcrumb`（章名の表示）、`continuation`（続きスライドの見出し表示）、`fit`（あふれたときの方針）、`transition`、`fonts`、`colors`（配色一式）、`background`（全スライドの既定背景）、`math`、`mermaid`、`code`、`html`（生HTMLを許可するか）。
 
 ---
 
@@ -362,6 +363,15 @@ console.log(c);
 ### 5.5 PDF での扱い
 
 既定ではすべてを表示した状態を1ページにする。`pdf: { steps: each }` を指定すると、ステップごとに別のページへ展開する。
+
+```sh
+mds pdf deck.md -o deck.pdf           # 1スライド＝1ページ（最終状態）
+mds pdf deck.md -o deck.pdf --steps   # ステップごとのページ（pdf: { steps: each } と同じ）
+```
+
+- 動画はポスター画像（なければ最初のフレーム）、YouTube・Vimeo はサムネイルとリンクにする。
+- 発表者ノートは入れない。
+- `mds dev` のプレビューをブラウザで印刷しても、同じ1スライド＝1ページになる（隠したスライドは除く）。
 
 ---
 

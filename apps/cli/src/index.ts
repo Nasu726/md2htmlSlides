@@ -4,12 +4,14 @@ import { relative } from 'node:path';
 import { parseArgs } from 'node:util';
 import { build, formatDiagnostic } from './build.js';
 import { startDev } from './dev.js';
+import { pdf } from './pdf.js';
 
 export { build, checkOverflow, formatDiagnostic, renderFile, type BuildResult } from './build.js';
 export { ChromiumMeasurer } from './measurer.js';
 export { createAssets, type Assets } from './assets.js';
 export { startDev, type DevServer } from './dev.js';
 export { codeHighlighter, codeLanguages } from './highlight.js';
+export { pdf, type PdfOptions, type PdfResult } from './pdf.js';
 
 export interface RunResult {
   code: number;
@@ -22,6 +24,8 @@ export const HELP = `mds — Markdown から HTML スライドを作る
 使い方:
   mds build <file.md> [-o <dir>]   静的な HTML を書き出す（既定の書き出し先は dist/）
         --no-measure               ヘッドレス Chromium での計測（自動分割と確認）を省く
+  mds pdf <file.md> [-o <file.pdf>]  PDF を書き出す（1スライド＝1ページ。既定は資料と同じ名前の .pdf）
+        --steps                    段階的表示をステップごとのページにする（pdf: { steps: each } と同じ）
   mds dev <file.md> [-p <port>]    プレビューを開き、保存するたびに反映する（既定のポートは 3000）
         --host <host>              待ち受けるアドレス（既定は 127.0.0.1）
   mds --version                    バージョンを表示する
@@ -54,7 +58,7 @@ export function run(argv: readonly string[]): RunResult {
 /** コマンドを実行して、終了コードを返す。dev はサーバーを止めるまで戻らない。 */
 export async function main(argv: readonly string[], io: Io = defaultIo): Promise<number> {
   const [command, ...rest] = argv;
-  if (command !== 'build' && command !== 'dev') {
+  if (command !== 'build' && command !== 'dev' && command !== 'pdf') {
     const result = run(argv);
     io.out(result.stdout);
     io.err(result.stderr);
@@ -93,6 +97,25 @@ export async function main(argv: readonly string[], io: Io = defaultIo): Promise
     return 0;
   }
 
+  if (command === 'pdf') {
+    const started = performance.now();
+    const out = args.values.out ?? file.replace(/\.(md|markdown)$/i, '') + '.pdf';
+    const result = await pdf(file, {
+      out,
+      measure: !args.values['no-measure'],
+      ...(args.values.steps ? { steps: true } : {}),
+    });
+    for (const diagnostic of result.diagnostics) io.err(`${formatDiagnostic(file, diagnostic)}\n`);
+    if (result.error) {
+      io.err(`mds pdf: ${result.error}\n`);
+      return 1;
+    }
+    const seconds = ((performance.now() - started) / 1000).toFixed(1);
+    const size = (result.bytes / 1024 / 1024).toFixed(1);
+    io.out(`✓ ${out}（${result.pages} ページ、${size} MB、${seconds} 秒）\n`);
+    return 0;
+  }
+
   const port = args.values.port === undefined ? 3000 : Number(args.values.port);
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
     io.err(`mds dev: ポートの番号が正しくありません: ${args.values.port}\n`);
@@ -120,6 +143,7 @@ function parseCommand(args: string[]) {
     options: {
       out: { type: 'string', short: 'o' },
       'no-measure': { type: 'boolean' },
+      steps: { type: 'boolean' },
       port: { type: 'string', short: 'p' },
       host: { type: 'string' },
     },

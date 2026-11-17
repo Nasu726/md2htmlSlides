@@ -71,7 +71,8 @@ export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): st
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(meta.title ?? slides[0]?.heading?.text ?? 'Slides')}</title>
-<style>${options.fontCss ? `${options.fontCss}\n` : ''}${BASE_CSS}${themeCss(meta.theme)}${custom}</style>
+<style>${options.fontCss ? `${options.fontCss}\n` : ''}@page { size: ${width}px ${height}px; margin: 0; }
+${BASE_CSS}${themeCss(meta.theme)}${custom}</style>
 </head>
 <body>
 <main class="mds-deck theme-${meta.theme}" style="${style.join(';')}"${options.debug ? ' data-debug=""' : ''}>

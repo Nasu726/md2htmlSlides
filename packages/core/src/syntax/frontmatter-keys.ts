@@ -14,7 +14,9 @@ export type ValueSpec =
   | { type: 'path' }
   | { type: 'color' }
   /** 文字列・文字列の配列・`{ name, affiliation }` の配列 */
-  | { type: 'authors' };
+  | { type: 'authors' }
+  /** `{ steps: final | each }`（PDF の書き出し。構文仕様 §5.5） */
+  | { type: 'pdf' };
 
 export interface FrontmatterKey {
   name: string;
@@ -136,6 +138,12 @@ export const FRONTMATTER_KEYS: readonly FrontmatterKey[] = [
     docAnchor: MVP,
   },
   { name: 'css', summary: 'カスタムCSS（上級者向け）', value: { type: 'path' }, docAnchor: MVP },
+  {
+    name: 'pdf',
+    summary: 'PDF の書き出し（steps: each でステップごとのページにする）',
+    value: { type: 'pdf' },
+    docAnchor: 'syntax.md#55-pdf-での扱い',
+  },
 ];
 
 export const FRONTMATTER_KEY_NAMES: readonly string[] = FRONTMATTER_KEYS.map((key) => key.name);

@@ -27,7 +27,7 @@ export class ChromiumMeasurer {
 
   /** ブラウザ（起動できなければ undefined）。収まらないスライドの確認にも使う。 */
   browser(): Promise<Browser | undefined> {
-    this.browserPromise ??= launch().then((result) => {
+    this.browserPromise ??= launchChromium().then((result) => {
       if ('error' in result) {
         this.error = result.error;
         return undefined;
@@ -151,7 +151,8 @@ export class ChromiumMeasurer {
   }
 }
 
-async function launch(): Promise<{ browser: Browser } | { error: string }> {
+/** ヘッドレス Chromium を起動する（Playwright の Chromium、なければ PC の Chrome） */
+export async function launchChromium(): Promise<{ browser: Browser } | { error: string }> {
   let chromium: typeof import('playwright-core').chromium;
   try {
     ({ chromium } = await import('playwright-core'));
