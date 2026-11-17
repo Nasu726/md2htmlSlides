@@ -1,5 +1,5 @@
 slideLevel: 2
-slides: 16
+slides: 18
   1. [content] ## キャプション付きの画像  L7-L9  #キャプション付きの画像
        image×1
   2. [content] ## SVG の画像  L11-L15  #svg-の画像
@@ -20,15 +20,19 @@ slides: 16
        image×1, paragraph
  10. [content] ## 背景を contain で収める  L55-L59  #背景を-contain-で収める
        image×1, paragraph
- 11. [content] ## 左半分を画像にする  L61-L69  #左半分を画像にする
+ 11. [content] ## 背景の残す位置を選ぶ  L61-L65  #背景の残す位置を選ぶ
+       image×1, paragraph
+ 12. [content] ## 背景を収めて帯をぼかす  L67-L71  #背景を収めて帯をぼかす
+       image×1, paragraph
+ 13. [content] ## 左半分を画像にする  L73-L81  #左半分を画像にする
        image×1, paragraph, list
- 12. [content] ## 右半分を画像にする  L71-L75  #右半分を画像にする
+ 14. [content] ## 右半分を画像にする  L83-L87  #右半分を画像にする
        image×1, paragraph
- 13. [content] ## 背景の動画  L77-L81  #背景の動画
+ 15. [content] ## 背景の動画  L89-L93  #背景の動画
        image×1, paragraph
- 14. [content] ## 背景と内容の多いスライド  L83-L100  #背景と内容の多いスライド
+ 16. [content] ## 背景と内容の多いスライド  L95-L112  #背景と内容の多いスライド
        image×1, paragraph, list, paragraph
- 15. [content] ## 代替テキストのない画像  L102-L106  #代替テキストのない画像
+ 17. [content] ## 代替テキストのない画像  L114-L118  #代替テキストのない画像
        image×1, paragraph
- 16. [content] ## 存在しない画像  L108-L112  #存在しない画像
+ 18. [content] ## 存在しない画像  L120-L124  #存在しない画像
        image×1, paragraph

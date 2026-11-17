@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAttrs, parseAttrs } from './attrs.js';
+import { cssPosition, formatAttrs, isPosition, parseAttrs } from './attrs.js';
 
 describe('parseAttrs', () => {
   it('キー・値・クラス・ID を読む', () => {
@@ -55,5 +55,26 @@ describe('formatAttrs', () => {
   it('{…} の形に戻す', () => {
     const result = parseAttrs('{.a #b layout=split caption="x y" keep}');
     expect(result.ok && formatAttrs(result.attrs)).toBe('{#b .a layout=split caption="x y" keep}');
+  });
+});
+
+describe('pos= と fill=（#64）', () => {
+  it('pos= は1方向・2方向・割合を受け付け、CSS の位置に直す', () => {
+    for (const value of ['top', 'center', 'bottom-right', '30%', '30% 20%', '12.5% 0%']) {
+      expect(isPosition(value), value).toBe(true);
+    }
+    for (const value of ['middle', 'top-bottom', 'left-top', '30', '30% 20% 10%', 'top left']) {
+      expect(isPosition(value), value).toBe(false);
+    }
+    expect(cssPosition('top')).toBe('top');
+    expect(cssPosition('top-left')).toBe('top left');
+    expect(cssPosition('30%   20%')).toBe('30% 20%');
+  });
+
+  it('正しくない pos= と fill= は除き、invalid に入れる', () => {
+    const ok = parseAttrs('{bg pos="30% 20%" fill=blur}');
+    expect(ok.ok && ok.attrs.values).toEqual({ bg: true, pos: '30% 20%', fill: 'blur' });
+    const bad = parseAttrs('{bg pos=middle fill=white}');
+    expect(bad.ok && bad.invalid.map((i) => i.key)).toEqual(['pos', 'fill']);
   });
 });

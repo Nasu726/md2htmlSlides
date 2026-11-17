@@ -85,7 +85,7 @@ describe('checkMediaFiles', () => {
     const deck = parseDeck(readFileSync(new URL('07-media.md', fixtures), 'utf8'));
     const probe = (path: string) => ({ exists: existsSync(new URL(path, fixtures)) });
     expect(checkMediaFiles(deck, probe).map((d) => [d.code, d.line])).toEqual([
-      ['media/not-found', 110],
+      ['media/not-found', 122],
     ]);
   });
 });

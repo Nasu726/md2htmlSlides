@@ -1,8 +1,10 @@
 /**
  * スライドの背景（構文仕様 §6.2）：`{bg}`・`{bg=left}`・`{bg=right}` の画像・動画。
- * `dim=`（暗くする）・`blur=`（ぼかす）・`fit=contain`（切り取らずに収める）を反映し、
+ * `dim=`（暗くする）・`blur=`（ぼかす）・`fit=contain`（切り取らずに収める）・
+ * `pos=`（切り取る・収めるときに残す位置）・`fill=blur`（収めたときの帯をぼかした画像で埋める）を反映し、
  * 全面の背景では、背景の明るさから文字色（明るい文字／暗い文字）を選ぶ。
  */
+import { cssPosition, isPosition } from '../attrs.js';
 import type { Block, MediaRef } from '../ir.js';
 import { md } from '../md/instance.js';
 import type { RenderEnv } from '../md/media.js';
@@ -56,7 +58,12 @@ export function renderBackground(
   const values = media.attrs?.values ?? {};
   const url = env.assetUrl ? env.assetUrl(media.src) : media.src;
   const blur = typeof values.blur === 'string' ? Number(values.blur) : 0;
-  const contain = values.fit === 'contain';
+  // fill=blur は「帯をぼかした画像で埋めて、全体を収める」なので、fit=contain になる
+  const fillBlur = values.fill === 'blur' && values.fit !== 'cover';
+  const contain = values.fit === 'contain' || fillBlur;
+  // 切り取る・収めるときに残す位置（pos=）
+  const pos =
+    typeof values.pos === 'string' && isPosition(values.pos) ? cssPosition(values.pos) : '';
 
   // 明るさ（0〜1）。CLI がブラウザで測って probe で渡す
   let path = media.src;
@@ -79,15 +86,27 @@ export function renderBackground(
 
   const filter = blur > 0 ? `filter:blur(${blur}px);transform:scale(1.04);` : '';
   const cssUrl = url.replace(/["'()\\\s]/g, (c) => encodeURIComponent(c));
-  const layer =
-    mediaKind(media.src) === 'video'
-      ? `<video class="mds-bg-media" src="${esc(url)}" style="${filter}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`
-      : `<div class="mds-bg-media" style="background-image:url('${esc(cssUrl)}');${filter}"></div>`;
+  const video = mediaKind(media.src) === 'video';
+  const place = pos ? (video ? `object-position:${pos};` : `background-position:${pos};`) : '';
+  const layer = video
+    ? `<video class="mds-bg-media" src="${esc(url)}" style="${filter}${place}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`
+    : `<div class="mds-bg-media" style="background-image:url('${esc(cssUrl)}');${filter}${place}"></div>`;
+  // 帯を埋める、ぼかした同じ画像・動画（全面を覆うように拡大して、後ろに置く）
+  const fill = !fillBlur
+    ? ''
+    : video
+      ? `<video class="mds-bg-fill" src="${esc(url)}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`
+      : `<div class="mds-bg-fill" style="background-image:url('${esc(cssUrl)}')"></div>`;
   const overlay =
     dim !== undefined && dim > 0 ? `<div class="mds-bg-dim" style="opacity:${dim}"></div>` : '';
-  const classes = ['mds-bg', `mds-bg-${position}`, ...(contain ? ['fit-contain'] : [])];
+  const classes = [
+    'mds-bg',
+    `mds-bg-${position}`,
+    ...(contain ? ['fit-contain'] : []),
+    ...(fillBlur ? ['fill-blur'] : []),
+  ];
   return {
-    html: `<div class="${classes.join(' ')}">${layer}${overlay}</div>\n`,
+    html: `<div class="${classes.join(' ')}">${fill}${layer}${overlay}</div>\n`,
     classes: [`has-bg-${position}`, ...(tone ? [`bg-tone-${tone}`] : [])],
   };
 }
