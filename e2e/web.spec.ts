@@ -1,6 +1,13 @@
 import { build } from '@mds/cli';
 import { expect, test, type Page } from '@playwright/test';
-import { createReadStream, existsSync, mkdtempSync, readFileSync, statSync } from 'node:fs';
+import {
+  createReadStream,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { extname, join, normalize } from 'node:path';
@@ -213,4 +220,60 @@ test('フォルダを開くと、一覧から資料を選べ、相対パスの�
     return (await (await dir.getFileHandle('slides.md')).getFile()).text();
   });
   expect(saved).toContain('## 保存したスライド');
+});
+
+test('プレビューでも、コードの色分け・数式・Mermaid を書き出しと同じように描く（#84）', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(origin);
+  await page
+    .getByTestId('file-input')
+    .setInputFiles(['09-embeds.md', 'assets/flow.mmd'].map((name) => join(fixtures, name)));
+  await expect(page.locator('.doc-name')).toHaveText('09-embeds.md');
+  // フローチャート・シーケンス図・文章と並べる・ファイル参照・とても大きな図。構文エラーは枠
+  await expect(preview(page).locator('.mds-diagram.has-ratio')).toHaveCount(5, { timeout: 20_000 });
+  await expect(preview(page).locator('.mds-diagram-error')).toHaveCount(1);
+  await expect(preview(page).locator('.mds-slide .katex').first()).toBeVisible();
+  await expect(preview(page).locator('pre code span[style]').first()).toBeVisible();
+  // 数式は KaTeX のフォントで描く
+  await expect
+    .poll(() =>
+      preview(page)
+        .locator('body')
+        .evaluate(() =>
+          [...document.fonts].some((f) => f.family === 'KaTeX_Main' && f.status === 'loaded'),
+        ),
+    )
+    .toBe(true);
+  // 構文エラーは、警告の一覧に行番号付きで出る（mds build と同じ 50 行目）
+  await page.getByRole('button', { name: /警告/ }).click();
+  const warning = page.locator('.warnings li').first();
+  await expect(warning).toContainText('50 行');
+  await expect(warning).toContainText('Mermaid の図を描けません');
+});
+
+test('Mermaid を書いている途中で構文エラーになっても、最後に描けた図を出したままにする（#84）', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(origin);
+  const dir = mkdtempSync(join(tmpdir(), 'mds-web-mermaid-'));
+  const md = join(dir, 'flow.md');
+  writeFileSync(md, '## 図\n\n```mermaid\nflowchart LR\n  A --> B\n```\n');
+  await page.getByTestId('file-input').setInputFiles([md]);
+  const svg = preview(page).locator('.mds-diagram svg');
+  await expect(svg).toHaveCount(1, { timeout: 20_000 });
+  await expect(svg).toContainText('B');
+  // 「A --> B」の後ろに「 -->」だけを足す（書きかけで、構文エラーになる）
+  await page.locator('.cm-line', { hasText: 'A --> B' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' -->');
+  await expect(page.getByRole('button', { name: /警告/ })).toHaveText('警告 1 件');
+  await expect(svg).toHaveCount(1);
+  await expect(preview(page).locator('.mds-diagram-error')).toHaveCount(0);
+  // 書き終えると、新しい図になる
+  await page.keyboard.type(' C');
+  await expect(svg).toContainText('C');
+  await expect(page.getByRole('button', { name: /警告/ })).toHaveText('警告 0 件');
 });

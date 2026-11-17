@@ -20,7 +20,8 @@ import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createAssets, registerDeckAssets, type Assets } from './assets.js';
 import { FONT_HOST, codeText, linkedFontCss, subsetFontCss, visibleText } from './fonts.js';
-import { codeHighlighter, codeLanguages } from './highlight.js';
+import { collectMermaid, diagramDiagnostic, normalizeCode } from '@mds/embeds';
+import { codeHighlighter, codeLanguages } from '@mds/embeds/highlight';
 import {
   linkedMathFontCss,
   mathDiagnostics,
@@ -129,7 +130,10 @@ export async function renderFile(
 
   // Mermaid の図（#71）：ヘッドレス Chromium で SVG にしておき、描画では結果を返すだけにする
   if (measurer) {
-    const found = collectMermaid(source, deck, assets.root);
+    const found = collectMermaid(source, deck, (src) => {
+      const file = resolve(assets.root, src);
+      return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
+    });
     if (found.length > 0) {
       const results = await measurer.diagrams(
         emptyPage(),
@@ -187,49 +191,6 @@ export async function renderFile(
     diagnostics,
     ...(fontBytes !== undefined ? { fontBytes } : {}),
     ...(cssFile ? { cssFile } : {}),
-  };
-}
-
-/** 図にする Mermaid のコード（```mermaid と、`![](flow.mmd)` で参照するファイル） */
-interface MermaidSource {
-  code: string;
-  /** コードブロックの開始の行（```mermaid の行）、またはファイルを参照した行 */
-  line: number;
-  /** ファイルを参照したとき（資料のフォルダからのパス） */
-  src?: string;
-}
-
-function collectMermaid(source: string, deck: Deck, root: string): MermaidSource[] {
-  const found: MermaidSource[] = [];
-  const fence = /^([ \t]*)(`{3,}|~{3,})[ \t]*mermaid\b[^\n]*\n([\s\S]*?)^\1\2[ \t]*$/gm;
-  for (const m of source.matchAll(fence)) {
-    found.push({ code: m[3]!, line: source.slice(0, m.index).split('\n').length });
-  }
-  for (const media of collectMedia(deck)) {
-    if (media.kind !== 'diagram' || !isLocalPath(media.src)) continue;
-    const src = decodeSrc(media.src);
-    const file = resolve(root, src);
-    if (!existsSync(file)) continue;
-    found.push({ code: readFileSync(file, 'utf8'), line: media.line, src });
-  }
-  return found;
-}
-
-/** コードブロックの中身と、markdown-it が渡す中身を同じキーにする（末尾の空白・改行を除く） */
-const normalizeCode = (code: string) => code.replace(/\s+$/, '');
-
-/** Mermaid の構文エラーの警告。「line N」があれば、コードブロックの中の行に直す */
-function diagramDiagnostic(item: MermaidSource, error: string): Diagnostic {
-  const first = error.split('\n')[0] ?? error;
-  const inner = Number(/line (\d+)/i.exec(first)?.[1]);
-  const lines = item.code.split('\n').length;
-  const line =
-    item.src === undefined && inner >= 1 && inner <= lines ? item.line + inner : item.line;
-  return {
-    severity: 'warning',
-    code: 'diagram/mermaid-error',
-    message: `Mermaid の図を描けません：${first}${item.src ? `（${item.src}）` : ''}`,
-    line,
   };
 }
 

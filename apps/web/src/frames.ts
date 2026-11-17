@@ -1,9 +1,10 @@
 import { fitSlides, measureJobs } from '@mds/core';
+import { renderMermaid } from '@mds/runtime';
 import { frameHost, type FrameMode } from './frame-host.js';
 
 /** iframe の中で frameHost を動かすスクリプト */
 export function hostScript(mode: FrameMode): string {
-  return `(${frameHost.toString()})(${JSON.stringify(mode)}, ${measureJobs.toString()}, ${fitSlides.toString()});`;
+  return `(${frameHost.toString()})(${JSON.stringify(mode)}, ${measureJobs.toString()}, ${fitSlides.toString()}, ${renderMermaid.toString()});`;
 }
 
 /** `</script>` を含んでも閉じないようにして、HTML の最後に入れる */

@@ -4,6 +4,7 @@
  *
  * - アプリの本体：入れたときに全部キャッシュし、キャッシュから返す（オフラインでも開ける）
  * - フォント：使ったものだけを、初めて読んだときにキャッシュする（日本語のフォントは大きいため）
+ * - 使うときに読み込むもの（Shiki の文法・KaTeX・Mermaid）：初めて読んだときにキャッシュする
  * - それ以外（`?src=` で開く Web 上の md など）：ネットワークから読む
  */
 const VERSION = '__VERSION__';
@@ -43,6 +44,19 @@ self.addEventListener('fetch', (event) => {
   if (path.startsWith('fonts/')) {
     event.respondWith(
       caches.open(FONTS).then(async (cache) => {
+        const hit = await cache.match(request);
+        if (hit) return hit;
+        const response = await fetch(request);
+        if (response.ok) await cache.put(request, response.clone());
+        return response;
+      }),
+    );
+    return;
+  }
+  // 使うときに読み込むもの（Shiki の文法・KaTeX・Mermaid など）：初めて読んだときにキャッシュする
+  if (path.startsWith('assets/') && !FILES.includes(path)) {
+    event.respondWith(
+      caches.open(APP).then(async (cache) => {
         const hit = await cache.match(request);
         if (hit) return hit;
         const response = await fetch(request);

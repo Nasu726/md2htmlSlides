@@ -16,6 +16,7 @@
   "exclude": ["src/sw.js", "src/**/*.test.ts"],
   "references": [
     { "path": "../../packages/core" },
+    { "path": "../../packages/embeds" },
     { "path": "../../packages/runtime" },
     { "path": "../../packages/themes" }
   ]

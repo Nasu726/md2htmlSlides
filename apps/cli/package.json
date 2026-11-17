@@ -18,12 +18,12 @@
     "@fontsource-variable/jetbrains-mono": "5.3.0",
     "@fontsource-variable/noto-sans-jp": "5.3.1",
     "@mds/core": "workspace:*",
+    "@mds/embeds": "workspace:*",
     "@mds/runtime": "workspace:*",
     "@mds/themes": "workspace:*",
     "katex": "0.19.1",
     "mermaid": "12.2.0",
     "playwright-core": "1.63.0",
-    "shiki": "4.6.0",
     "subset-font": "2.9.0"
   }
 }

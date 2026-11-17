@@ -10,7 +10,7 @@ export { build, checkOverflow, formatDiagnostic, renderFile, type BuildResult } 
 export { ChromiumMeasurer } from './measurer.js';
 export { createAssets, type Assets } from './assets.js';
 export { startDev, type DevServer } from './dev.js';
-export { codeHighlighter, codeLanguages } from './highlight.js';
+export { codeHighlighter, codeLanguages } from '@mds/embeds/highlight';
 export { pdf, type PdfOptions, type PdfResult } from './pdf.js';
 
 export interface RunResult {

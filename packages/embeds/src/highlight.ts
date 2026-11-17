@@ -6,6 +6,7 @@
  * 文字は変えずに span で囲むだけなので、コードの高さ（計測）は変わらない。
  */
 import type { CodeHighlighter } from '@mds/core';
+import { codeLanguages, FIGURE_LANGS } from './langs.js';
 import {
   bundledLanguages,
   createCssVariablesTheme,
@@ -20,19 +21,11 @@ const THEME = createCssVariablesTheme({
   variableDefaults: {},
   fontStyle: true,
 });
-/** 図として描くコード（構文仕様 §7）。色分けしない */
-const FIGURE = new Set(['mermaid', 'arch', 'math']);
 const FOREGROUND = 'var(--mds-code-foreground)';
 
 let shared: Promise<Highlighter> | undefined;
 
-/** 資料の中のコードブロックの言語名（```ts の ts） */
-export function codeLanguages(source: string): string[] {
-  const langs = Array.from(source.matchAll(/^[ \t]*(?:`{3,}|~{3,})[ \t]*([^\s`{]+)/gm), (m) =>
-    m[1]!.toLowerCase(),
-  );
-  return [...new Set(langs)];
-}
+export { codeLanguages };
 
 /**
  * 色分けの関数を作る。使う言語の文法だけを読み込む（Highlighter は使い回し、足りない文法だけを足す）。
@@ -42,7 +35,7 @@ export async function codeHighlighter(langs: Iterable<string>): Promise<CodeHigh
   const wanted = new Set(
     [...langs]
       .map((lang) => lang.toLowerCase())
-      .filter((lang) => !FIGURE.has(lang) && lang in bundledLanguages),
+      .filter((lang) => !FIGURE_LANGS.has(lang) && lang in bundledLanguages),
   );
   shared ??= createHighlighter({ themes: [THEME], langs: [] });
   const highlighter = await shared;

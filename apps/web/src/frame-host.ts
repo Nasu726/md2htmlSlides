@@ -18,6 +18,7 @@ export function frameHost(
   mode: FrameMode,
   measureJobs: (jobs: MeasureJob[]) => Measurement[],
   fitSlides: (root?: ParentNode) => void,
+  renderMermaid: (input: { codes: string[]; ids: string[] }) => Promise<unknown[]>,
 ): void {
   const doc = document;
   const win = window;
@@ -139,11 +140,14 @@ export function frameHost(
           url: string;
           family: string;
           weight: string;
+          style?: string;
           range: string;
           data: ArrayBuffer;
         }>;
       }
     | { id: number; type: 'assets'; assets: Array<[string, Blob]> }
+    | { id: number; type: 'script'; name: string; code: string }
+    | { id: number; type: 'diagrams'; codes: string[]; ids: string[] }
     | { id: number; type: 'measure'; jobs: MeasureJob[] }
     | { id: number; type: 'page'; html: string }
     | { id: number; type: 'update'; html: string }
@@ -159,6 +163,7 @@ export function frameHost(
           fonts.add(face.url);
           const font = new FontFace(face.family, face.data, {
             weight: face.weight,
+            style: face.style ?? 'normal',
             unicodeRange: face.range,
             display: 'block',
           });
@@ -177,6 +182,18 @@ export function frameHost(
         return { type: 'done' };
       case 'measure':
         return { type: 'measured', results: measureJobs(m.jobs) };
+      case 'script': {
+        // ライブラリ（Mermaid など）を、使うときに1回だけ読み込む
+        if (!doc.querySelector(`script[data-name="${m.name}"]`)) {
+          const script = doc.createElement('script');
+          script.dataset.name = m.name;
+          script.textContent = m.code;
+          doc.head.append(script);
+        }
+        return { type: 'done' };
+      }
+      case 'diagrams':
+        return { type: 'diagrams', results: await renderMermaid({ codes: m.codes, ids: m.ids }) };
       case 'page': {
         // 計測のページ：テーマ・縦横比・カスタム CSS を差し替える（フォントは読み込んだまま）
         const next = new DOMParser().parseFromString(m.html, 'text/html');

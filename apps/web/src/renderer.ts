@@ -4,17 +4,29 @@ import {
   checkMediaFiles,
   collectMedia,
   hashString,
+  isLocalPath,
   parseDeck,
   planSplit,
   renderDeckHtml,
   type Diagnostic,
+  type DiagramRenderer,
+  type DiagramResult,
   type Measurement,
+  type RenderEnv,
   type RenderOptions,
   type SlideDeck,
 } from '@mds/core';
+import { collectMermaid, diagramDiagnostic, mathDiagnostics, normalizeCode } from '@mds/embeds';
 import { RUNTIME_SCRIPT } from '@mds/runtime';
-import { AssetStore, noAssets } from './assets.js';
-import { embeddedFontCss, FontSender, visibleText } from './fonts.js';
+import { AssetStore, noAssets, normalizePath } from './assets.js';
+import {
+  katexFaces,
+  loadHighlighter,
+  loadMath,
+  loadMermaidScript,
+  type MathKit,
+} from './embeds.js';
+import { embeddedFontCss, facesFor, FontSender, visibleText, type WebFontFace } from './fonts.js';
 import { Frame, hostScript, scriptTag } from './frames.js';
 
 /** 描いている途中で、別の資料を開いた（その描画の結果は捨てる） */
@@ -50,7 +62,13 @@ export class Renderer {
   private measured = new Map<string, Measurement>();
   private sentAssets = new Set<string>();
   private assets = new AssetStore(noAssets);
-  private last: { slides: SlideDeck; options: RenderOptions; html: string } | undefined;
+  private last:
+    { slides: SlideDeck; options: RenderOptions; html: string; faces: WebFontFace[] } | undefined;
+  /** Mermaid の図（ページの CSS とコードのハッシュで覚える） */
+  private diagrams = new Map<string, DiagramResult>();
+  /** n 番目の図の、最後に描けた結果（入力中に構文エラーになっても、前の図を出したままにする。§7.2） */
+  private lastGood: DiagramResult[] = [];
+  private mermaidLoaded = false;
   /** 資料を開き直すたびに増える。描画の途中で変わったら、その描画をやめる */
   private generation = 0;
   /** プレビューで S を押した・発表を Esc で終えた、など */
@@ -86,6 +104,7 @@ export class Renderer {
     this.previewFonts.reset();
     this.sentAssets.clear();
     this.last = undefined;
+    this.lastGood = [];
     this.generation++;
   }
 
@@ -125,9 +144,32 @@ export class Renderer {
       ...(customCss !== undefined ? { customCss } : {}),
     };
 
-    // 自動分割：スライドを空にしたデッキの上で、原子の高さを測る
+    // コードの色分けと数式（#84）：使うときだけ読み込む
+    const highlight = await loadHighlighter(text);
+    if (highlight) options.highlight = highlight;
+    let math: MathKit | undefined;
+    if (deck.math) {
+      math = await loadMath();
+      options.math = math.engine.render;
+      options.libraryCss = math.css.layout;
+      diagnostics.push(...mathDiagnostics(deck, math.engine.render));
+    }
+    check();
+
+    // スライドを空にしたデッキ：計測と図に使う（テーマ・縦横比・カスタム CSS）
     const page = renderDeckHtml({ ...slides, slides: [] }, { ...options, fit: false });
-    const plan = planSplit(slides);
+
+    // Mermaid の図（#84）：計測用の iframe（テーマの CSS がある）で描く
+    const diagram = await this.renderDiagrams(text, deck, page, diagnostics);
+    if (diagram) options.diagram = diagram;
+    check();
+
+    // 自動分割：スライドを空にしたデッキの上で、原子の高さを測る（図と数式を描いた後の大きさで）
+    const env: RenderEnv = {
+      ...(options.diagram ? { diagram: options.diagram } : {}),
+      ...(options.math ? { math: options.math } : {}),
+    };
+    const plan = planSplit(slides, env);
     if (plan.jobs.length > 0) {
       await this.setMeasurePage(page);
       const css = hashString(page);
@@ -139,8 +181,10 @@ export class Renderer {
         const chars = visibleText(
           missing.flatMap((j) => [j.skeleton, ...j.atoms, ...j.heads]).join(' '),
         );
-        const faces = await this.measureFonts.pending(chars);
-        if (faces.length > 0) await this.measure.request({ type: 'fonts', faces });
+        await this.sendFonts(this.measure, this.measureFonts, [
+          ...facesFor(chars),
+          ...(math ? katexFaces(math) : []),
+        ]);
         const reply = await this.measure.request<{
           id: number;
           type: string;
@@ -175,8 +219,8 @@ export class Renderer {
       await this.assets.ensure(late);
       return this.render(text, false);
     }
-    const faces = await this.previewFonts.pending(visibleText(html));
-    if (faces.length > 0) await this.preview.request({ type: 'fonts', faces });
+    const faces = [...facesFor(visibleText(html)), ...(math ? katexFaces(math) : [])];
+    await this.sendFonts(this.preview, this.previewFonts, faces);
     const assets = this.assets.blobs().filter(([key]) => !this.sentAssets.has(key));
     if (assets.length > 0) {
       await this.preview.request({ type: 'assets', assets });
@@ -184,13 +228,85 @@ export class Renderer {
     }
     await this.preview.request({ type: 'update', html });
     check();
-    this.last = { slides, options, html };
+    this.last = { slides, options, html, faces };
     diagnostics.sort((a, b) => a.line - b.line);
     return {
       slides: slides.slides.filter((s) => !s.hidden).length,
       diagnostics,
       ms: performance.now() - started,
     };
+  }
+
+  /** まだ送っていないフォントを、iframe に送る */
+  private async sendFonts(frame: Frame, sender: FontSender, faces: WebFontFace[]): Promise<void> {
+    const pending = await sender.pending(faces);
+    if (pending.length > 0) await frame.request({ type: 'fonts', faces: pending });
+  }
+
+  /**
+   * Mermaid の図を描き、描いた結果を返す関数を作る。構文エラーは警告にし、前に描けた図があればそれを出す。
+   * 図がなければ undefined。
+   */
+  private async renderDiagrams(
+    text: string,
+    deck: ReturnType<typeof parseDeck>,
+    page: string,
+    diagnostics: Diagnostic[],
+  ): Promise<DiagramRenderer | undefined> {
+    // `.mmd` のファイルを先に読んでおく
+    const files = new Map<string, string>();
+    for (const media of collectMedia(deck)) {
+      if (media.kind !== 'diagram' || !isLocalPath(media.src)) continue;
+      const content = await this.assets.text(media.src);
+      if (content !== undefined) files.set(normalizePath(media.src), content);
+    }
+    const found = collectMermaid(text, deck, (src) => files.get(normalizePath(src)));
+    if (found.length === 0) return undefined;
+
+    await this.setMeasurePage(page);
+    const css = hashString(page);
+    const key = (code: string) => hashString(`${css}\n${code}`);
+    const missing = [...new Set(found.map((item) => item.code))].filter(
+      (code) => !this.diagrams.has(key(code)),
+    );
+    if (missing.length > 0) {
+      if (!this.mermaidLoaded) {
+        await this.measure.request({
+          type: 'script',
+          name: 'mermaid',
+          code: await loadMermaidScript(),
+        });
+        this.mermaidLoaded = true;
+      }
+      // 図の中の文字の幅を正しく測れるよう、その文字のフォントを先に渡す
+      await this.sendFonts(this.measure, this.measureFonts, facesFor(missing.join(' ')));
+      const reply = await this.measure.request<{
+        id: number;
+        type: string;
+        results?: DiagramResult[];
+      }>({ type: 'diagrams', codes: missing, ids: missing.map((code) => `mds-m-${key(code)}`) });
+      missing.forEach((code, i) => {
+        const result = reply.results?.[i];
+        if (result) this.diagrams.set(key(code), result);
+      });
+    }
+
+    const byCode = new Map<string, DiagramResult>();
+    const bySrc = new Map<string, DiagramResult>();
+    found.forEach((item, i) => {
+      let result = this.diagrams.get(key(item.code));
+      if (!result) return;
+      if ('error' in result) {
+        diagnostics.push(diagramDiagnostic(item, result.error));
+        result = this.lastGood[i] ?? result;
+      } else {
+        this.lastGood[i] = result;
+      }
+      if (item.src !== undefined) bySrc.set(normalizePath(item.src), result);
+      else byCode.set(normalizeCode(item.code), result);
+    });
+    return (input) =>
+      'src' in input ? bySrc.get(normalizePath(input.src)) : byCode.get(normalizeCode(input.code));
   }
 
   /** 計測のページ（テーマ・縦横比・カスタム CSS）。変わったときだけ送る */
@@ -226,12 +342,12 @@ export class Renderer {
    */
   async presentHtml(slide: string): Promise<string | undefined> {
     if (!this.last) return undefined;
-    const { slides, options, html } = this.last;
+    const { slides, options, faces } = this.last;
     const setup = `document.querySelector('.mds-deck')?.setAttribute('data-exit-message', '');
 location.hash = ${JSON.stringify(`#/${encodeURIComponent(slide)}`)};`;
     return renderDeckHtml(slides, {
       ...options,
-      fontCss: await embeddedFontCss(visibleText(html)),
+      fontCss: await embeddedFontCss(faces),
       scripts: [setup, RUNTIME_SCRIPT, hostScript('present')],
     });
   }

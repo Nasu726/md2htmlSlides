@@ -11,6 +11,8 @@ import faces from 'virtual:mds-fonts';
 export interface WebFontFace {
   family: string;
   weight: string;
+  /** 斜体（KaTeX の KaTeX_Math など）。なければ normal */
+  style?: string;
   range: string;
   url: string;
 }
@@ -78,9 +80,9 @@ export function fontData(face: WebFontFace): Promise<ArrayBuffer> {
 export class FontSender {
   private sent = new Set<string>();
 
-  /** 送るもの（まだ送っていない分割ファイルのデータ） */
-  async pending(text: string) {
-    const faces = facesFor(text).filter((face) => !this.sent.has(face.url));
+  /** 送るもの（まだ送っていないフォントのデータ） */
+  async pending(wanted: WebFontFace[]) {
+    const faces = wanted.filter((face) => !this.sent.has(face.url));
     const loaded = await Promise.all(
       faces.map(async (face) => {
         try {
@@ -101,9 +103,9 @@ export class FontSender {
 }
 
 /** 発表用：フォントを data: URL の @font-face にする（発表者ビューの別ウィンドウでも効くように） */
-export async function embeddedFontCss(text: string): Promise<string> {
+export async function embeddedFontCss(faces: WebFontFace[]): Promise<string> {
   const rules = await Promise.all(
-    facesFor(text).map(async (face) => {
+    faces.map(async (face) => {
       try {
         const url = await new Promise<string>((resolve, reject) => {
           void fontData(face).then((data) => {
@@ -113,7 +115,7 @@ export async function embeddedFontCss(text: string): Promise<string> {
             reader.readAsDataURL(new Blob([data], { type: 'font/woff2' }));
           }, reject);
         });
-        return `@font-face{font-family:'${face.family}';font-style:normal;font-display:block;font-weight:${face.weight};src:url(${url}) format('woff2');unicode-range:${face.range};}`;
+        return `@font-face{font-family:'${face.family}';font-style:${face.style ?? 'normal'};font-display:block;font-weight:${face.weight};src:url(${url}) format('woff2');unicode-range:${face.range};}`;
       } catch {
         return '';
       }
@@ -122,15 +124,4 @@ export async function embeddedFontCss(text: string): Promise<string> {
   return rules.filter(Boolean).join('\n');
 }
 
-/** HTML の中の、画面に出る文字（タグとスタイル・スクリプトの中は除く） */
-export function visibleText(html: string): string {
-  return html
-    .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, '')
-    .replace(/<[^>]*>/g, '')
-    .replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi, (_, entity: string) => {
-      const e = entity.toLowerCase();
-      if (e.startsWith('#x')) return String.fromCodePoint(parseInt(e.slice(2), 16));
-      if (e.startsWith('#')) return String.fromCodePoint(Number(e.slice(1)));
-      return { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' }[e] ?? '';
-    });
-}
+export { visibleText } from '@mds/embeds';
