@@ -1,0 +1,22 @@
+{
+  "name": "@mds/embeds",
+  "version": "0.0.0",
+  "private": true,
+  "description": "コードの色分け・数式・図（Shiki・KaTeX・Mermaid）。CLI と Web エディタで同じものを使う",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./highlight": {
+      "types": "./dist/highlight.d.ts",
+      "default": "./dist/highlight.js"
+    }
+  },
+  "dependencies": {
+    "@mds/core": "workspace:*",
+    "katex": "0.19.1",
+    "shiki": "4.6.0"
+  }
+}

@@ -53,10 +53,19 @@ function fontFiles(): FontFile[] {
   });
 }
 
+/** KaTeX のフォント（数式。#84）。`fonts/katex/KaTeX_Main-Regular.woff2` に置く */
+function katexFontFiles(): Array<{ url: string; file: string }> {
+  const dir = join(dirname(require.resolve('katex/dist/katex.min.css')), 'fonts');
+  return readdirSync(dir)
+    .filter((name) => name.endsWith('.woff2'))
+    .map((name) => ({ url: `fonts/katex/${name}`, file: join(dir, name) }));
+}
+
 /** フォントの一覧（virtual:mds-fonts）と、フォントのファイル */
 function mdsFonts(): Plugin {
   const id = 'virtual:mds-fonts';
   const files = fontFiles();
+  const katex = katexFontFiles();
   return {
     name: 'mds-fonts',
     resolveId: (source) => (source === id ? `\0${id}` : undefined),
@@ -68,14 +77,14 @@ function mdsFonts(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const path = decodeURIComponent((req.url ?? '').split('?')[0]!.replace(/^\//, ''));
-        const face = files.find((f) => f.url === path);
+        const face = files.find((f) => f.url === path) ?? katex.find((f) => f.url === path);
         if (!face) return next();
         res.setHeader('content-type', 'font/woff2');
         res.end(readFileSync(face.file));
       });
     },
     generateBundle() {
-      for (const face of files) {
+      for (const face of [...files, ...katex]) {
         this.emitFile({ type: 'asset', fileName: face.url, source: readFileSync(face.file) });
       }
     },
@@ -100,9 +109,26 @@ function serviceWorker(): Plugin {
           const path = join(dir, name);
           return statSync(path).isDirectory() ? walk(path) : [path];
         });
+      // 最初に読み込むもの（入口のスクリプトと、そこから静的に読み込むもの）だけを先にキャッシュする。
+      // Shiki の文法・KaTeX・Mermaid など、使うときに読み込むものは、初めて読んだときにキャッシュする
+      const manifest = JSON.parse(
+        readFileSync(join(outDir, '.vite/manifest.json'), 'utf8'),
+      ) as Record<string, { file: string; isEntry?: boolean; imports?: string[]; css?: string[] }>;
+      const entry = new Set<string>();
+      const visit = (key: string) => {
+        const chunk = manifest[key];
+        if (!chunk || entry.has(chunk.file)) return;
+        entry.add(chunk.file);
+        for (const css of chunk.css ?? []) entry.add(css);
+        for (const imported of chunk.imports ?? []) visit(imported);
+      };
+      for (const [key, chunk] of Object.entries(manifest)) if (chunk.isEntry) visit(key);
       const files = walk(outDir)
         .map((path) => relative(outDir, path).split('\\').join('/'))
-        .filter((path) => !path.startsWith('fonts/') && path !== 'sw.js')
+        .filter((path) => !path.startsWith('assets/') || entry.has(path))
+        .filter(
+          (path) => !path.startsWith('fonts/') && !path.startsWith('.vite/') && path !== 'sw.js',
+        )
         .sort();
       const hash = createHash('sha256');
       for (const file of files) hash.update(file).update(readFileSync(join(outDir, file)));
@@ -141,12 +167,15 @@ export default defineConfig({
     // ビルドせずに、各パッケージのソースを直接読む（tsc の出力を待たずに済む）
     alias: {
       '@mds/core': src('../../packages/core/src/index.ts'),
+      '@mds/embeds/highlight': src('../../packages/embeds/src/highlight.ts'),
+      '@mds/embeds': src('../../packages/embeds/src/index.ts'),
       '@mds/runtime': src('../../packages/runtime/src/index.ts'),
       '@mds/themes': src('../../packages/themes/src/index.ts'),
     },
   },
   build: {
     target: 'es2022',
+    manifest: true,
     chunkSizeWarningLimit: 2000,
   },
   plugins: [budouxBrowser(), mdsFonts(), serviceWorker()],

@@ -22,9 +22,12 @@
     "@lezer/highlight": "1.2.5",
     "@lezer/markdown": "1.8.1",
     "@mds/core": "workspace:*",
+    "@mds/embeds": "workspace:*",
     "@mds/runtime": "workspace:*",
     "@mds/themes": "workspace:*",
     "@preact/signals": "2.11.4",
+    "katex": "0.19.1",
+    "mermaid": "12.2.0",
     "preact": "10.29.8"
   },
   "devDependencies": {
