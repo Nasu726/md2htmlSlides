@@ -28,6 +28,23 @@ node apps/cli/dist/bin.js build deck.md -o dist  # dist/index.html を書き出�
 
 書き出した `dist/` は、`index.html` をブラウザで開くだけで発表できる（`file://` でも動く）。`build` と `dev` は、ヘッドレス Chromium で本文の高さを測り、1枚に収まらない節を意味のまとまりを崩さない位置で自動で分ける（Chromium がなければ分割を省く。`npx playwright install chromium` で入れられる）。
 
+### Web エディタ（#73）
+
+ブラウザで Markdown を書きながらスライドを確かめるエディタ（PWA）。インストールは要らず、一度開けばオフラインでも使える。
+
+```sh
+pnpm --filter @mds/web dev   # 開発用のサーバー（http://localhost:5173/）
+pnpm build                   # apps/web/dist に書き出す（GitHub Pages に置く）
+```
+
+| 開き方 | 使えるブラウザ | 保存 |
+|---|---|---|
+| フォルダを開く | Chrome・Edge | その場で上書き（Ctrl+S） |
+| ファイルを開く・ドラッグ＆ドロップ（画像も一緒に選ぶ） | すべて | ダウンロード |
+| `?src=URL`（GitHub の raw など） | すべて | ダウンロード |
+
+書いている内容は、ブラウザ（IndexedDB）に下書きとして自動で保存する。「▶ 発表」か F5（プレビューでは S）で、見えているスライドから発表を始め、Esc でエディタに戻る。
+
 ## 開発
 
 必要なもの：Node.js 22 以上、pnpm（`corepack enable` で使えるようになる）

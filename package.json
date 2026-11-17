@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && pnpm --filter @mds/web build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

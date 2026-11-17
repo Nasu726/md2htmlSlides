@@ -532,6 +532,29 @@ interface SyntaxEntry {
 
 Service Worker でアプリをキャッシュし、オフラインでも使えるようにする。GitHub Pages で公開する。
 
+### 9.6 実装（#73）
+
+`apps/web`。Vite・Preact（Signals）・CodeMirror 6。
+
+```mermaid
+flowchart LR
+  E[エディタ<br>CodeMirror] -->|文字| C[core<br>パース・分割の計画]
+  C -->|原子の HTML| M[計測の iframe<br>measureJobs]
+  M -->|高さ| C
+  C -->|スライドの HTML| P[プレビューの iframe<br>変わったスライドだけ差し替え]
+  C -->|書き出しと同じ HTML| S[発表の iframe<br>runtime]
+```
+
+- **計測と自動分割は、利用者のブラウザで行う**。core の `planSplit` → 計測用の iframe（テーマの CSS とフォントがある）で `measureJobs` → `applySplit`。CLI と同じ計算なので、同じ Chromium なら枚数も同じになる（fixtures の 01・03・04・06・10 で確かめた）。計測の結果は、ページの CSS と原子の HTML のハッシュで覚えておく。
+- **iframe は3つとも `sandbox="allow-scripts"`**（オリジンは不透明。§9.4）。中で動くスクリプト（`frame-host.ts`）とは postMessage だけでやりとりする。
+  - **フォント**：隔離した iframe は Service Worker のキャッシュを使えないので、エディタがフォントのファイルを読み、データを渡して FontFace にする。読むのは、スライドの文字が入っている分割ファイルだけ。発表の iframe には data: URL の @font-face として入れる（発表者ビューの別ウィンドウでも同じフォントにするため）。
+  - **素材（画像・動画）**：HTML には印（`data:text/plain,mds-asset=…`）を入れ、エディタが渡した Blob から iframe の中で URL を作って置き換える。縦横は core の `mediaSize` で先に読む。
+- **プレビュー**：スライドの HTML を受け取り、HTML が変わったスライドだけを差し替える（再生中の動画はそのまま）。見ていたスライドの位置を保つ。
+- **発表**：書き出しと同じ HTML（runtime 付き）を、エディタの上の全画面の iframe に出す。`data-exit-message` を付けると、runtime は Esc で親にメッセージを送って終える。
+- **下書き**：IndexedDB に、資料ごとの下書きと、最後に開いた資料を残す。資料を開いたとき、保存していない下書きがあれば「下書きを開く」を出す。
+- **オフライン**：`sw.js` はビルドのときにファイルの一覧から作る。アプリの本体は最初に全部、フォントは使ったものだけをキャッシュする。パスは相対（base: `./`）なので、GitHub Pages のどこに置いても動く。
+- **まだしていないこと**：プレビューでのコードの色分け・数式・Mermaid（#84）、背景の明るさの計測（文字色の自動選択）。
+
 ---
 
 ## 10. 書き出し
