@@ -254,6 +254,32 @@ body { margin: 0; background: #d1d5db; }
   font-size: 0.7em;
 }
 .mds-diagram-error > span { font-family: var(--mds-font-mono); white-space: pre-wrap; font-size: 0.85em; }
+/* 数式（#72）。KaTeX の HTML。KaTeX のフォントにない文字（日本語など）は本文のフォントで描く */
+.mds-deck .katex { font-family: KaTeX_Main, var(--mds-font-body); }
+.mds-math-block { text-align: center; padding-block: 0.15em; }
+.mds-math-block .katex-display { margin: 0; }
+.mds-math-block .katex-display > .katex { white-space: nowrap; }
+/* 数式のエラー：TeX をその場に赤字で出す */
+.mds-body code.mds-math-error {
+  color: #dc2626;
+  background: none;
+  text-decoration: underline wavy #dc2626 1px;
+  text-underline-offset: 0.2em;
+}
+.mds-math-block.mds-math-error {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+  padding: 0.6em 0.9em;
+  border: 2px dashed #dc2626;
+  border-radius: var(--mds-radius);
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.7em;
+  text-align: left;
+}
+.mds-math-block.mds-math-error > span { font-family: var(--mds-font-mono); white-space: pre-wrap; font-size: 0.85em; }
+.mds-math-block.mds-math-error > code { color: #dc2626; background: none; padding: 0; white-space: pre-wrap; }
 /* 文中の画像 */
 .mds-body :is(p, li, td, th, a) > img {
   max-width: 100%;

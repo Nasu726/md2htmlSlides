@@ -3,12 +3,22 @@ import type { Attrs } from './attrs.js';
 import type { Diagnostic } from './diagnostics.js';
 import { parseMeta, splitFrontmatter } from './frontmatter.js';
 import { hashString } from './hash.js';
-import type { Block, BlockKind, Deck, Heading, MediaRef, SectionNode, SourceRange } from './ir.js';
+import type {
+  Block,
+  BlockKind,
+  Deck,
+  Heading,
+  MathRef,
+  MediaRef,
+  SectionNode,
+  SourceRange,
+} from './ir.js';
 import type { BlockMeta } from './md/attrs.js';
 import type { ContainerMeta } from './md/container.js';
 import type { DirectiveMeta } from './md/directive.js';
 import type { ParseEnv } from './md/env.js';
 import { md } from './md/instance.js';
+import type { MathBlockMeta, MathInlineMeta } from './md/math.js';
 import { mediaKind } from './media.js';
 import { detectSlideLevel, scanHeadings } from './slide-level.js';
 import { SlugRegistry } from './slug.js';
@@ -103,6 +113,7 @@ export function parseDeck(source: string): Deck {
     i = end;
   }
 
+  const math = collectMath(tokens, split.bodyStartLine);
   const deck: Deck = {
     meta,
     ...(split.frontmatter
@@ -110,10 +121,38 @@ export function parseDeck(source: string): Deck {
       : {}),
     root: finalize(root),
     diagnostics,
+    ...(math.length > 0 ? { math } : {}),
   };
   checkUnknownDirectives(deck.root, diagnostics);
   diagnostics.sort((a, b) => a.line - b.line);
   return deck;
+}
+
+/**
+ * 数式（#72）を、TeX の1行目の行番号と一緒に集める。
+ * 文中の数式は、段落（見出し・表の行）の始まりの行に、段落の中の改行の数を足す。
+ */
+function collectMath(tokens: Token[], bodyStartLine: number): MathRef[] {
+  const found: MathRef[] = [];
+  // 表のセルの中身には map がないので、直前の行（tr_open の行）を使う
+  let line = bodyStartLine;
+  for (const token of tokens) {
+    if (token.map) line = bodyStartLine + token.map[0];
+    if (token.type === 'math_block') {
+      const { texLine } = token.meta as MathBlockMeta;
+      found.push({ tex: token.content, display: true, line: line + texLine });
+    } else if (token.type === 'fence' && token.info.trim().split(/\s+/)[0] === 'math') {
+      found.push({ tex: token.content.replace(/\n$/, ''), display: true, line: line + 1 });
+    } else if (token.type === 'inline') {
+      for (const child of token.children ?? []) {
+        if (child.type !== 'math_inline') continue;
+        const { offset, display } = child.meta as MathInlineMeta;
+        const newlines = token.content.slice(0, offset).split('\n').length - 1;
+        found.push({ tex: child.content, display, line: line + newlines });
+      }
+    }
+  }
+  return found;
 }
 
 /** tokens[i] から始まるブロックを読み、ブロックと、最後に読んだトークンの位置を返す。 */
@@ -146,6 +185,9 @@ function readBlock(ctx: Context, i: number): [Block | undefined, number] {
       if (meta?.attrs) block.attrs = meta.attrs;
       break;
     }
+    case 'math_block':
+      if (meta?.attrs) block.attrs = meta.attrs;
+      break;
     case 'bullet_list_open':
     case 'ordered_list_open':
       block.ordered = token.type === 'ordered_list_open';
@@ -213,8 +255,11 @@ function blockKind(token: Token): BlockKind | undefined {
     case 'table_open':
       return 'table';
     case 'fence':
+      return token.info.trim().split(/\s+/)[0] === 'math' ? 'math' : 'code';
     case 'code_block':
       return 'code';
+    case 'math_block':
+      return 'math';
     case 'html_block':
       return isOnlyComments(token.content) ? 'comment' : 'html';
     case 'hr':
@@ -297,6 +342,9 @@ function plainText(inline: Token | undefined): string {
         case 'hardbreak':
           return ' ';
         case 'image':
+          return child.content;
+        case 'math_inline':
+          // 数式は TeX のまま（目次・発表者ビュー・<title> に使う）
           return child.content;
         default:
           return '';

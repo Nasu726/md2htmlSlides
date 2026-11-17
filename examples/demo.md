@@ -101,6 +101,14 @@ flowchart LR
   Slides --> PDF
 ```
 
+## 数式
+
+二次方程式 $ax^2 + bx + c = 0$ の解は、次の式で求まる。
+
+$$
+x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+$$
+
 ## デモ動画
 
 ![操作のデモ](../fixtures/assets/demo.mp4){autoplay loop muted}

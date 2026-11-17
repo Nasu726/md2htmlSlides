@@ -14,7 +14,16 @@ export {
   type FrontmatterBlock,
 } from './frontmatter.js';
 export { hashString } from './hash.js';
-export type { Block, BlockKind, Deck, Heading, MediaRef, SectionNode, SourceRange } from './ir.js';
+export type {
+  Block,
+  BlockKind,
+  Deck,
+  Heading,
+  MathRef,
+  MediaRef,
+  SectionNode,
+  SourceRange,
+} from './ir.js';
 export {
   checkMediaFiles,
   collectMedia,
@@ -33,6 +42,7 @@ export type {
   DiagramResult,
   RenderEnv,
 } from './md/media.js';
+export type { MathRenderer, MathResult } from './md/math.js';
 export { formatOutline } from './outline.js';
 export { parseDeck } from './parse.js';
 export { SlugRegistry, slugify } from './slug.js';

@@ -1,5 +1,5 @@
 slideLevel: 2
-slides: 13
+slides: 14
   1. [title] (見出しなし)  L19  #title
   2. [section] # はじめに  L21  #はじめに
   3. [content] ## なぜ作るのか  L23-L33  #なぜ作るのか  章=はじめに
@@ -17,9 +17,11 @@ slides: 13
        :::steps(list)
  10. [content] ## 仕組み  L96-L102  #仕組み  章=使い方
        code[mermaid]
- 11. [content] ## デモ動画  L104-L106  #デモ動画  章=使い方
+ 11. [content] ## 数式  L104-L110  #数式  章=使い方
+       paragraph, math
+ 12. [content] ## デモ動画  L112-L114  #デモ動画  章=使い方
        image×1
- 12. [content] ## 写真と一言  L108-L112  #写真と一言  章=使い方
+ 13. [content] ## 写真と一言  L116-L120  #写真と一言  章=使い方
        image×1, paragraph
- 13. [content] ## 写真と一言（続き）  L115-L122  #写真と一言-2  {layout=statement} 章=使い方
+ 14. [content] ## 写真と一言（続き）  L123-L130  #写真と一言-2  {layout=statement} 章=使い方
        comment, image×1, paragraph

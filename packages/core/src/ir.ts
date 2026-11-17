@@ -17,12 +17,14 @@ export interface SourceRange {
  * - `directive`：`::maketitle` などの単独行の指示（§2.2）
  * - `pause`：`. . .`（§5.1）
  * - `slide-attrs`：`{…}` だけの行。それを含むスライドに付ける属性（§3.2）
+ * - `math`：独立した数式（`$$ … $$` と ```` ```math ````。§7.3）
  */
 export type BlockKind =
   | 'paragraph'
   | 'heading'
   | 'list'
   | 'code'
+  | 'math'
   | 'table'
   | 'quote'
   | 'html'
@@ -102,4 +104,15 @@ export interface Deck {
   frontmatter?: SourceRange;
   root: SectionNode;
   diagnostics: Diagnostic[];
+  /** 資料の中の数式（#72）。描く側（CLI）が、エラーを行番号付きで警告するのに使う。なければ undefined */
+  math?: MathRef[];
+}
+
+/** 資料の中の数式（`$…$`・`$$…$$`・```` ```math ````） */
+export interface MathRef {
+  tex: string;
+  /** 独立した数式（`$$`・```` ```math ````）の大きさで描くか */
+  display: boolean;
+  /** TeX の1行目の、元のファイルでの行番号（1 から） */
+  line: number;
 }

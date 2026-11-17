@@ -371,6 +371,16 @@ interface EmbedController {
 
 KaTeX（M3、数式）→ Vega-Lite（グラフ）→ Graphviz（viz.js の WASM 版）。PlantUML は描画にサーバーが必要なので、必要になったときに検討する。
 
+**数式の実装（#72）**：書き方と `$` の規則は [構文仕様 §7.3](./syntax.md#73-数式)。
+
+- core は `$…$`・`$$`・```` ```math ```` を見つけるだけで、描く関数（`RenderEnv.math`）を受け取る。Mermaid と同じく、core は KaTeX に依存しない。関数がなければ TeX をコードとして出す。
+- CLI は、資料に数式があるときだけ KaTeX（0.19）を読み込み、`renderToString` で HTML にする。書き出した HTML には描いた結果（HTML と読み上げ用の MathML）だけが入り、KaTeX の JS は入らない。
+- KaTeX の CSS とフォントも、数式があるときだけ入れる。
+  - `mds dev` と計測：フォント一式を `/__mds/fonts/katex/` から読み込む。計測の前に、KaTeX の書体をすべて読み込んでおく。
+  - 書き出し：使った書体だけを、使った文字だけに絞って埋め込む。書体は、描いた HTML のクラスを KaTeX の CSS の規則に当てはめて決め（`.mathnormal` → KaTeX_Math の斜体、`.mathbb` → KaTeX_AMS など）、文字は KaTeX の文字の寸法表で、その書体が持つものだけにする。
+- 独立した数式は、ブロックの種類 `math` にする（配置の判定では文章でも図でもない）。分割では1つの原子として扱い、数式を描いた後の高さで測る。
+- 数式のエラーは、KaTeX が示す TeX の中の位置から、ファイルの中の行を求めて警告する（`math/katex-error`）。
+
 ---
 
 ## 8. スライドショー（runtime）

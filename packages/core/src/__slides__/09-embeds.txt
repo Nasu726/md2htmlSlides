@@ -13,7 +13,7 @@ slides: 12
   6. [content] ## Mermaid：とても大きな図  L55-L66  #mermaidとても大きな図
        code[mermaid], paragraph
   7. [content] ## 数式（M3）  L68-L74  #数式m3
-       paragraph, paragraph
+       paragraph, math
   8. [content] ## コード：いくつかの言語  L76-L91  #コードいくつかの言語
        code[python], code[rust]
   9. [content] ## コード：言語名なし  L93-L97  #コード言語名なし

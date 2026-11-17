@@ -5,6 +5,7 @@ import { createServer, type ServerResponse } from 'node:http';
 import { basename, dirname, extname, resolve } from 'node:path';
 import { renderFile, type Rendered } from './build.js';
 import { fontFileFor } from './fonts.js';
+import { mathFontFileFor } from './math.js';
 import { ChromiumMeasurer } from './measurer.js';
 
 const TYPES: Record<string, string> = {
@@ -140,9 +141,10 @@ export async function startDev(mdFile: string, options: DevOptions = {}): Promis
       req.on('close', () => clients.delete(res));
       return;
     }
-    // 同梱するフォント（分割ファイル一式。ブラウザが必要なものだけを読む）
+    // 同梱するフォント（分割ファイル一式。ブラウザが必要なものだけを読む）と、数式のフォント（#72）
     if (path.startsWith('/__mds/fonts/')) {
-      const font = fontFileFor(path.slice('/__mds/fonts/'.length));
+      const rest = path.slice('/__mds/fonts/'.length);
+      const font = fontFileFor(rest) ?? mathFontFileFor(rest);
       if (!font) {
         res.writeHead(404).end();
         return;

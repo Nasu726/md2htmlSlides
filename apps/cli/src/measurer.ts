@@ -13,6 +13,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { extname } from 'node:path';
 import { FONT_HOST, fontFileFor } from './fonts.js';
+import { mathFontFileFor } from './math.js';
 
 const require = createRequire(import.meta.url);
 
@@ -62,6 +63,12 @@ export class ChromiumMeasurer {
       if (this.pageHtml !== pageHtml) {
         await page.setContent(pageHtml);
         await page.evaluate('document.fonts.ready');
+        // 数式のフォント（#72）は、書体・太さ・斜体ごとに分かれているので、一式を先に読み込む
+        if (pageHtml.includes('KaTeX_')) {
+          await page.evaluate(
+            `Promise.all([...document.fonts].filter((f) => f.family.startsWith('KaTeX')).map((f) => f.load().catch(() => {})))`,
+          );
+        }
         this.pageHtml = pageHtml;
       }
       // フォントは文字を描くときに初めて読み込まれるので、測る文字の分を先に読み込んでおく
@@ -193,7 +200,7 @@ async function fontPage(browser: Browser): Promise<Page> {
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
   await page.route(`${FONT_HOST}/**`, async (route) => {
     const path = decodeURIComponent(new URL(route.request().url()).pathname.slice(1));
-    const file = fontFileFor(path);
+    const file = fontFileFor(path) ?? mathFontFileFor(path);
     if (!file) return route.abort();
     await route.fulfill({
       body: readFileSync(file),

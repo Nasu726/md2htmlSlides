@@ -1,6 +1,7 @@
 import type { MarkdownIt, Renderer, StateCore, Token } from 'markdown-it';
 import { cssPosition, isPosition, type Attrs } from '../attrs.js';
 import { embedUrl, mediaKind, type MediaInfo, type MediaKind, type MediaProbe } from '../media.js';
+import type { MathRenderer } from './math.js';
 
 /**
  * 描画のときに markdown-it に渡す情報。
@@ -20,6 +21,8 @@ export type RenderEnv = {
   highlight?: CodeHighlighter;
   /** 図を描く関数（#71）。なければ ```mermaid はコードのまま、`.mmd` は枠だけを出す */
   diagram?: DiagramRenderer;
+  /** 数式を描く関数（#72）。なければ TeX のまま出す */
+  math?: MathRenderer;
 };
 
 /** コードの色分けをする関数。同期で返す（必要な文法は、呼ぶ側が先に読み込んでおく） */

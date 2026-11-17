@@ -2,6 +2,7 @@ import { themeCss } from '@mds/themes';
 import type { Attrs } from '../attrs.js';
 import type { Block } from '../ir.js';
 import { md } from '../md/instance.js';
+import type { MathRenderer } from '../md/math.js';
 import type { CodeHighlighter, DiagramRenderer, RenderEnv } from '../md/media.js';
 import type { MediaProbe } from '../media.js';
 import type { Slide, SlideDeck } from '../slides.js';
@@ -46,6 +47,13 @@ export interface RenderOptions {
   highlight?: CodeHighlighter;
   /** 図を描いた結果を返す関数（#71）。```mermaid と `.mmd` を SVG にする */
   diagram?: DiagramRenderer;
+  /** 数式を描く関数（#72）。`$…$`・`$$…$$`・```math を HTML にする */
+  math?: MathRenderer;
+  /**
+   * 描いた結果に使うライブラリの CSS（KaTeX の CSS など。#72）。
+   * テーマで上書きできるよう、基本の CSS とテーマの前に置く
+   */
+  libraryCss?: string;
 }
 
 const esc = (text: string) => md.utils.escapeHtml(text);
@@ -63,6 +71,7 @@ export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): st
     ...(options.assetUrl ? { assetUrl: options.assetUrl } : {}),
     ...(options.highlight ? { highlight: options.highlight } : {}),
     ...(options.diagram ? { diagram: options.diagram } : {}),
+    ...(options.math ? { math: options.math } : {}),
   };
   const custom = options.customCss ? `@scope (.mds-deck) {\n${options.customCss}\n}` : '';
   const body = slides
@@ -74,7 +83,7 @@ export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): st
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(meta.title ?? slides[0]?.heading?.text ?? 'Slides')}</title>
-<style>${options.fontCss ? `${options.fontCss}\n` : ''}@page { size: ${width}px ${height}px; margin: 0; }
+<style>${options.fontCss ? `${options.fontCss}\n` : ''}${options.libraryCss ? `${options.libraryCss}\n` : ''}@page { size: ${width}px ${height}px; margin: 0; }
 ${BASE_CSS}${themeCss(meta.theme)}${custom}</style>
 </head>
 <body>
@@ -125,7 +134,7 @@ export function renderSlide(
     const tag = layout === 'section' ? 'h1' : 'h2';
     const continued = slide.heading.continued ? '<span class="mds-continued">（続き）</span>' : '';
     parts.push(
-      `<${tag} class="mds-title">${phraseBreaks(md.renderInline(slide.heading.raw), deck.meta.lang)}${continued}</${tag}>`,
+      `<${tag} class="mds-title">${phraseBreaks(md.renderInline(slide.heading.raw, env), deck.meta.lang)}${continued}</${tag}>`,
     );
   }
   const body = renderBody(slide, choice, deck.slideLevel, env);
@@ -294,7 +303,7 @@ function renderBlock(block: Block, slideLevel: number, env: RenderEnv): string {
     case 'heading': {
       const level = Math.min(6, Math.max(3, (block.level ?? slideLevel + 1) - slideLevel + 2));
       const raw = block.raw.replace(/^#{1,6}[ \t]*/, '');
-      const html = phraseBreaks(md.renderInline(stripTrailingAttrs(raw)), env.lang ?? '');
+      const html = phraseBreaks(md.renderInline(stripTrailingAttrs(raw), env), env.lang ?? '');
       return `<h${level}${attrString(block.attrs)}>${html}</h${level}>\n`;
     }
     case 'container':

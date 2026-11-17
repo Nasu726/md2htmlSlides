@@ -20,6 +20,7 @@
     "@mds/core": "workspace:*",
     "@mds/runtime": "workspace:*",
     "@mds/themes": "workspace:*",
+    "katex": "0.19.1",
     "mermaid": "12.2.0",
     "playwright-core": "1.63.0",
     "shiki": "4.6.0",
