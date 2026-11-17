@@ -9,6 +9,7 @@ export { build, checkOverflow, formatDiagnostic, renderFile, type BuildResult } 
 export { ChromiumMeasurer } from './measurer.js';
 export { createAssets, type Assets } from './assets.js';
 export { startDev, type DevServer } from './dev.js';
+export { codeHighlighter, codeLanguages } from './highlight.js';
 
 export interface RunResult {
   code: number;

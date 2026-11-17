@@ -1,3 +1,4 @@
+import { codeHighlighter, codeLanguages } from '@mds/cli';
 import { buildSlides, parseDeck, renderDeckHtml } from '@mds/core';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -74,4 +75,28 @@ test('width= の画像は、指定した幅で表示する', async ({ page }) =>
   if (!box || !body) throw new Error('要素が見つからない');
   expect(box.width / body.width).toBeCloseTo(0.5, 2);
   expect(box.width / box.height).toBeCloseTo(3, 1);
+});
+
+test('コードに色を付けても、コードの高さは変わらない（#68）', async ({ page }) => {
+  const source =
+    fixture('02-tech-talk.md') + fixture('04-layouts.md').replace(/^---[\s\S]*?\n---\n/, '');
+  const deck = buildSlides(parseDeck(source));
+  const highlight = await codeHighlighter(codeLanguages(source));
+  const plain = renderDeckHtml(deck, { fit: false });
+  const colored = renderDeckHtml(deck, { fit: false, highlight });
+  expect(colored).toContain('var(--mds-code-token-keyword)');
+  const heights = async (html: string) => {
+    await page.setContent(html);
+    await page.evaluate(() => document.fonts.ready);
+    return page.evaluate(() =>
+      Array.from(document.querySelectorAll('.mds-body pre'), (pre) => [
+        pre.getBoundingClientRect().width,
+        pre.getBoundingClientRect().height,
+      ]),
+    );
+  };
+  const before = await heights(plain);
+  const after = await heights(colored);
+  expect(after.length).toBeGreaterThanOrEqual(4);
+  expect(after).toEqual(before);
 });
