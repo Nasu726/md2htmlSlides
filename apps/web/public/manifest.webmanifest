@@ -1,0 +1,12 @@
+{
+  "name": "md2htmlSlides エディタ",
+  "short_name": "md2htmlSlides",
+  "description": "Markdown を書きながらスライドを確かめるエディタ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f172a",
+  "lang": "ja",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
