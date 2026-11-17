@@ -346,6 +346,16 @@ interface EmbedController {
 - Mermaid はファイルサイズが大きいので、文書に Mermaid があるときだけ読み込む。
 - 構文エラーはスライド上に枠で示し、エディタには行番号付きで警告する。入力中は最後に成功した描画を表示したままにし、ちらつきを防ぐ。
 
+**実装（#71）**：CLI（`mds build`・`mds dev`・`mds pdf`）では次のようにした。エディタ（#73〜）では、プレビューの中で同じ関数を呼ぶ予定。
+
+- 図は**ビルド時に描いて SVG を HTML に埋め込む**。書き出した HTML には Mermaid を含めないので、開くのが速く、オフラインでも同じに見える。
+- 描くのは計測と同じヘッドレス Chromium。テーマの CSS とフォントを読み込んだページに `mermaid.min.js` を入れ、`@mds/runtime` の `renderMermaid()` を呼ぶ。
+- 配色はデッキの CSS 変数（`--mds-bg`・`--mds-fg`・`--mds-accent`・`--mds-surface`・`--mds-border`・`--mds-muted`）から作り、Mermaid の `base` テーマの `themeVariables` に渡す。地が暗ければ `darkMode` にする。フォントは本文のフォント。
+- 文字は既定の 16px ではなく 22px で描く。図は枠に合わせて縮めるので、ノードの間隔に対して文字を大きくしておくと、スライドの上で読みやすい。
+- core は描画の関数（`DiagramRenderer`）を `RenderEnv.diagram` で受け取るだけで、Mermaid には依存しない。関数がなければ（Chromium がないなど）コードブロックのまま出す。
+- 図の縦横比は配置の判定（§5）と分割の計画に使う。とても横長の図（2.2 以上）は上下に並べる。
+- 構文エラーは、スライドに「Mermaid の構文エラー」の枠とメッセージを出し、警告（`diagram/mermaid-error`）にはフェンスの行とエラーの行を足した行番号を付ける。
+
 ### 7.3 動く構成図（M4）
 
 詳細は [動く構成図の仕様](./arch-diagram.md) にまとめた。要点：

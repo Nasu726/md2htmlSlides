@@ -2,14 +2,19 @@ import {
   averageLuminance,
   hashString,
   measureJobs,
+  type DiagramResult,
   type MeasureJob,
   type Measurement,
 } from '@mds/core';
+import { renderMermaid } from '@mds/runtime';
 import { BUNDLED_FONTS } from '@mds/themes';
 import type { Browser, Page } from 'playwright-core';
 import { readFileSync, statSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { extname } from 'node:path';
 import { FONT_HOST, fontFileFor } from './fonts.js';
+
+const require = createRequire(import.meta.url);
 
 /**
  * ヘッドレス Chromium で、自動分割のための高さを測る（docs/design.md §4、S1）。
@@ -22,6 +27,9 @@ export class ChromiumMeasurer {
   private pageHtml: string | undefined;
   private readonly cache = new Map<string, Measurement>();
   private readonly luminanceCache = new Map<string, number>();
+  private diagramPage: Page | undefined;
+  private diagramPageHtml: string | undefined;
+  private readonly diagramCache = new Map<string, DiagramResult>();
   /** Chromium を起動できなかった理由 */
   error: string | undefined;
 
@@ -81,19 +89,46 @@ export class ChromiumMeasurer {
   /** 計測用のページ。同梱するフォントのファイルを、架空の場所（FONT_HOST）から返す */
   private async measurePage(browser: Browser): Promise<Page> {
     if (this.page) return this.page;
-    const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
-    await page.route(`${FONT_HOST}/**`, async (route) => {
-      const path = decodeURIComponent(new URL(route.request().url()).pathname.slice(1));
-      const file = fontFileFor(path);
-      if (!file) return route.abort();
-      await route.fulfill({
-        body: readFileSync(file),
-        contentType: 'font/woff2',
-        headers: { 'access-control-allow-origin': '*' },
-      });
-    });
-    this.page = page;
-    return page;
+    this.page = await fontPage(browser);
+    return this.page;
+  }
+
+  /**
+   * Mermaid の図を描く（#71）。pageHtml はスライドを空にしたデッキの HTML
+   * （テーマの色とフォントを読むため）。結果はコードとテーマでキャッシュする（dev で描き直さない）。
+   * Chromium がなければ undefined を返す。
+   */
+  async diagrams(
+    pageHtml: string,
+    codes: string[],
+  ): Promise<Map<string, DiagramResult> | undefined> {
+    const css = hashString(pageHtml);
+    const key = (code: string) => hashString(`${css}\n${code}`);
+    const unique = [...new Set(codes)];
+    const missing = unique.filter((code) => !this.diagramCache.has(key(code)));
+    if (missing.length > 0) {
+      const browser = await this.browser();
+      if (!browser) return undefined;
+      this.diagramPage ??= await fontPage(browser);
+      const page = this.diagramPage;
+      if (this.diagramPageHtml !== pageHtml) {
+        await page.setContent(pageHtml);
+        await page.addScriptTag({ path: require.resolve('mermaid/dist/mermaid.min.js') });
+        this.diagramPageHtml = pageHtml;
+      }
+      // 図の中の文字の幅を正しく測れるよう、使う文字の分のフォントを先に読み込む
+      if (pageHtml.includes(FONT_HOST)) {
+        const families = JSON.stringify(BUNDLED_FONTS.map((font) => font.family));
+        await page.evaluate(
+          `Promise.all(${families}.map((family) =>
+            document.fonts.load('16px "' + family + '"', ${JSON.stringify(missing.join(' '))}).catch(() => [])))`,
+        );
+      }
+      const ids = missing.map((code) => `mds-m-${key(code)}`);
+      const results = await page.evaluate(renderMermaid, { codes: missing, ids });
+      missing.forEach((code, i) => this.diagramCache.set(key(code), results[i]!));
+    }
+    return new Map(unique.map((code) => [code, this.diagramCache.get(key(code))!]));
   }
 
   /**
@@ -148,7 +183,25 @@ export class ChromiumMeasurer {
     this.browserPromise = undefined;
     this.page = undefined;
     this.pageHtml = undefined;
+    this.diagramPage = undefined;
+    this.diagramPageHtml = undefined;
   }
+}
+
+/** 同梱するフォントのファイルを、架空の場所（FONT_HOST）から返すページ */
+async function fontPage(browser: Browser): Promise<Page> {
+  const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+  await page.route(`${FONT_HOST}/**`, async (route) => {
+    const path = decodeURIComponent(new URL(route.request().url()).pathname.slice(1));
+    const file = fontFileFor(path);
+    if (!file) return route.abort();
+    await route.fulfill({
+      body: readFileSync(file),
+      contentType: 'font/woff2',
+      headers: { 'access-control-allow-origin': '*' },
+    });
+  });
+  return page;
 }
 
 /** ヘッドレス Chromium を起動する（Playwright の Chromium、なければ PC の Chrome） */

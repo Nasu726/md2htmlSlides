@@ -22,3 +22,6 @@ export const PREVIEW_SCRIPT = `(${startPreview.toString()})(document);`;
 
 /** PDF にする前の準備（#70）。CLI の `mds pdf` が page.evaluate で呼ぶ */
 export { preparePrint } from './print.js';
+
+/** Mermaid の図を描く（#71）。CLI が page.evaluate で呼ぶ */
+export { renderMermaid } from './diagrams.js';

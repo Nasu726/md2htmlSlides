@@ -3,6 +3,7 @@
  * 利用者の `{layout=…}` があればそれを優先する。
  */
 import type { Block } from '../ir.js';
+import type { DiagramRenderer, DiagramResult } from '../md/media.js';
 import type { MediaProbe } from '../media.js';
 import type { Slide } from '../slides.js';
 import { LAYOUTS, type LayoutName } from '../syntax/elements.js';
@@ -75,7 +76,13 @@ export function isShortList(b: Block): boolean {
 }
 
 /** ページの内容から、レイアウトを選ぶ。 */
-export function chooseLayout(slide: Slide, slideLevel: number, probe?: MediaProbe): LayoutChoice {
+export function chooseLayout(
+  slide: Slide,
+  slideLevel: number,
+  probe?: MediaProbe,
+  /** 描いた図（#71）。図の縦横比を、画像と同じように並べ方の判断に使う */
+  diagram?: DiagramRenderer,
+): LayoutChoice {
   const values = slide.attrs?.values ?? {};
   const mediaLeft = values.media === 'left';
   // ratio= は「左：右」。自動で決めた比は「文章：メディア」なので、メディアが左なら入れ替える
@@ -133,7 +140,13 @@ export function chooseLayout(slide: Slide, slideLevel: number, probe?: MediaProb
       if (longest <= 62) return { layout: 'split', ratio: orient([1, 1]), mediaLeft };
     } else if (mediaCount === 1) {
       const block = media[0]!;
-      const aspect = isFigureCode(block) ? undefined : aspectOf(visibleMedia(block)[0]?.src, probe);
+      const aspect = isFigureCode(block)
+        ? diagramAspect(diagram?.({ lang: block.lang ?? '', code: fenceContent(block.raw) }))
+        : visibleMedia(block)[0]?.kind === 'diagram'
+          ? diagramAspect(
+              diagram?.({ lang: 'mermaid', src: decodeSrc(visibleMedia(block)[0]!.src) }),
+            )
+          : aspectOf(visibleMedia(block)[0]?.src, probe);
       // とても横長（2.2:1 以上）なら上下に積む。縦長なら文章 60：メディア 40
       if (aspect === undefined || aspect < 2.2) {
         const auto: [number, number] = aspect !== undefined && aspect < 1 ? [3, 2] : [1, 1];
@@ -164,6 +177,25 @@ export function subheadingGroups(blocks: Block[], slideLevel: number): Block[][]
     else groups[groups.length - 1]!.push(b);
   }
   return groups.every((g) => g.length > 0) ? groups : undefined;
+}
+
+/** 描いた図の縦横比（描けなかった・エラーなら undefined） */
+function diagramAspect(result: DiagramResult | undefined): number | undefined {
+  return result && 'svg' in result && result.height > 0 ? result.width / result.height : undefined;
+}
+
+/** コードブロックの中身（最初と最後の囲みの行を除く） */
+function fenceContent(raw: string): string {
+  const lines = raw.split('\n');
+  return `${lines.slice(1, -1).join('\n')}\n`;
+}
+
+function decodeSrc(src: string): string {
+  try {
+    return decodeURI(src);
+  } catch {
+    return src;
+  }
 }
 
 function aspectOf(src: string | undefined, probe: MediaProbe | undefined): number | undefined {

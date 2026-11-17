@@ -2,7 +2,8 @@ import type { Diagnostic } from './diagnostics.js';
 import type { Block, Deck, MediaRef, SectionNode } from './ir.js';
 
 /** 本文中のメディアの種類（構文仕様 §6.1）。 */
-export type MediaKind = 'image' | 'video' | 'youtube' | 'vimeo';
+/** `diagram` は Mermaid のファイル（`.mmd`）。書き出しのときに図にする（#71） */
+export type MediaKind = 'image' | 'video' | 'youtube' | 'vimeo' | 'diagram';
 
 const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mov', 'm4v', 'ogv']);
 
@@ -12,6 +13,7 @@ export function mediaKind(src: string): MediaKind {
   if (vimeoId(src)) return 'vimeo';
   const path = src.split(/[?#]/)[0] ?? '';
   const ext = /\.([a-z0-9]+)$/i.exec(path)?.[1]?.toLowerCase();
+  if (ext === 'mmd') return 'diagram';
   return ext && VIDEO_EXTENSIONS.has(ext) ? 'video' : 'image';
 }
 

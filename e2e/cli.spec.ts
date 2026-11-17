@@ -103,6 +103,21 @@ test('書き出した HTML は、使う文字だけに絞ったフォントを�
   expect(family).toMatch(/^"MDS Inter", "MDS Noto Sans JP"/);
 });
 
+test('mds build は Mermaid を SVG にし、構文エラーは枠と行番号付きの警告にする（#71）', async () => {
+  const out = mkdtempSync(join(tmpdir(), 'mds-mermaid-'));
+  const result = await build(join(fixtures, '09-embeds.md'), { outDir: out });
+  expect(result.measureError).toBeUndefined();
+  const html = readFileSync(result.index, 'utf8');
+  // フローチャート・シーケンス図・文章と並べる・ファイル参照・とても大きな図
+  expect(html.match(/<div class="mds-diagram has-ratio"/g)).toHaveLength(5);
+  expect(html.match(/<div class="mds-diagram-error"/g)).toHaveLength(1);
+  // 書き出した HTML には Mermaid を含めない（SVG だけ）。配色はテーマ（clean）のアクセント
+  expect(html).not.toContain('mermaid.initialize');
+  expect(html).toContain('#2563eb');
+  const errors = result.diagnostics.filter((d) => d.code === 'diagram/mermaid-error');
+  expect(errors.map((d) => d.line)).toEqual([50]);
+});
+
 /** PDF のページの数（Chromium が書く PDF では、ページごとに /Type /Page がある） */
 const pdfPages = (file: string) =>
   (readFileSync(file, 'latin1').match(/\/Type\s*\/Page(?![a-zA-Z])/g) ?? []).length;

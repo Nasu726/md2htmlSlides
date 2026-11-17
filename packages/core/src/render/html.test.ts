@@ -186,3 +186,51 @@ describe('印刷・PDF（#70）', () => {
     );
   });
 });
+
+describe('Mermaid の図（#71）', () => {
+  const svg = (w: number, h: number) =>
+    `<svg viewBox="0 0 ${w} ${h}" width="100%"><text>図</text></svg>`;
+  const diagram = (input: { lang: string; code?: string; src?: string }) => {
+    if (input.src === 'flow.mmd') return { svg: svg(300, 600), width: 300, height: 600 };
+    if (input.code?.startsWith('flowchart')) return { svg: svg(800, 400), width: 800, height: 400 };
+    if (input.code?.startsWith('wide')) return { svg: svg(900, 100), width: 900, height: 100 };
+    if (input.code?.startsWith('bad')) return { error: 'Parse error on line 1:\n...' };
+    return undefined;
+  };
+
+  it('```mermaid を、縦横比を保って伸縮する図にする（{step} も付く）', () => {
+    const html = render('## A\n\n```mermaid {step}\nflowchart LR\n  A --> B\n```\n', { diagram });
+    expect(html).toContain(
+      '<div class="mds-media-group is-flex"><figure class="mds-media mds-media-diagram" data-step="1"><div class="mds-media-frame"><div class="mds-diagram has-ratio" style="--mds-ar:2.0000" role="img" aria-label="Mermaid の図"><svg',
+    );
+    expect(html).toContain('class="mds-slide layout-media');
+  });
+
+  it('構文エラーは枠で示し、描けないとき（関数がない・undefined）はコードのまま出す', () => {
+    const error = render('## A\n\n```mermaid\nbad\n```\n', { diagram });
+    expect(error).toContain(
+      '<div class="mds-diagram-error" role="note"><b>Mermaid の構文エラー</b>',
+    );
+    const plain = render('## A\n\n```mermaid\nflowchart LR\n```\n');
+    expect(plain).toContain('<pre><code class="language-mermaid">flowchart LR\n</code></pre>');
+  });
+
+  it('![](flow.mmd) も図にし、描けなければファイル名の枠を出す', () => {
+    expect(render('## A\n\n![流れ](flow.mmd)\n', { diagram })).toContain(
+      '<div class="mds-diagram has-ratio" style="--mds-ar:0.5000" role="img" aria-label="流れ">',
+    );
+    expect(render('## A\n\n![流れ](flow.mmd)\n')).toContain(
+      '<span class="mds-media-placeholder" role="img" aria-label="流れ">流れ</span>',
+    );
+  });
+
+  it('文章と並べるとき、とても横長の図は上下に積む（画像と同じ）', () => {
+    const body = '文章です。\n\n';
+    expect(render(`## A\n\n${body}\`\`\`mermaid\nflowchart LR\n\`\`\`\n`, { diagram })).toContain(
+      'layout-split',
+    );
+    expect(render(`## A\n\n${body}\`\`\`mermaid\nwide\n\`\`\`\n`, { diagram })).toContain(
+      'layout-stack',
+    );
+  });
+});
