@@ -31,6 +31,8 @@ export type AttrValueSpec =
   | { type: 'length' }
   /** `3:2` */
   | { type: 'ratio' }
+  /** `top`・`top-left`・`"30% 20%"`（切り取る・収めるときに残す位置） */
+  | { type: 'position' }
   | { type: 'string' }
   | { type: 'path' };
 
@@ -109,6 +111,20 @@ export const ATTRIBUTE_KEYS: readonly AttrKey[] = [
     name: 'fit',
     summary: '枠に対する収め方',
     value: { type: 'enum', values: ['cover', 'contain'] },
+    places: ['media'],
+    docAnchor: ELEMENT,
+  },
+  {
+    name: 'pos',
+    summary: '切り取るときに残す位置（top / top-left / "30% 20%"）',
+    value: { type: 'position' },
+    places: ['media'],
+    docAnchor: ELEMENT,
+  },
+  {
+    name: 'fill',
+    summary: '背景を収めたときの帯の埋め方（blur でぼかした画像）',
+    value: { type: 'enum', values: ['black', 'blur'] },
     places: ['media'],
     docAnchor: ELEMENT,
   },

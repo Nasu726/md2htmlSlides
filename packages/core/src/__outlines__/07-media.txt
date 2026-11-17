@@ -2,9 +2,9 @@ meta
   title: 画像・動画・背景テスト
   theme=clean aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=false paginate=true
 diagnostics
-  L104 warning media/no-alt: 代替テキストがありません。![説明](./assets/square.png) のように、内容を短く書いてください
+  L116 warning media/no-alt: 代替テキストがありません。![説明](./assets/square.png) のように、内容を短く書いてください
 sections
-  (先頭)  L6-L112
+  (先頭)  L6-L124
     ## キャプション付きの画像  L7-L9  #キャプション付きの画像
       - paragraph  L9
           image ./assets/landscape-16x9.png alt="横長の画像" title="タイトル属性はキャプションになる"
@@ -42,30 +42,38 @@ sections
       - paragraph  L57
           image ./assets/portrait-3x4.png {bg fit=contain}
       - paragraph  L59
-    ## 左半分を画像にする  L61-L69  #左半分を画像にする
+    ## 背景の残す位置を選ぶ  L61-L65  #背景の残す位置を選ぶ
       - paragraph  L63
-          image ./assets/portrait-3x4.png {bg=left}
+          image ./assets/portrait-3x4.png {bg pos=top}
       - paragraph  L65
-      - list  L67-L69
-    ## 右半分を画像にする  L71-L75  #右半分を画像にする
-      - paragraph  L73
-          image ./assets/cover.jpg {bg=right}
+    ## 背景を収めて帯をぼかす  L67-L71  #背景を収めて帯をぼかす
+      - paragraph  L69
+          image ./assets/portrait-3x4.png {bg fill=blur}
+      - paragraph  L71
+    ## 左半分を画像にする  L73-L81  #左半分を画像にする
       - paragraph  L75
-    ## 背景の動画  L77-L81  #背景の動画
-      - paragraph  L79
-          video ./assets/loop-bg.mp4 {bg dim=0.4}
-      - paragraph  L81
-    ## 背景と内容の多いスライド  L83-L100  #背景と内容の多いスライド
+          image ./assets/portrait-3x4.png {bg=left}
+      - paragraph  L77
+      - list  L79-L81
+    ## 右半分を画像にする  L83-L87  #右半分を画像にする
       - paragraph  L85
-          image ./assets/bg-dark.jpg {bg dim=0.5}
+          image ./assets/cover.jpg {bg=right}
       - paragraph  L87
-      - list  L89-L98
-      - paragraph  L100
-    ## 代替テキストのない画像  L102-L106  #代替テキストのない画像
-      - paragraph  L104
-          image ./assets/square.png
-      - paragraph  L106
-    ## 存在しない画像  L108-L112  #存在しない画像
-      - paragraph  L110
-          image ./assets/not-found.png alt="存在しない"
+    ## 背景の動画  L89-L93  #背景の動画
+      - paragraph  L91
+          video ./assets/loop-bg.mp4 {bg dim=0.4}
+      - paragraph  L93
+    ## 背景と内容の多いスライド  L95-L112  #背景と内容の多いスライド
+      - paragraph  L97
+          image ./assets/bg-dark.jpg {bg dim=0.5}
+      - paragraph  L99
+      - list  L101-L110
       - paragraph  L112
+    ## 代替テキストのない画像  L114-L118  #代替テキストのない画像
+      - paragraph  L116
+          image ./assets/square.png
+      - paragraph  L118
+    ## 存在しない画像  L120-L124  #存在しない画像
+      - paragraph  L122
+          image ./assets/not-found.png alt="存在しない"
+      - paragraph  L124

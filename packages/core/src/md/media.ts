@@ -1,5 +1,5 @@
 import type { MarkdownIt, Renderer, StateCore, Token } from 'markdown-it';
-import type { Attrs } from '../attrs.js';
+import { cssPosition, isPosition, type Attrs } from '../attrs.js';
 import { embedUrl, mediaKind, type MediaInfo, type MediaKind, type MediaProbe } from '../media.js';
 
 /**
@@ -141,10 +141,18 @@ function mediaElement(
     return `<iframe${ratio} src="${esc(url)}" title="${esc(title)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
   }
   // 縦横比がわかれば、枠を中身の形に合わせる（角丸が中身に沿う）
+  const known = framed && info?.width && info.height ? info : undefined;
+  // pos=：切り取る・収めるときに残す位置
+  const posValue = attrs?.values.pos;
+  const pos = typeof posValue === 'string' && isPosition(posValue) ? cssPosition(posValue) : '';
+  const styles = [
+    ...(known ? [`--mds-ar:${(known.width! / known.height!).toFixed(4)}`] : []),
+    ...(pos ? [`object-position:${pos}`] : []),
+  ];
   const ratio =
-    framed && info?.width && info.height
-      ? ` class="has-ratio" style="--mds-ar:${(info.width / info.height).toFixed(4)}" width="${info.width}" height="${info.height}"`
-      : '';
+    (known ? ` class="has-ratio"` : '') +
+    (styles.length > 0 ? ` style="${esc(styles.join(';'))}"` : '') +
+    (known ? ` width="${known.width}" height="${known.height}"` : '');
   if (kind === 'video') {
     const parts = [`src="${esc(url(src))}"`];
     // 再生の方法を何も指定しなければ、操作ボタンを出す（再生できなくならないように）

@@ -70,7 +70,7 @@ describe('fixtures の資料を IR に変換する', () => {
 
   it('07-media：代替テキストのない画像を警告する（背景は除く）', () => {
     const codes = parse('fixtures/07-media.md').diagnostics.map((d) => [d.code, d.line]);
-    expect(codes).toEqual([['media/no-alt', 104]]);
+    expect(codes).toEqual([['media/no-alt', 116]]);
   });
 
   it('警告が出るのは 07-media と 11-edge-cases だけ', () => {

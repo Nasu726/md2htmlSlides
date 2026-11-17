@@ -78,6 +78,22 @@ function notAttrs(inner: string, unknown: string[]): AttrsResult {
 
 type Checked = { ok: true; value: string | true } | { ok: false; expected: string };
 
+const PERCENT = String.raw`\d+(?:\.\d+)?%`;
+const POSITION = new RegExp(
+  String.raw`^(?:center|top|bottom|left|right|(?:top|bottom)-(?:left|right)|${PERCENT}(?:\s+${PERCENT})?)$`,
+);
+
+/** `pos=` の値か：1方向・2方向（top-left など）・割合（横、または横と縦） */
+export function isPosition(value: string): boolean {
+  return POSITION.test(value.trim());
+}
+
+/** `pos=` の値を CSS の background-position / object-position に直す */
+export function cssPosition(value: string): string {
+  const v = value.trim();
+  return /%/.test(v) ? v.replace(/\s+/g, ' ') : v.replace('-', ' ');
+}
+
 function checkValue(spec: AttrValueSpec, raw: string | undefined): Checked {
   switch (spec.type) {
     case 'flag':
@@ -118,6 +134,13 @@ function checkValue(spec: AttrValueSpec, raw: string | undefined): Checked {
       return raw !== undefined && /^\d+(\.\d+)?:\d+(\.\d+)?$/.test(raw)
         ? { ok: true, value: raw }
         : { ok: false, expected: '3:2 のような比' };
+    case 'position':
+      return raw !== undefined && isPosition(raw)
+        ? { ok: true, value: raw }
+        : {
+            ok: false,
+            expected: 'top・bottom・left・right・center・top-left などか、"30% 20%" のような割合',
+          };
     case 'string':
     case 'path':
       return raw !== undefined && raw !== ''

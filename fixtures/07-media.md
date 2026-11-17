@@ -58,6 +58,18 @@ PDF ではサムネイルとリンクになる。
 
 縦長の画像を、切り取らずに全体を表示する。
 
+## 背景の残す位置を選ぶ
+
+![](./assets/portrait-3x4.png){bg pos=top}
+
+縦長の画像を全面に敷き、上を残して切り取る（`pos=top`）。
+
+## 背景を収めて帯をぼかす
+
+![](./assets/portrait-3x4.png){bg fill=blur}
+
+全体を収め、左右の帯を、ぼかした同じ画像で埋める（`fill=blur`）。
+
 ## 左半分を画像にする
 
 ![](./assets/portrait-3x4.png){bg=left}

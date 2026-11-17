@@ -432,6 +432,18 @@ body { margin: 0; background: #d1d5db; }
   background-position: center;
 }
 .mds-bg.fit-contain .mds-bg-media { object-fit: contain; background-size: contain; background-repeat: no-repeat; }
+/* fill=blur：収めたときの帯を、ぼかした同じ画像で埋める（ぼかしで端が透けないように外へ広げる） */
+.mds-bg-fill {
+  position: absolute;
+  top: -48px;
+  left: -48px;
+  width: calc(100% + 96px);
+  height: calc(100% + 96px);
+  object-fit: cover;
+  background-size: cover;
+  background-position: center;
+  filter: blur(36px) brightness(0.75);
+}
 .mds-bg-dim { position: absolute; inset: 0; background: #000; }
 .mds-bg-left { right: 50%; }
 .mds-bg-right { left: 50%; }
