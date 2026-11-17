@@ -1,4 +1,4 @@
-import { build, startDev, type DevServer } from '@mds/cli';
+import { build, pdf, startDev, type DevServer } from '@mds/cli';
 import { expect, test } from '@playwright/test';
 import { cpSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -103,6 +103,36 @@ test('書き出した HTML は、使う文字だけに絞ったフォントを�
   expect(family).toMatch(/^"MDS Inter", "MDS Noto Sans JP"/);
 });
 
+/** PDF のページの数（Chromium が書く PDF では、ページごとに /Type /Page がある） */
+const pdfPages = (file: string) =>
+  (readFileSync(file, 'latin1').match(/\/Type\s*\/Page(?![a-zA-Z])/g) ?? []).length;
+
+test('mds pdf：1スライド＝1ページ、--steps ではステップごとのページにする（#70）', async () => {
+  const out = mkdtempSync(join(tmpdir(), 'mds-pdf-'));
+  const final = await pdf(join(fixtures, '06-steps.md'), { out: join(out, 'final.pdf') });
+  expect(final.error).toBeUndefined();
+  expect(readFileSync(final.file, 'latin1').startsWith('%PDF-')).toBe(true);
+  expect(readFileSync(final.file, 'latin1')).toContain('/Type /Font');
+  expect(final.pages).toBe(13);
+  expect(pdfPages(final.file)).toBe(13);
+  const steps = await pdf(join(fixtures, '06-steps.md'), {
+    out: join(out, 'steps.pdf'),
+    steps: true,
+  });
+  expect(steps.pages).toBe(36);
+  expect(pdfPages(steps.file)).toBe(36);
+});
+
+test('フロントマターの pdf: { steps: each } でも、ステップごとのページにする（#70）', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'mds-pdf-'));
+  const body = '## A\n\n1つ目\n\n. . .\n\n2つ目\n\n. . .\n\n3つ目\n';
+  writeFileSync(join(root, 'final.md'), body);
+  writeFileSync(join(root, 'each.md'), `---\npdf:\n  steps: each\n---\n\n${body}`);
+  const final = await pdf(join(root, 'final.md'), { out: join(root, 'final.pdf'), measure: false });
+  const each = await pdf(join(root, 'each.md'), { out: join(root, 'each.pdf'), measure: false });
+  expect([pdfPages(final.file), pdfPages(each.file)]).toEqual([1, 3]);
+});
+
 test.describe('mds dev', () => {
   let server: DevServer | undefined;
   test.afterEach(async () => {
@@ -139,6 +169,22 @@ test.describe('mds dev', () => {
     await page.keyboard.press('ArrowRight');
     await expect(pageText).toHaveText(`3 / ${total + 1}`);
     expect(presenter.isClosed()).toBe(false);
+  });
+
+  test('プレビューを印刷すると、隠したスライドを除いて1スライド＝1ページになる（#70）', async ({
+    page,
+  }) => {
+    server = await startDev(join(fixtures, '05-overrides.md'), { port: 0, measure: false });
+    await page.goto(server.url);
+    await page.evaluate(() => document.fonts.ready);
+    const [slides, hidden] = await page.evaluate(() => [
+      document.querySelectorAll('.mds-slide').length,
+      document.querySelectorAll('.mds-slide[data-hidden]').length,
+    ]);
+    expect(hidden).toBeGreaterThan(0);
+    const file = join(mkdtempSync(join(tmpdir(), 'mds-print-')), 'preview.pdf');
+    await page.pdf({ path: file, printBackground: true, preferCSSPageSize: true });
+    expect(pdfPages(file)).toBe(slides! - hidden!);
   });
 
   test('同梱したフォントの分割ファイルを /__mds/fonts/ から配る（#67）', async ({

@@ -107,3 +107,18 @@ describe('parseMeta', () => {
     expect(diagnostics[0]).toMatchObject({ severity: 'error', code: 'frontmatter/yaml' });
   });
 });
+
+describe('pdf（#70）', () => {
+  it('pdf: { steps: each } を読む。steps を省けば final', () => {
+    expect(meta('---\npdf:\n  steps: each\n---\n').meta.pdf).toEqual({ steps: 'each' });
+    expect(meta('---\npdf: { steps: final }\n---\n').meta.pdf).toEqual({ steps: 'final' });
+    expect(meta('---\npdf: {}\n---\n').meta.pdf).toEqual({ steps: 'final' });
+    expect(meta('---\ntitle: A\n---\n').meta.pdf).toBeUndefined();
+  });
+
+  it('steps の値が正しくなければ警告し、使わない', () => {
+    const { meta: m, diagnostics } = meta('---\npdf:\n  steps: every\n---\n');
+    expect(m.pdf).toBeUndefined();
+    expect(diagnostics.map((d) => [d.code, d.line])).toEqual([['frontmatter/invalid-value', 2]]);
+  });
+});

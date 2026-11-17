@@ -138,7 +138,8 @@ export function startPlayer(doc: Document): void {
   .mds-deck.is-overview > .mds-slide.is-current { outline: 14px solid var(--mds-accent); outline-offset: 6px; }
   .mds-deck:not(.is-presenting) > .mds-player-progress { display: none; }
 }
-@media print { .mds-player-progress, .mds-player-layer, .mds-player-jump { display: none !important; } }
+/* 読み上げ用の要素（1px）も隠す。最後のスライドの下にはみ出し、白いページができるため（#69） */
+@media print { .mds-player-progress, .mds-player-layer, .mds-player-jump, .mds-player-sr { display: none !important; } }
 .mds-player-progress {
   position: fixed;
   left: 0;

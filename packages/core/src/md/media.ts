@@ -146,7 +146,16 @@ function mediaElement(
     const url = embedUrl(src)! + (params.length > 0 ? `?${params.join('&')}` : '');
     const title = alt || (kind === 'youtube' ? 'YouTube の動画' : 'Vimeo の動画');
     const ratio = framed ? ' class="has-ratio" style="--mds-ar:1.7778"' : '';
-    return `<iframe${ratio} src="${esc(url)}" title="${esc(title)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+    const iframe = `<iframe${ratio} src="${esc(url)}" title="${esc(title)}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+    if (!framed) return iframe;
+    // 印刷・PDF では iframe を出せないので、サムネイル（YouTube）とリンクに置き換える（#70）
+    const id = embedUrl(src)!.split('/').pop()!;
+    const thumb =
+      kind === 'youtube'
+        ? `background-image:url('https://i.ytimg.com/vi/${esc(id)}/hqdefault.jpg');`
+        : '';
+    const label = `▶ ${kind === 'youtube' ? 'YouTube' : 'Vimeo'} · ${src}`;
+    return `${iframe}<a class="mds-print-link has-ratio" style="--mds-ar:1.7778;${thumb}" href="${esc(src)}"><span>${esc(label)}</span></a>`;
   }
   // 縦横比がわかれば、枠を中身の形に合わせる（角丸が中身に沿う）
   const known = framed && info?.width && info.height ? info : undefined;

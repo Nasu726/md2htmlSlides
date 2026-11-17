@@ -170,3 +170,19 @@ describe('コードの色分け（#68）', () => {
     );
   });
 });
+
+describe('印刷・PDF（#70）', () => {
+  it('ページの大きさをスライドの大きさにする（縦横比ごと）', () => {
+    expect(render('## A\n')).toContain('@page { size: 1280px 720px; margin: 0; }');
+    expect(render('---\naspect: "4:3"\n---\n## A\n')).toContain(
+      '@page { size: 960px 720px; margin: 0; }',
+    );
+  });
+
+  it('YouTube の埋め込みには、印刷のときだけ出すサムネイルとリンクを添える', () => {
+    const html = render('## A\n\n![](https://www.youtube.com/watch?v=dQw4w9WgXcQ)\n');
+    expect(html).toContain(
+      `<a class="mds-print-link has-ratio" style="--mds-ar:1.7778;background-image:url('https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg');" href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"><span>▶ YouTube · https://www.youtube.com/watch?v=dQw4w9WgXcQ</span></a>`,
+    );
+  });
+});

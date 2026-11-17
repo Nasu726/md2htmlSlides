@@ -33,6 +33,8 @@ export interface DeckMeta {
   footer?: string;
   accent?: string;
   css?: string;
+  /** PDF の書き出し（構文仕様 §5.5）。steps: each ならステップごとのページにする */
+  pdf?: { steps: 'final' | 'each' };
 }
 
 export const DEFAULT_META: Readonly<DeckMeta> = {
@@ -198,6 +200,19 @@ function checkValue(spec: ValueSpec, value: unknown): Checked {
     }
     case 'authors':
       return checkAuthors(value);
+    case 'pdf': {
+      const steps =
+        typeof value === 'object' && value !== null
+          ? (value as { steps?: unknown }).steps
+          : undefined;
+      if (steps === undefined || steps === 'final' || steps === 'each') {
+        return { ok: true, value: { steps: steps ?? 'final' } };
+      }
+      return {
+        ok: false,
+        expected: '「pdf: { steps: each }」のように書いてください（final か each）',
+      };
+    }
   }
 }
 

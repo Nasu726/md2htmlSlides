@@ -65,6 +65,7 @@ function diagnosticsPanel(diagnostics: Diagnostic[], file: string): string {
 .mds-dev-panel ul { margin: 0; padding-left: 1.2em; }
 .mds-dev-panel code { color: #92400e; font-size: 11px; }
 html.mds-presenting .mds-dev-panel { display: none; }
+@media print { .mds-dev-panel { display: none; } }
 </style>`;
 }
 
