@@ -1,6 +1,6 @@
 import { build, startDev, type DevServer } from '@mds/cli';
 import { expect, test } from '@playwright/test';
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -44,6 +44,36 @@ test('mds build は計測して自動で分割し、fixtures の目安の枚数�
       result.diagnostics.filter((d) => d.code === 'slide/overflow'),
       name,
     ).toEqual([]);
+  }
+});
+
+/** フロントマターの theme を差し替える（なければ足す） */
+function withTheme(source: string, theme: string): string {
+  if (!source.startsWith('---\n')) return `---\ntheme: ${theme}\n---\n\n${source}`;
+  const end = source.indexOf('\n---', 4);
+  const front = source.slice(4, end);
+  const replaced = /^theme:/m.test(front)
+    ? front.replace(/^theme:.*$/m, `theme: ${theme}`)
+    : `theme: ${theme}\n${front}`;
+  return `---\n${replaced}${source.slice(end)}`;
+}
+
+test('dark と bold でも、計測して分割すればあふれない（#66）', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'mds-theme-'));
+  symlinkSync(join(fixtures, 'assets'), join(root, 'assets'));
+  for (const theme of ['dark', 'bold']) {
+    for (const name of ['01-plain-document', '04-layouts']) {
+      const md = join(root, `${name}-${theme}.md`);
+      writeFileSync(md, withTheme(readFileSync(join(fixtures, `${name}.md`), 'utf8'), theme));
+      const result = await build(md, { outDir: join(root, `${name}-${theme}`) });
+      const label = `${name}（${theme}）`;
+      expect(result.measureError, label).toBeUndefined();
+      expect(readFileSync(result.index, 'utf8'), label).toContain(`theme-${theme}`);
+      expect(
+        result.diagnostics.filter((d) => d.code === 'slide/overflow'),
+        label,
+      ).toEqual([]);
+    }
   }
 });
 
