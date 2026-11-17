@@ -1,6 +1,14 @@
 import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { RUNTIME_SCRIPT } from './index.js';
+import { PREVIEW_SCRIPT, RUNTIME_SCRIPT } from './index.js';
+
+describe('PREVIEW_SCRIPT', () => {
+  it('外側の変数を使わずに、そのまま実行できる形になっている', () => {
+    expect(PREVIEW_SCRIPT).toMatch(/^\(function startPreview\(doc\) \{/);
+    expect(PREVIEW_SCRIPT).toMatch(/\}\)\(document\);$/);
+    expect(() => new Function('document', PREVIEW_SCRIPT)).not.toThrow();
+  });
+});
 
 describe('RUNTIME_SCRIPT', () => {
   it('gzip で 20KB 以下（docs/design.md §8.5）', () => {

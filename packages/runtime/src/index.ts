@@ -3,6 +3,7 @@
  * 段階表示と発表者ビューは M2 で加える。
  */
 import { startPlayer } from './player.js';
+import { startPreview } from './preview.js';
 
 export const RUNTIME_VERSION = '0.0.0';
 
@@ -13,3 +14,8 @@ export { startPlayer };
  * `renderDeckHtml(deck, { scripts: [RUNTIME_SCRIPT] })` のように渡す。
  */
 export const RUNTIME_SCRIPT = `(${startPlayer.toString()})(document);`;
+
+export { startPreview };
+
+/** `mds dev` のプレビュー（`/`）に入れるソース。画面に合わせる・S で発表を始める（#60） */
+export const PREVIEW_SCRIPT = `(${startPreview.toString()})(document);`;

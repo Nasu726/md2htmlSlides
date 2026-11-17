@@ -61,6 +61,7 @@ export function startPlayer(doc: Document): void {
         elapsed: '経過',
         clock: '時刻',
         end: '最後のスライドです',
+        exit: ['Esc', 'スライドショーを終える（プレビューに戻る）'],
       }
     : {
         help: 'Keyboard shortcuts',
@@ -101,7 +102,11 @@ export function startPlayer(doc: Document): void {
         elapsed: 'Elapsed',
         clock: 'Clock',
         end: 'This is the last slide',
+        exit: ['Esc', 'End the slideshow (back to preview)'],
       };
+  // スライドショーを終えて戻る先（mds dev のプレビュー）。書き出した HTML にはないので、
+  // そのときは Esc で終える動きもない（#60）
+  const exitUrl = deck.dataset.exitUrl;
 
   // 発表用の見た目。印刷では使わない（screen だけ）
   const style = doc.createElement('style');
@@ -202,7 +207,7 @@ export function startPlayer(doc: Document): void {
   const title = doc.createElement('h2');
   title.textContent = text.help;
   const table = doc.createElement('table');
-  for (const [key, action] of text.keys) {
+  for (const [key, action] of exitUrl ? [...text.keys, text.exit] : text.keys) {
     const row = table.insertRow();
     row.insertCell().textContent = key!;
     row.insertCell().textContent = action!;
@@ -601,6 +606,13 @@ export function startPlayer(doc: Document): void {
     else return false;
     return true;
   };
+  /** スライドショーを終えて、プレビューの同じスライドに戻る。発表者ビューも閉じる（#60） */
+  const exitShow = () => {
+    if (!exitUrl) return;
+    closePresenter();
+    const id = slides[index]?.dataset.id;
+    win.location.href = `${exitUrl}#/${id ? encodeURIComponent(id) : index + 1}`;
+  };
   /** 発表者ビューを閉じる。発表（このウィンドウ）は続ける */
   const closePresenter = () => {
     const opened = presenter;
@@ -741,6 +753,8 @@ html, body { height: 100%; margin: 0; background: #0f172a; color: #e2e8f0; font-
       setOverview(!overview);
     } else if (key === 'Escape' && overview) {
       setOverview(false);
+    } else if (key === 'Escape' && exitUrl) {
+      exitShow();
     } else if (key === 'f' || key === 'F') {
       toggleFullscreen();
     } else {

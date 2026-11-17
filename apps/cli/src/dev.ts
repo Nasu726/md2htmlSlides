@@ -1,5 +1,5 @@
 import type { Diagnostic } from '@mds/core';
-import { RUNTIME_SCRIPT } from '@mds/runtime';
+import { PREVIEW_SCRIPT, RUNTIME_SCRIPT } from '@mds/runtime';
 import { createReadStream, existsSync, statSync, watch, type FSWatcher } from 'node:fs';
 import { createServer, type ServerResponse } from 'node:http';
 import { basename, dirname, extname, resolve } from 'node:path';
@@ -40,6 +40,9 @@ const LIVE_RELOAD = `(() => {
     location.reload();
   });
 })();`;
+
+/** 発表の画面（/present）で Esc を押したときに戻る先。runtime より前に置く（#60） */
+const EXIT_TO_PREVIEW = `document.querySelector('.mds-deck')?.setAttribute('data-exit-url', '/');`;
 
 /** 警告の一覧を、プレビューの右下に出す。 */
 function diagnosticsPanel(diagnostics: Diagnostic[], file: string): string {
@@ -92,9 +95,17 @@ export async function startDev(mdFile: string, options: DevOptions = {}): Promis
   // 自動分割のための計測。ブラウザは使い回し、編集していない節は測り直さない
   const measurer = options.measure === false ? undefined : new ChromiumMeasurer();
   const render = async () => {
-    const previewOptions = { debug: true, includeHidden: true, scripts: [LIVE_RELOAD] };
+    const previewOptions = {
+      debug: true,
+      includeHidden: true,
+      scripts: [PREVIEW_SCRIPT, LIVE_RELOAD],
+    };
     preview = await renderFile(file, previewOptions, measurer);
-    present = await renderFile(file, { scripts: [RUNTIME_SCRIPT, LIVE_RELOAD] }, measurer);
+    present = await renderFile(
+      file,
+      { scripts: [EXIT_TO_PREVIEW, RUNTIME_SCRIPT, LIVE_RELOAD] },
+      measurer,
+    );
     version++;
     const count = preview.diagnostics.filter((d) => d.severity !== 'info').length;
     const time = new Date().toLocaleTimeString();
