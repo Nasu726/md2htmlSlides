@@ -84,4 +84,61 @@ test.describe('mds dev', () => {
     await expect(pageText).toHaveText(`3 / ${total + 1}`);
     expect(presenter.isClosed()).toBe(false);
   });
+
+  test('プレビューは、スライド1枚がウィンドウに収まる大きさにする（#60）', async ({ page }) => {
+    server = await startDev(join(fixtures, '01-plain-document.md'), { port: 0, measure: false });
+    const first = page.locator('.mds-slide').first();
+    // 半分の幅のウィンドウ：幅に合わせる
+    await page.setViewportSize({ width: 960, height: 1000 });
+    await page.goto(server.url);
+    let box = (await first.boundingBox())!;
+    expect(box.width).toBeLessThanOrEqual(960 - 48 + 1);
+    expect(box.width).toBeGreaterThan(960 - 48 - 30); // スクロールバーの分だけ狭くなる
+    expect(box.height / box.width).toBeCloseTo(720 / 1280, 2);
+    // 横長のウィンドウ：高さに合わせる
+    await page.setViewportSize({ width: 1600, height: 600 });
+    await expect
+      .poll(async () => (await first.boundingBox())!.height)
+      .toBeLessThanOrEqual(600 - 64 + 1);
+    box = (await first.boundingBox())!;
+    expect(box.height).toBeGreaterThan(600 - 64 - 2);
+  });
+
+  test('S で見えているスライドから発表を始め、Esc でプレビューの同じスライドに戻る（#60）', async ({
+    page,
+  }) => {
+    server = await startDev(join(fixtures, '01-plain-document.md'), { port: 0, measure: false });
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(server.url);
+    await page
+      .locator('.mds-slide')
+      .nth(3)
+      .evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    await page.keyboard.press('s');
+    await page.waitForURL(/\/present#\//);
+    const player = () =>
+      page.evaluate(() => (window as unknown as { mdsPlayer: { page: number } }).mdsPlayer.page);
+    await expect.poll(player).toBe(4);
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(player).toBe(5);
+    // 発表者ビューを開いたまま終えると、発表者ビューも閉じる
+    const [presenter] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('p')]);
+    await expect(presenter.locator('.mds-pv-page')).toHaveText(/^5 \//);
+    await page.keyboard.press('Escape');
+    await page.waitForURL((url) => url.pathname === '/' && url.hash === '');
+    await expect.poll(() => presenter.isClosed()).toBe(true);
+    // プレビューでは、5枚目が画面の中央に見えている
+    const box = (await page.locator('.mds-slide').nth(4).boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(-1);
+    expect(box.y + box.height).toBeLessThanOrEqual(800 + 1);
+  });
+
+  test('書き出した HTML には戻る先がないので、Esc で発表は終わらない（#60）', async ({ page }) => {
+    const out = mkdtempSync(join(tmpdir(), 'mds-build-'));
+    await build(join(fixtures, '01-plain-document.md'), { outDir: out, measure: false });
+    await page.goto(`${pathToFileURL(join(out, 'index.html')).href}#/2`);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+    expect(page.url()).toMatch(/index\.html#\/2$/);
+  });
 });
