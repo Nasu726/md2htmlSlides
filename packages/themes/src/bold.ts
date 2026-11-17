@@ -1,3 +1,5 @@
+import { FONT_MONO, FONT_SANS } from './fonts.js';
+
 /**
  * bold テーマ：大きな文字と強い色面。LT・ピッチ向け（docs/design.md §6）。
  * 章扉とタイトルスライドはアクセントの色面にし、本文のスライドは白地に太い文字で見せる。
@@ -12,12 +14,9 @@ export const BOLD_TOKENS = `
   --mds-border: #d1d5db;
   --mds-code-bg: #111111;
   --mds-code-fg: #f9fafb;
-  --mds-font-body: 'Inter', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP',
-    'Yu Gothic UI', 'Meiryo', 'IPAPGothic', 'IPAexGothic', sans-serif;
-  --mds-font-heading: 'Inter Display', 'Inter', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
-    'Noto Sans JP', 'Yu Gothic UI', 'Meiryo', 'IPAPGothic', 'IPAexGothic', sans-serif;
-  --mds-font-mono: 'JetBrains Mono', 'Source Code Pro', 'Noto Sans Mono CJK JP', 'IPAGothic',
-    ui-monospace, monospace;
+  --mds-font-body: ${FONT_SANS};
+  --mds-font-heading: var(--mds-font-body);
+  --mds-font-mono: ${FONT_MONO};
   --mds-fs-title: 84px;
   --mds-fs-h1: 76px;
   --mds-fs-h2: 52px;

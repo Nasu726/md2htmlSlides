@@ -1,3 +1,5 @@
+import { FONT_MONO, FONT_SANS } from './fonts.js';
+
 /**
  * clean テーマ：白が基調で余白が広く、アクセントは控えめ（docs/design.md §6）。
  * デザイントークン（CSS カスタムプロパティ）と、テーマ固有の飾りだけを持つ。
@@ -12,11 +14,9 @@ export const CLEAN_TOKENS = `
   --mds-border: #e2e8f0;
   --mds-code-bg: #0f172a;
   --mds-code-fg: #e2e8f0;
-  --mds-font-body: 'Inter', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP',
-    'Yu Gothic UI', 'Meiryo', 'IPAPGothic', 'IPAexGothic', sans-serif;
+  --mds-font-body: ${FONT_SANS};
   --mds-font-heading: var(--mds-font-body);
-  --mds-font-mono: 'JetBrains Mono', 'Source Code Pro', 'Noto Sans Mono CJK JP', 'IPAGothic',
-    ui-monospace, monospace;
+  --mds-font-mono: ${FONT_MONO};
   --mds-fs-title: 68px;
   --mds-fs-h1: 60px;
   --mds-fs-h2: 44px;

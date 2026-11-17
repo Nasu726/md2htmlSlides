@@ -156,7 +156,8 @@ export function startPlayer(doc: Document): void {
   display: grid;
   place-items: center;
   background: rgb(0 0 0 / 0.55);
-  font-family: var(--mds-font-body, sans-serif);
+  /* 操作画面は OS のフォントで出す（同梱するフォントは、スライドで使う文字だけに絞るため） */
+  font-family: system-ui, sans-serif;
 }
 .mds-player-help > div {
   zoom: var(--mds-ui-scale, 1);

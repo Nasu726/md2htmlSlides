@@ -77,6 +77,32 @@ test('dark と bold でも、計測して分割すればあふれない（#66）
   }
 });
 
+test('書き出した HTML は、使う文字だけに絞ったフォントを埋め込み、そのフォントで表示する（#67）', async ({
+  page,
+}) => {
+  const out = mkdtempSync(join(tmpdir(), 'mds-fonts-'));
+  const result = await build(join(fixtures, '02-tech-talk.md'), { outDir: out, measure: false });
+  expect(result.fontBytes).toBeGreaterThan(50 * 1024);
+  expect(result.fontBytes).toBeLessThan(400 * 1024);
+  const html = readFileSync(result.index, 'utf8');
+  expect(html).toContain("font-family:'MDS Noto Sans JP'");
+  expect(html).toContain('data:font/woff2;base64,');
+  expect(html).not.toContain('/__mds/fonts/');
+  // 9枚目は日本語とコードがあるスライド
+  await page.goto(`${pathToFileURL(result.index).href}#/9`);
+  await page.evaluate(() => document.fonts.ready);
+  const loaded = await page.evaluate(() =>
+    [
+      ...new Set([...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family)),
+    ].sort(),
+  );
+  expect(loaded).toEqual(['MDS Inter', 'MDS JetBrains Mono', 'MDS Noto Sans JP']);
+  const family = await page
+    .locator('.mds-slide.is-current .mds-title')
+    .evaluate((el) => getComputedStyle(el).fontFamily);
+  expect(family).toMatch(/^"MDS Inter", "MDS Noto Sans JP"/);
+});
+
 test.describe('mds dev', () => {
   let server: DevServer | undefined;
   test.afterEach(async () => {
@@ -115,6 +141,27 @@ test.describe('mds dev', () => {
     expect(presenter.isClosed()).toBe(false);
   });
 
+  test('同梱したフォントの分割ファイルを /__mds/fonts/ から配る（#67）', async ({
+    page,
+    request,
+  }) => {
+    server = await startDev(join(fixtures, '10-japanese.md'), { port: 0, measure: false });
+    await page.goto(server.url);
+    await page.evaluate(() => document.fonts.ready);
+    const loaded = await page.evaluate(
+      () => [...document.fonts].filter((f) => f.status === 'loaded').length,
+    );
+    expect(loaded).toBeGreaterThan(5);
+    const url = /url\((\/__mds\/fonts\/[^)]+)\)/.exec(await page.content())![1]!;
+    const response = await request.get(new URL(url, server.url).href);
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toBe('font/woff2');
+    const missing = await request.get(
+      new URL('/__mds/fonts/@fontsource-variable/x.woff2', server.url).href,
+    );
+    expect(missing.status()).toBe(404);
+  });
+
   test('プレビューは、スライド1枚がウィンドウに収まる大きさにする（#60）', async ({ page }) => {
     server = await startDev(join(fixtures, '01-plain-document.md'), { port: 0, measure: false });
     const first = page.locator('.mds-slide').first();
@@ -127,11 +174,13 @@ test.describe('mds dev', () => {
     expect(box.height / box.width).toBeCloseTo(720 / 1280, 2);
     // 横長のウィンドウ：高さに合わせる
     await page.setViewportSize({ width: 1600, height: 600 });
+    // 大きさを変えた後の合わせ直し（resize のイベント）を待つ。変える前の高さ（513px）は、
+    // 「600 − 64 以下」をすでに満たすので、それでは待てない
     await expect
       .poll(async () => (await first.boundingBox())!.height)
-      .toBeLessThanOrEqual(600 - 64 + 1);
+      .toBeGreaterThan(600 - 64 - 2);
     box = (await first.boundingBox())!;
-    expect(box.height).toBeGreaterThan(600 - 64 - 2);
+    expect(box.height).toBeLessThanOrEqual(600 - 64 + 1);
   });
 
   test('S で見えているスライドから発表を始め、Esc でプレビューの同じスライドに戻る（#60）', async ({

@@ -4,6 +4,7 @@ import { createReadStream, existsSync, statSync, watch, type FSWatcher } from 'n
 import { createServer, type ServerResponse } from 'node:http';
 import { basename, dirname, extname, resolve } from 'node:path';
 import { renderFile, type Rendered } from './build.js';
+import { fontFileFor } from './fonts.js';
 import { ChromiumMeasurer } from './measurer.js';
 
 const TYPES: Record<string, string> = {
@@ -99,11 +100,12 @@ export async function startDev(mdFile: string, options: DevOptions = {}): Promis
       debug: true,
       includeHidden: true,
       scripts: [PREVIEW_SCRIPT, LIVE_RELOAD],
+      fonts: 'link' as const,
     };
     preview = await renderFile(file, previewOptions, measurer);
     present = await renderFile(
       file,
-      { scripts: [EXIT_TO_PREVIEW, RUNTIME_SCRIPT, LIVE_RELOAD] },
+      { scripts: [EXIT_TO_PREVIEW, RUNTIME_SCRIPT, LIVE_RELOAD], fonts: 'link' },
       measurer,
     );
     version++;
@@ -135,6 +137,17 @@ export async function startDev(mdFile: string, options: DevOptions = {}): Promis
       res.write(': connected\n\n');
       clients.add(res);
       req.on('close', () => clients.delete(res));
+      return;
+    }
+    // 同梱するフォント（分割ファイル一式。ブラウザが必要なものだけを読む）
+    if (path.startsWith('/__mds/fonts/')) {
+      const font = fontFileFor(path.slice('/__mds/fonts/'.length));
+      if (!font) {
+        res.writeHead(404).end();
+        return;
+      }
+      res.writeHead(200, { 'content-type': 'font/woff2', 'cache-control': 'max-age=86400' });
+      createReadStream(font).pipe(res);
       return;
     }
     if (path === '/' || path === '/present') {

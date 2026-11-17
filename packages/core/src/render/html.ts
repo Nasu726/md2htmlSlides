@@ -40,6 +40,8 @@ export interface RenderOptions {
   scripts?: string[];
   /** 画像・動画・ロゴのパスを、書き出し先での URL に置き換える関数 */
   assetUrl?: (src: string) => string;
+  /** 同梱するフォントの @font-face（docs/design.md §6）。デッキの外にも効くように、先頭に置く */
+  fontCss?: string;
 }
 
 const esc = (text: string) => md.utils.escapeHtml(text);
@@ -66,7 +68,7 @@ export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): st
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(meta.title ?? slides[0]?.heading?.text ?? 'Slides')}</title>
-<style>${BASE_CSS}${themeCss(meta.theme)}${custom}</style>
+<style>${options.fontCss ? `${options.fontCss}\n` : ''}${BASE_CSS}${themeCss(meta.theme)}${custom}</style>
 </head>
 <body>
 <main class="mds-deck theme-${meta.theme}" style="${style.join(';')}"${options.debug ? ' data-debug=""' : ''}>
