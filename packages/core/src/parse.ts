@@ -370,7 +370,7 @@ function checkUnknownDirectives(section: SectionNode, diagnostics: Diagnostic[])
           `未定義の指示「::${m[1]}」。` +
           (suggestion ? `「::${suggestion}」のことですか？` : '文字のまま表示します'),
         line: block.src.start,
-        ...(suggestion ? { suggestion } : {}),
+        ...(suggestion ? { suggestion, found: m[1]! } : {}),
       });
     }
   };

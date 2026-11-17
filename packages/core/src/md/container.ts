@@ -92,7 +92,7 @@ function container(state: StateBlock, startLine: number, endLine: number, silent
         `未知のコンテナ「${name}」。` +
         (suggestion ? `「${suggestion}」のことですか？` : '中身は普通に表示します'),
       line: fileLine(env, startLine),
-      ...(suggestion ? { suggestion } : {}),
+      ...(suggestion ? { suggestion, found: name } : {}),
     });
   }
 

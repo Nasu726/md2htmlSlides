@@ -140,7 +140,7 @@ export function parseMeta(block: FrontmatterBlock | null, diagnostics: Diagnosti
           `未知のキー「${name}」` +
           (suggestion ? `。「${suggestion}」のことですか？` : 'は無視します'),
         line,
-        ...(suggestion ? { suggestion } : {}),
+        ...(suggestion ? { suggestion, found: name } : {}),
       });
       continue;
     }

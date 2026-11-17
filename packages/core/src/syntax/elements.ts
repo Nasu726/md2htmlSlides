@@ -15,6 +15,18 @@ export const LAYOUTS = [
 ] as const;
 export type LayoutName = (typeof LAYOUTS)[number];
 
+/** レイアウトの説明（エディタのサジェストと早見表に出す。構文仕様 §3.5） */
+export const LAYOUT_SUMMARIES: Readonly<Record<LayoutName, string>> = {
+  title: 'タイトルスライド',
+  section: '章の扉（見出しだけ）',
+  stack: '縦に積む（既定）',
+  split: '文章とメディアを左右に',
+  columns: '2〜4列のカード',
+  grid: '画像を格子状に',
+  media: '画像・図を全面に',
+  statement: '一文を中央に大きく',
+};
+
 /** 属性を書ける場所 */
 export type AttrPlace = 'slide' | 'block' | 'media' | 'code' | 'container' | 'arch' | 'maketitle';
 

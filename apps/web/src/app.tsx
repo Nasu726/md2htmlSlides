@@ -9,6 +9,7 @@ import {
   urlSource,
   type AssetSource,
 } from './assets.js';
+import { cheatSheet, insertSnippet, type CheatItem } from './assist.js';
 import { createEditor, type Editor } from './editor.js';
 import {
   fixBreak,
@@ -16,6 +17,7 @@ import {
   setSlides,
   setWarnings,
   slideAt,
+  slideInfoAt,
   slideStart,
 } from './slide-gutter.js';
 import { Frame } from './frames.js';
@@ -52,6 +54,33 @@ const showWarnings = signal(false);
 const dragging = signal(false);
 /** 自動で区切られた位置のメニュー（#74） */
 const breakMenu = signal<{ line: number; x: number; y: number } | null>(null);
+/** 早見表のパネル（#75）と、その検索の文字 */
+const cheatOpen = signal(false);
+const cheatQuery = signal('');
+const CHEAT_ITEMS: CheatItem[] = cheatSheet();
+/** ファイルを選んだ・落としたときの、一緒に選んだファイルの名前（`![](` の候補） */
+let pickedFiles: string[] = [];
+
+/** `![](` の候補：資料のフォルダからの相対パス */
+function assetCandidates(): string[] {
+  const current = folder.value;
+  if (current && doc.value.path) {
+    const dir = doc.value.path.includes('/')
+      ? doc.value.path.slice(0, doc.value.path.lastIndexOf('/') + 1)
+      : '';
+    return [...current.files.keys()]
+      .filter((path) => path.startsWith(dir) && path !== doc.value.path)
+      .map((path) => path.slice(dir.length));
+  }
+  return pickedFiles;
+}
+
+/** 早見表の項目を、カーソルの位置（選んでいる範囲）に入れる */
+function insertCheat(item: CheatItem): void {
+  const { from, to } = editor.view.state.selection.main;
+  insertSnippet(editor.view, item.snippet, from, to);
+  editor.view.focus();
+}
 const canOpenFolder = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
 let editor: Editor;
@@ -231,6 +260,7 @@ async function openFiles(files: File[]): Promise<void> {
     return;
   }
   folder.value = null;
+  pickedFiles = files.filter((file) => file !== md).map((file) => file.name);
   await openText(
     { kind: 'file', name: md.name, key: `file:${md.name}` },
     await md.text(),
@@ -368,6 +398,11 @@ export function App() {
       onSave: () => void save(),
       onPresent: () => void present(),
       onCursor,
+      onCheatSheet: () => (cheatOpen.value = !cheatOpen.value),
+      assist: {
+        files: assetCandidates,
+        layoutAt: (line) => slideInfoAt(editor.view, line)?.layout,
+      },
       gutter: {
         onAutoBreak: (line, rect) => (breakMenu.value = { line, x: rect.right + 4, y: rect.top }),
         onSlide: (index) => {
@@ -456,6 +491,14 @@ export function App() {
         <span class="spacer" />
         <button
           type="button"
+          class={cheatOpen.value ? 'active' : ''}
+          title="Ctrl+/"
+          onClick={() => (cheatOpen.value = !cheatOpen.value)}
+        >
+          ? 早見表
+        </button>
+        <button
+          type="button"
           class="primary"
           onClick={() => void present()}
           title="F5（プレビューでは S）"
@@ -501,7 +544,48 @@ export function App() {
           </nav>
         )}
         <section class="editor" ref={editorRef} aria-label="エディタ" />
-        <section class="preview" ref={previewRef} aria-label="プレビュー" />
+        <section class="preview" ref={previewRef} aria-label="プレビュー">
+          {cheatOpen.value && (
+            <aside class="cheatsheet" aria-label="早見表">
+              <header>
+                <h2>早見表</h2>
+                <button
+                  type="button"
+                  class="close"
+                  aria-label="閉じる"
+                  onClick={() => (cheatOpen.value = false)}
+                >
+                  ×
+                </button>
+              </header>
+              <input
+                type="search"
+                placeholder="探す（例：横・背景・段階）"
+                value={cheatQuery.value}
+                onInput={(event) => (cheatQuery.value = event.currentTarget.value)}
+              />
+              <ul>
+                {CHEAT_ITEMS.filter((item) => {
+                  const q = cheatQuery.value.trim();
+                  return (
+                    !q || item.label.includes(q) || item.code.includes(q) || item.group.includes(q)
+                  );
+                }).map((item, i) => (
+                  <li key={i}>
+                    <div>
+                      <b>{item.label}</b>
+                      <code>{item.code}</code>
+                    </div>
+                    <button type="button" onClick={() => insertCheat(item)}>
+                      挿入
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p class="muted">項目を選ぶと、カーソルの位置に入れる</p>
+            </aside>
+          )}
+        </section>
       </main>
       <footer class="status">
         <span data-testid="slide-count">{r ? `${r.slides} 枚` : '描画中…'}</span>

@@ -136,6 +136,6 @@ function report(result: AttrsResult, env: ParseEnv, line: number): void {
       `未知の属性「${key}」` +
       (suggestion ? `。「${suggestion}」のことですか？` : '。文字のまま表示します'),
     line,
-    ...(suggestion ? { suggestion } : {}),
+    ...(suggestion ? { suggestion, found: key } : {}),
   });
 }

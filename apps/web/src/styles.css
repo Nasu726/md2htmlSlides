@@ -184,6 +184,7 @@ button.primary {
 }
 
 .preview {
+  position: relative;
   min-height: 0;
   display: flex;
 }
@@ -355,4 +356,127 @@ button.primary {
   border: 0;
   background: none;
   color: var(--muted);
+}
+
+/* 入力の補助（#75） */
+button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.cm-tooltip.cm-tooltip-autocomplete {
+  border-radius: 8px;
+  overflow: hidden;
+}
+.cm-tooltip-autocomplete completion-section {
+  display: block;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+}
+.cm-tooltip-autocomplete .cm-completionLabel {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-weight: 600;
+}
+.cm-tooltip-autocomplete .cm-completionDetail {
+  margin-left: 1.2em;
+  font-style: normal;
+  color: var(--muted);
+}
+.cm-syntax-hint {
+  max-width: 360px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.cm-syntax-hint p {
+  margin: 4px 0;
+}
+.cm-syntax-hint pre {
+  margin: 6px 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+  font-size: 12px;
+}
+.cm-syntax-hint a {
+  color: var(--accent);
+  font-size: 12px;
+}
+.cheatsheet {
+  position: absolute;
+  inset: 0 0 0 auto;
+  z-index: 5;
+  width: min(380px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: -6px 0 18px rgb(0 0 0 / 0.08);
+}
+.cheatsheet header {
+  display: flex;
+  align-items: center;
+}
+.cheatsheet h2 {
+  margin: 0;
+  font-size: 15px;
+}
+.cheatsheet .close {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  font-size: 18px;
+}
+.cheatsheet input {
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+.cheatsheet ul {
+  flex: 1;
+  overflow: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.cheatsheet li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.cheatsheet li div {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+.cheatsheet li b {
+  font-size: 13px;
+}
+.cheatsheet li code {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cheatsheet li button {
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.cm-tooltip-autocomplete ul li[aria-selected] .cm-completionDetail {
+  color: inherit;
+  opacity: 0.85;
 }

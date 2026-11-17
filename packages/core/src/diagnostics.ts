@@ -11,4 +11,6 @@ export interface Diagnostic {
   line: number;
   /** 修正の候補（例：'layout'）。エディタの「直す」ボタンに使う */
   suggestion?: string;
+  /** 直す対象の、書き間違えた文字（例：'lyout'）。その行の中のこの文字を suggestion に置き換える */
+  found?: string;
 }
