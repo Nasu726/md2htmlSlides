@@ -199,3 +199,94 @@ test('発表者ビュー：P で開き、今と次のスライド・ノート・
   // ノートは発表の画面には出さない
   await expect(page.locator('.mds-notes').first()).toBeHidden();
 });
+
+/** 発表の画面で P を押して、発表者ビューを開く */
+async function openPresenter(page: Page) {
+  const [presenter] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('p')]);
+  await expect(presenter.locator('.mds-pv-page')).not.toBeEmpty();
+  return presenter;
+}
+
+test('発表者ビュー：Esc か P で閉じても発表は続く。発表の画面の P は開く・閉じるの切り替え（#59）', async ({
+  page,
+}) => {
+  // キーを押した（keydown の）時点でウィンドウが閉じるので、キーを離す操作は失敗してよい
+  const closeWith = (presenter: Page, key: string) =>
+    Promise.all([
+      presenter.waitForEvent('close'),
+      presenter.keyboard.press(key).catch(() => undefined),
+    ]);
+  await open(page, '02-tech-talk.md', '#/3');
+  let presenter = await openPresenter(page);
+  await closeWith(presenter, 'Escape');
+  await expect(page.locator('.mds-deck')).toHaveClass(/is-presenting/);
+  expect(await hash(page)).toBe('#/3');
+  presenter = await openPresenter(page);
+  await closeWith(presenter, 'p');
+  presenter = await openPresenter(page);
+  await Promise.all([presenter.waitForEvent('close'), page.keyboard.press('p')]);
+  expect(await hash(page)).toBe('#/3');
+});
+
+test('発表者ビュー：O の一覧は発表者ビューの中に出し、選ぶまで発表の画面は変えない（#59）', async ({
+  page,
+}) => {
+  await open(page, '01-plain-document.md');
+  const presenter = await openPresenter(page);
+  await presenter.keyboard.press('o');
+  await expect(presenter.locator('.mds-pv-overview')).toBeVisible();
+  await expect(presenter.locator('.mds-pv-thumb')).toHaveCount(8);
+  await expect(page.locator('.mds-deck')).not.toHaveClass(/is-overview/);
+  await presenter.keyboard.press('ArrowRight');
+  await presenter.keyboard.press('ArrowRight');
+  await expect(presenter.locator('.mds-pv-thumb.is-selected')).toHaveAttribute('data-k', '2');
+  expect(await hash(page)).toBe('#/1');
+  await presenter.keyboard.press('Enter');
+  await expect(presenter.locator('.mds-pv-overview')).toBeHidden();
+  expect(await hash(page)).toBe('#/3');
+  // Esc なら移らずに戻る。クリックでも選べる
+  await presenter.keyboard.press('o');
+  await presenter.keyboard.press('ArrowRight');
+  await presenter.keyboard.press('Escape');
+  await expect(presenter.locator('.mds-pv-overview')).toBeHidden();
+  expect(await hash(page)).toBe('#/3');
+  await presenter.keyboard.press('o');
+  await presenter.locator('.mds-pv-thumb').nth(5).click();
+  expect(await hash(page)).toBe('#/6');
+  await expect(presenter.locator('.mds-pv-page')).toHaveText('6 / 8');
+});
+
+test('発表者ビュー：「現在」の枠に、発表の画面の暗転と一覧を示す（#59）', async ({ page }) => {
+  await open(page, '01-plain-document.md');
+  const presenter = await openPresenter(page);
+  const status = presenter.locator('.mds-pv-status');
+  await expect(status).toBeHidden();
+  await presenter.keyboard.press('b');
+  await expect(page.locator('.mds-player-black')).toBeVisible();
+  await expect(presenter.locator('.mds-pv-current')).toHaveClass(/is-black/);
+  await expect(status).toHaveText('暗転中');
+  // 暗転中は、どのキーでも元に戻す（進まない）
+  await presenter.keyboard.press('ArrowRight');
+  await expect(page.locator('.mds-player-black')).toBeHidden();
+  await expect(status).toBeHidden();
+  expect(await hash(page)).toBe('#/1');
+  await page.keyboard.press('o');
+  await expect(status).toHaveText('観客の画面は一覧を表示中');
+  await page.keyboard.press('Escape');
+  await expect(status).toBeHidden();
+});
+
+test('発表者ビュー：? のヘルプと F の全画面は、発表者ビューの中で効く（#59）', async ({ page }) => {
+  await open(page, '01-plain-document.md');
+  const presenter = await openPresenter(page);
+  await presenter.keyboard.press('?');
+  await expect(presenter.locator('.mds-pv-help')).toBeVisible();
+  await expect(page.locator('.mds-player-help')).toBeHidden();
+  // ヘルプを開いているときの Esc は、ヘルプだけを閉じる
+  await presenter.keyboard.press('Escape');
+  await expect(presenter.locator('.mds-pv-help')).toBeHidden();
+  expect(presenter.isClosed()).toBe(false);
+  await presenter.keyboard.press('f');
+  await expect.poll(() => presenter.evaluate(() => document.fullscreenElement !== null)).toBe(true);
+  expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
+});

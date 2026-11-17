@@ -64,4 +64,24 @@ test.describe('mds dev', () => {
     writeFileSync(join(root, 'deck.md'), source.replace(before!, '保存したら変わった見出し'));
     await expect(second).toHaveText('保存したら変わった見出し');
   });
+
+  test('保存して発表の画面が読み込み直されても、発表者ビューをつなぎ直す（#59）', async ({
+    page,
+  }) => {
+    const root = mkdtempSync(join(tmpdir(), 'mds-dev-'));
+    cpSync(join(fixtures, '01-plain-document.md'), join(root, 'deck.md'));
+    server = await startDev(join(root, 'deck.md'), { port: 0, measure: false });
+    await page.goto(`${server.url}present#/2`);
+    const [presenter] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('p')]);
+    const pageText = presenter.locator('.mds-pv-page');
+    await expect(pageText).toHaveText(/^2 \/ \d+$/);
+    const total = Number((await pageText.textContent())!.split(' / ')[1]);
+    const source = readFileSync(join(root, 'deck.md'), 'utf8');
+    writeFileSync(join(root, 'deck.md'), `${source}\n\n## 足したスライド\n\n本文\n`);
+    // 読み込み直した発表の画面が、同じ発表者ビューを書き直す
+    await expect(pageText).toHaveText(`2 / ${total + 1}`);
+    await page.keyboard.press('ArrowRight');
+    await expect(pageText).toHaveText(`3 / ${total + 1}`);
+    expect(presenter.isClosed()).toBe(false);
+  });
 });
