@@ -18,7 +18,16 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createAssets, registerDeckAssets, type Assets } from './assets.js';
+import { FONT_HOST, codeText, linkedFontCss, subsetFontCss, visibleText } from './fonts.js';
 import { ChromiumMeasurer } from './measurer.js';
+
+/**
+ * 同梱するフォントの扱い（docs/design.md §6）。
+ * - `embed`：スライドで使う文字だけに絞り、HTML に埋め込む（書き出し）
+ * - `link`：分割ファイル一式を `/__mds/fonts/` から読み込む（`mds dev`）
+ * - なし：フォントを含めない（OS のフォントで表示する）
+ */
+export type FontMode = 'embed' | 'link';
 
 export interface Rendered {
   html: string;
@@ -26,6 +35,8 @@ export interface Rendered {
   slides: SlideDeck;
   assets: Assets;
   diagnostics: Diagnostic[];
+  /** 埋め込んだフォントの大きさ（バイト。fonts: 'embed' のとき） */
+  fontBytes?: number;
   /** `css:` で指定したファイル（監視に使う） */
   cssFile?: string;
 }
@@ -36,9 +47,10 @@ export interface Rendered {
  */
 export async function renderFile(
   mdFile: string,
-  options: Pick<RenderOptions, 'scripts' | 'debug' | 'includeHidden'> = {},
+  options: Pick<RenderOptions, 'scripts' | 'debug' | 'includeHidden'> & { fonts?: FontMode } = {},
   measurer?: ChromiumMeasurer,
 ): Promise<Rendered> {
+  const { fonts, ...htmlOptions } = options;
   const source = readFileSync(mdFile, 'utf8');
   const deck = parseDeck(source);
   let slides = buildSlides(deck);
@@ -90,15 +102,38 @@ export async function renderFile(
   if (measurer) {
     const plan = planSplit(slides);
     if (plan.jobs.length > 0) {
-      const page = renderDeckHtml({ ...slides, slides: [] }, { ...renderOptions, fit: false });
+      // 計測は、書き出しと同じフォントで行う（分割ファイル一式を、計測用のページに配る）
+      const page = renderDeckHtml(
+        { ...slides, slides: [] },
+        { ...renderOptions, fit: false, ...(fonts ? { fontCss: linkedFontCss(FONT_HOST) } : {}) },
+      );
       const measurements = await measurer.measure(page, plan.jobs);
       if (measurements) slides = applySplit(slides, plan, measurements);
     }
   }
 
-  const html = renderDeckHtml(slides, { ...options, ...renderOptions });
+  let html = renderDeckHtml(slides, {
+    ...htmlOptions,
+    ...renderOptions,
+    ...(fonts === 'link' ? { fontCss: linkedFontCss('/__mds/fonts') } : {}),
+  });
+  // 書き出しでは、スライドに表示される文字だけに絞ったフォントを埋め込む
+  let fontBytes: number | undefined;
+  if (fonts === 'embed') {
+    const subset = await subsetFontCss(visibleText(html), codeText(html));
+    html = html.replace('<style>', `<style>${subset.css}\n`);
+    fontBytes = subset.bytes;
+  }
   diagnostics.sort((a, b) => a.line - b.line);
-  return { html, deck, slides, assets, diagnostics, ...(cssFile ? { cssFile } : {}) };
+  return {
+    html,
+    deck,
+    slides,
+    assets,
+    diagnostics,
+    ...(fontBytes !== undefined ? { fontBytes } : {}),
+    ...(cssFile ? { cssFile } : {}),
+  };
 }
 
 function decodeSrc(src: string): string {
@@ -113,6 +148,8 @@ export interface BuildOptions {
   outDir: string;
   /** ヘッドレス Chromium で計測して自動で分割し、収まらないスライドを調べる（既定は行う） */
   measure?: boolean;
+  /** 使っている文字だけに絞ったフォントを埋め込む（既定は埋め込む） */
+  fonts?: boolean;
 }
 
 export interface BuildResult {
@@ -124,13 +161,22 @@ export interface BuildResult {
   diagnostics: Diagnostic[];
   /** 計測できなかった理由（Chromium が見つからないなど） */
   measureError?: string;
+  /** 埋め込んだフォントの大きさ（バイト） */
+  fontBytes?: number;
 }
 
 /** 静的な HTML・runtime・素材を書き出す（docs/design.md §10）。 */
 export async function build(mdFile: string, options: BuildOptions): Promise<BuildResult> {
   const measurer = options.measure === false ? undefined : new ChromiumMeasurer();
   try {
-    const rendered = await renderFile(mdFile, { scripts: [RUNTIME_SCRIPT] }, measurer);
+    const rendered = await renderFile(
+      mdFile,
+      {
+        scripts: [RUNTIME_SCRIPT],
+        ...(options.fonts === false ? {} : { fonts: 'embed' as const }),
+      },
+      measurer,
+    );
     const outDir = resolve(options.outDir);
     mkdirSync(outDir, { recursive: true });
     const index = join(outDir, 'index.html');
@@ -150,6 +196,7 @@ export async function build(mdFile: string, options: BuildOptions): Promise<Buil
       slides: rendered.slides.slides.filter((slide) => !slide.hidden).length,
       assets: copied,
       diagnostics: rendered.diagnostics,
+      ...(rendered.fontBytes !== undefined ? { fontBytes: rendered.fontBytes } : {}),
     };
     if (measurer) {
       const browser = await measurer.browser();

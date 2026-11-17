@@ -22,3 +22,4 @@ export function themeCss(id: ThemeId): string {
 export { BOLD_TOKENS, boldCss } from './bold.js';
 export { CLEAN_TOKENS, cleanCss } from './clean.js';
 export { DARK_TOKENS, darkCss } from './dark.js';
+export { BUNDLED_FONTS, FONT_MONO, FONT_SANS, type BundledFont } from './fonts.js';

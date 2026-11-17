@@ -5,9 +5,11 @@ import {
   type MeasureJob,
   type Measurement,
 } from '@mds/core';
+import { BUNDLED_FONTS } from '@mds/themes';
 import type { Browser, Page } from 'playwright-core';
 import { readFileSync, statSync } from 'node:fs';
 import { extname } from 'node:path';
+import { FONT_HOST, fontFileFor } from './fonts.js';
 
 /**
  * ヘッドレス Chromium で、自動分割のための高さを測る（docs/design.md §4、S1）。
@@ -48,19 +50,50 @@ export class ChromiumMeasurer {
     if (missing.length > 0) {
       const browser = await this.browser();
       if (!browser) return undefined;
-      this.page ??= await browser.newPage({ viewport: { width: 1400, height: 900 } });
+      const page = await this.measurePage(browser);
       if (this.pageHtml !== pageHtml) {
-        await this.page.setContent(pageHtml);
-        await this.page.evaluate('document.fonts.ready');
+        await page.setContent(pageHtml);
+        await page.evaluate('document.fonts.ready');
         this.pageHtml = pageHtml;
       }
-      const results = await this.page.evaluate(measureJobs, missing);
+      // フォントは文字を描くときに初めて読み込まれるので、測る文字の分を先に読み込んでおく
+      // （読み込む前に測ると、代わりのフォントの幅で測ってしまう）
+      if (pageHtml.includes(FONT_HOST)) {
+        const text = missing
+          .flatMap((job) => [job.skeleton, ...job.atoms, ...job.heads])
+          .join(' ')
+          .replace(/<[^>]*>/g, ' ');
+        const families = JSON.stringify(BUNDLED_FONTS.map((font) => font.family));
+        await page.evaluate(
+          `Promise.all(${families}.map((family) =>
+            document.fonts.load('16px "' + family + '"', ${JSON.stringify(text)}).catch(() => [])))`,
+        );
+      }
+      const results = await page.evaluate(measureJobs, missing);
       let r = 0;
       jobs.forEach((_, i) => {
         if (!this.cache.has(keys[i]!)) this.cache.set(keys[i]!, results[r++]!);
       });
     }
     return keys.map((key) => this.cache.get(key)!);
+  }
+
+  /** 計測用のページ。同梱するフォントのファイルを、架空の場所（FONT_HOST）から返す */
+  private async measurePage(browser: Browser): Promise<Page> {
+    if (this.page) return this.page;
+    const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+    await page.route(`${FONT_HOST}/**`, async (route) => {
+      const path = decodeURIComponent(new URL(route.request().url()).pathname.slice(1));
+      const file = fontFileFor(path);
+      if (!file) return route.abort();
+      await route.fulfill({
+        body: readFileSync(file),
+        contentType: 'font/woff2',
+        headers: { 'access-control-allow-origin': '*' },
+      });
+    });
+    this.page = page;
+    return page;
   }
 
   /**
@@ -95,8 +128,8 @@ export class ChromiumMeasurer {
     if (todo.length === 0) return result;
     const browser = await this.browser();
     if (!browser) return result;
-    this.page ??= await browser.newPage({ viewport: { width: 1400, height: 900 } });
-    const values = await this.page.evaluate(
+    const page = await this.measurePage(browser);
+    const values = await page.evaluate(
       averageLuminance,
       todo.map(({ url, video }) => ({ url, video })),
     );

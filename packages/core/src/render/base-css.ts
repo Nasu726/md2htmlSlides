@@ -51,6 +51,8 @@ body { margin: 0; background: #d1d5db; }
   line-height: 1.25;
   text-wrap: balance;
   word-break: auto-phrase;
+  /* 見出しは約物（「、」など）を詰める。本文は詰めない（読みやすさのため） */
+  font-feature-settings: 'palt';
 }
 .mds-continued {
   margin-left: 0.5em;
@@ -74,6 +76,7 @@ body { margin: 0; background: #d1d5db; }
   line-height: 1.3;
   text-wrap: balance;
   word-break: auto-phrase;
+  font-feature-settings: 'palt';
 }
 .mds-body h3 { font-size: 1.2em; }
 .mds-body h4, .mds-body h5, .mds-body h6 { font-size: 1.05em; }
@@ -289,6 +292,8 @@ body { margin: 0; background: #d1d5db; }
   line-height: 1.45;
   text-wrap: balance;
   word-break: auto-phrase;
+  /* 大きく見せる一文は、見出しと同じく約物を詰める */
+  font-feature-settings: 'palt';
 }
 .layout-statement .mds-body blockquote {
   padding: 0 0 0 0.8em;

@@ -20,5 +20,9 @@ export function fitSlides(root: ParentNode = document): void {
   }
 }
 
-/** 書き出した HTML に埋め込むための、fitSlides のソース。 */
-export const FIT_SCRIPT = `(${fitSlides.toString()})(document);`;
+/**
+ * 書き出した HTML に埋め込むための、fitSlides のソース。
+ * 同梱したフォントは読み込みに少し時間がかかるので、読み込み終わったらもう一度収め直す。
+ */
+export const FIT_SCRIPT = `(${fitSlides.toString()})(document);
+document.fonts && document.fonts.ready.then(() => (${fitSlides.toString()})(document));`;

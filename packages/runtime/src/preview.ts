@@ -20,6 +20,9 @@ export function startPreview(doc: Document): void {
   style.textContent = `
 @media screen {
   .mds-deck[data-preview] > .mds-slide { zoom: var(--mds-preview-zoom, 1); }
+  /* スクロールの位置は、スライドの枠（大きさが変わらない）に合わせて保つ。中の文字に合わせると、
+     フォントを読み込んで文字が動いたときに、画面がずれてしまう */
+  .mds-deck[data-preview] > .mds-slide * { overflow-anchor: none; }
   .mds-preview-start {
     position: fixed;
     top: 12px;

@@ -1,3 +1,5 @@
+import { FONT_MONO, FONT_SANS } from './fonts.js';
+
 /**
  * dark テーマ：背景が暗く、コードと図が映える。技術発表向け（docs/design.md §6）。
  * 寸法（文字の大きさ・余白）は clean と同じにし、色と飾りだけを変える。
@@ -11,11 +13,9 @@ export const DARK_TOKENS = `
   --mds-border: #334155;
   --mds-code-bg: #020617;
   --mds-code-fg: #e2e8f0;
-  --mds-font-body: 'Inter', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP',
-    'Yu Gothic UI', 'Meiryo', 'IPAPGothic', 'IPAexGothic', sans-serif;
+  --mds-font-body: ${FONT_SANS};
   --mds-font-heading: var(--mds-font-body);
-  --mds-font-mono: 'JetBrains Mono', 'Source Code Pro', 'Noto Sans Mono CJK JP', 'IPAGothic',
-    ui-monospace, monospace;
+  --mds-font-mono: ${FONT_MONO};
   --mds-fs-title: 68px;
   --mds-fs-h1: 60px;
   --mds-fs-h2: 44px;
