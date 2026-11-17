@@ -98,6 +98,8 @@ export function startPlayer(doc: Document): void {
     padding: 28px;
   }
   .mds-deck.is-overview > .mds-slide { zoom: 0.22; cursor: pointer; }
+  /* 一覧では、クリックを中身（動画など）に渡さず、スライドを選ぶだけにする */
+  .mds-deck.is-overview > .mds-slide > * { pointer-events: none; }
   .mds-deck.is-overview > .mds-slide.is-current { outline: 14px solid var(--mds-accent); outline-offset: 6px; }
   .mds-deck:not(.is-presenting) > .mds-player-progress { display: none; }
 }
@@ -247,6 +249,11 @@ export function startPlayer(doc: Document): void {
     if (entering) {
       const previous = slides[index];
       if (previous) playMedia(previous, false);
+      // 前のスライドの動画などに残ったフォーカスを外す（#58）
+      const active = doc.activeElement;
+      if (active instanceof win.HTMLElement && active !== deck && deck.contains(active)) {
+        active.blur();
+      }
       index = next;
       slides.forEach((s, k) => {
         const current = k === index;
@@ -442,9 +449,9 @@ html, body { height: 100%; margin: 0; background: #0f172a; color: #e2e8f0; font-
     ) {
       return;
     }
+    // 動画にフォーカスがあっても、スライドのキーを優先する（#58）。
+    // 受け取ったキーは既定の動作を止めるので、動画のシーク・再生の切り替えとは重ならない
     const key = event.key;
-    // 動画の操作中は、リモコンのキーだけを受け取る
-    if (target?.closest('video, audio') && key !== 'PageDown' && key !== 'PageUp') return;
     let handled = true;
 
     if (!help.hidden) {
@@ -508,6 +515,17 @@ html, body { height: 100%; margin: 0; background: #0f172a; color: #e2e8f0; font-
     if (k < 0) return;
     go(k);
     setOverview(false);
+  });
+  // YouTube・Vimeo の埋め込みをクリックすると、キーが埋め込みの中に送られてしまう。
+  // クリックそのものは埋め込みに届けたまま、フォーカスだけをスライドに戻す（#58）
+  win.addEventListener('blur', () => {
+    win.setTimeout(() => {
+      const active = doc.activeElement;
+      if (active instanceof win.HTMLIFrameElement && active.closest('.mds-media')) {
+        active.blur();
+        win.focus();
+      }
+    }, 0);
   });
   help.addEventListener('click', () => (help.hidden = true));
   black.addEventListener('click', () => (black.hidden = true));
