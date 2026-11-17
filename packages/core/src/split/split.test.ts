@@ -222,3 +222,54 @@ describe('ステップと自動分割（#56）', () => {
     ]);
   });
 });
+
+describe('長いコードを行で分ける（#82）', () => {
+  const code = (n: number, info = 'ts') =>
+    [
+      `\`\`\`${info}`,
+      ...Array.from({ length: n }, (_, i) => (i % 4 === 3 ? '' : `line${i}();`)),
+      '```',
+    ].join('\n');
+
+  it('8行以上のコードは行ごとの原子にし、枠の分の高さを測るための head を持つ', () => {
+    const atoms = atomize(blocksOf(`## A\n\n${code(10)}\n`));
+    expect(atoms.map((a) => a.kind)).toEqual(Array(10).fill('code-line'));
+    expect(atoms[0]!.block.raw).toBe('```ts\nline0();\n```');
+    expect(atoms[0]!.group!.head).toBe('```ts\n```');
+    expect(atoms[1]!.block.src).toEqual({ start: 5, end: 5 });
+  });
+
+  it('短いコード・図にするコード・属性のあるコードは分けない', () => {
+    const kinds = (md: string) => atomize(blocksOf(md)).map((a) => a.kind);
+    expect(kinds(`## A\n\n${code(5)}\n`)).toEqual(['code']);
+    expect(kinds(`## A\n\n${code(10, 'mermaid')}\n`)).toEqual(['code']);
+    expect(kinds(`## A\n\n${code(10, 'ts {step}')}\n`)).toEqual(['code']);
+  });
+
+  it('空行の後では区切りやすく（70）、ほかの行の間は区切りにくい（90）', () => {
+    const atoms = atomize(blocksOf(`## A\n\n${code(12)}\n`));
+    // 4行目（index 3）が空行：index 4 の直前は空行の後
+    expect(breakPenalty(atoms, 4, DEFAULT_WEIGHTS)).toBe(70);
+    expect(breakPenalty(atoms, 5, DEFAULT_WEIGHTS)).toBe(90);
+    // 1〜2行だけが残る区切りは、さらに重くする
+    expect(breakPenalty(atoms, 2, DEFAULT_WEIGHTS)).toBe(90 + DEFAULT_WEIGHTS.orphan);
+  });
+
+  it('分けたページでは、行をまとめて1つのコードに戻す', () => {
+    const deck = slidesOf(`## A\n\n${code(24)}\n`);
+    const plan = planSplit(deck);
+    const m = uniform(plan.targets[0]!.atoms.length, 60, 480);
+    m.heads = m.heads.map(() => 20);
+    const pages = applySplit(deck, plan, [m]).slides;
+    expect(pages.length).toBeGreaterThan(1);
+    for (const page of pages) {
+      const block = page.blocks.find((b) => b.kind === 'code')!;
+      expect(block.raw.startsWith('```ts\n')).toBe(true);
+      expect(block.raw.endsWith('\n```')).toBe(true);
+    }
+    // 2枚目は空行の後の行から始まる
+    const second = pages[1]!.blocks.find((b) => b.kind === 'code')!.raw.split('\n')[1];
+    expect(second).toMatch(/^line\d+\(\);$/);
+    expect(Number(/line(\d+)/.exec(second!)![1]) % 4).toBe(0);
+  });
+});

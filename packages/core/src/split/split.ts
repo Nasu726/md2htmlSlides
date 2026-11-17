@@ -25,6 +25,10 @@ export interface SplitWeights {
   listItem: number;
   /** 表の行の間 */
   tableRow: number;
+  /** コードの空行での区切り（#82） */
+  codeBlank: number;
+  /** コードの空行以外の行の間 */
+  codeLine: number;
   /** リスト・表の片方に1つだけが残るときに足す */
   orphan: number;
   /** 1枚あたり */
@@ -49,6 +53,8 @@ export const DEFAULT_WEIGHTS: SplitWeights = {
   block: 10,
   listItem: 30,
   tableRow: 60,
+  codeBlank: 70,
+  codeLine: 90,
   orphan: 50,
   page: 40,
   fill: 100,
@@ -64,7 +70,7 @@ export const DEFAULT_WEIGHTS: SplitWeights = {
 /** 分けない最小単位（§4.1）。リストは項目ごと、表は行ごと、それ以外はブロックごと。 */
 export interface Atom {
   block: Block;
-  kind: Block['kind'] | 'list-item' | 'table-row';
+  kind: Block['kind'] | 'list-item' | 'table-row' | 'code-line';
   /** 同じリスト・表の原子の組 */
   group?: { id: number; index: number; count: number; head?: string };
   /** 今いる小見出しの原子の位置 */
@@ -74,6 +80,30 @@ export interface Atom {
 }
 
 const SKIP = new Set<Block['kind']>(['comment', 'slide-attrs', 'directive']);
+
+/** この行数以上のコードを、行で分けられるようにする（短いコードは分けない） */
+const SPLIT_CODE_LINES = 8;
+
+/**
+ * 行で分けられるコードなら、開く行・中の行・閉じる行を返す。
+ * 図にするコード（mermaid・arch）と、属性（`{step}`・`{lines=…}` など）のあるコードは分けない。
+ */
+function codeLines(block: Block): { open: string; lines: string[]; close: string } | undefined {
+  if (block.lang === 'mermaid' || block.lang === 'arch' || block.attrs) return undefined;
+  const all = block.raw.split('\n');
+  const open = all[0] ?? '';
+  const fence = /^(\s*)(`{3,}|~{3,})/.exec(open);
+  if (!fence || /\{/.test(open)) return undefined;
+  const last = all.at(-1) ?? '';
+  if (!last.trim().startsWith(fence[2]!)) return undefined;
+  const lines = all.slice(1, -1);
+  if (lines.length < SPLIT_CODE_LINES) return undefined;
+  return { open, lines, close: last };
+}
+
+/** 表の行・コードの行：2行目からは、見出し行・枠の分の高さを引いて数える */
+const hasHead = (a: Atom) =>
+  (a.kind === 'table-row' || a.kind === 'code-line') && a.group!.index > 0;
 
 export function atomize(blocks: Block[]): Atom[] {
   const atoms: Atom[] = [];
@@ -118,6 +148,19 @@ export function atomize(blocks: Block[]): Atom[] {
           group: { id: group, index, count: rows.length, head: headRaw },
         });
       });
+    } else if (block.kind === 'code' && codeLines(block)) {
+      // 長いコードは行ごとに分ける（空行で区切りやすくする。§4.2、#82）。
+      // 測るときは、1行ずつ枠（pre）ごと描き、枠の分の高さ（head）は2行目から引く
+      const { open, lines, close } = codeLines(block)!;
+      group++;
+      lines.forEach((line, index) => {
+        const at = block.src.start + 1 + index;
+        push({
+          block: { ...block, raw: `${open}\n${line}\n${close}`, src: { start: at, end: at } },
+          kind: 'code-line',
+          group: { id: group, index, count: lines.length, head: `${open}\n${close}` },
+        });
+      });
     } else if (isMediaBlock(block) && atoms.at(-1)?.gallery) {
       // 画像だけの段落が続いたら、1つの原子にまとめる（grid で並べる）
       const prev = atoms.at(-1)!;
@@ -150,6 +193,11 @@ export function breakPenalty(atoms: Atom[], i: number, w: SplitWeights): number 
   if (cur.kind === 'heading') return w.beforeHeading;
   if (sameGroup(prev, cur)) {
     const { index, count } = cur.group!;
+    if (cur.kind === 'code-line') {
+      // 空行の後（次のまとまりの始まり）で区切りやすくする
+      const blank = prev.block.raw.split('\n')[1]!.trim() === '';
+      return (blank ? w.codeBlank : w.codeLine) + (index <= 2 || count - index <= 2 ? w.orphan : 0);
+    }
     const base = cur.kind === 'table-row' ? w.tableRow : w.listItem;
     return base + (index === 1 || count - index === 1 ? w.orphan : 0);
   }
@@ -196,10 +244,14 @@ export function splitAtoms(
   // 表の2行目以降は、見出し行を除いた高さで数える（見出し行はページの先頭で足す）
   const heights = m.heights.map((h, i) => {
     const a = atoms[i]!;
-    return a.kind === 'table-row' && a.group!.index > 0 ? Math.max(0, h - (m.heads[i] ?? 0)) : h;
+    return hasHead(a) ? Math.max(0, h - (m.heads[i] ?? 0)) : h;
   });
   const pairGap = atoms.map((a, i) =>
-    sameGroup(a, atoms[i + 1]) ? (a.kind === 'table-row' ? 0 : m.listGap) : m.gap,
+    sameGroup(a, atoms[i + 1])
+      ? a.kind === 'table-row' || a.kind === 'code-line'
+        ? 0
+        : m.listGap
+      : m.gap,
   );
   // 明示のステップ番号（{step=N}）の順番を崩す位置では区切らない（#56）。
   // 分かれたスライドはそれぞれ 1 から数え直すので、区切りの前に、区切りの後と同じか
@@ -225,7 +277,7 @@ export function splitAtoms(
       const sub = atom.kind !== 'heading' ? atom.subheading : undefined;
       const resub = sub !== undefined && sub < i;
       let extra = resub ? heights[sub]! + m.gap : 0;
-      if (atom.kind === 'table-row' && atom.group!.index > 0) extra += m.heads[i] ?? 0;
+      if (hasHead(atom)) extra += m.heads[i] ?? 0;
       const text = sum + extra;
       const needed = text > 0 ? (m.avail - gaps) / text : 1; // この倍率まで縮めれば収まる
       const single = j - i === 1;
@@ -361,7 +413,15 @@ function toSlides(slide: Slide, atoms: Atom[], pages: Page[]): Slide[] {
     // 同じリスト・表の原子は1つのブロックにまとめる（番号付きのリストは元の番号が残る）
     let last: { atom: Atom; block: Block } | undefined;
     for (const atom of atoms.slice(page.start, page.end)) {
-      if (last && sameGroup(last.atom, atom)) {
+      if (last && sameGroup(last.atom, atom) && atom.kind === 'code-line') {
+        // コードの行：閉じる行の前に足す
+        const lines = last.block.raw.split('\n');
+        const close = lines.pop()!;
+        lines.push(atom.block.raw.split('\n')[1]!, close);
+        last.block.raw = lines.join('\n');
+        last.block.src = { start: last.block.src.start, end: atom.block.src.end };
+        last.atom = atom;
+      } else if (last && sameGroup(last.atom, atom)) {
         const add = atom.kind === 'table-row' ? atom.block.raw.split('\n').pop()! : atom.block.raw;
         last.block.raw += `\n${add}`;
         last.block.src = { start: last.block.src.start, end: atom.block.src.end };
