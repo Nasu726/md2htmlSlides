@@ -84,6 +84,46 @@ test('? でヘルプ、B で暗転、O で一覧を出す', async ({ page }) => 
   await expect(page.locator('.mds-slide:visible')).toHaveCount(1);
 });
 
+test('動画にフォーカスがあっても、→ と ← でスライドを送る（#58）', async ({ page }) => {
+  await open(page, '07-media.md', '#/3');
+  const video = current(page).locator('video');
+  await video.focus();
+  expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('VIDEO');
+  await page.keyboard.press('ArrowRight');
+  expect(await hash(page)).toBe('#/4');
+  // 移ったら、前のスライドの動画からフォーカスを外す
+  expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+  await current(page).locator('video').focus();
+  await page.keyboard.press('ArrowLeft');
+  expect(await hash(page)).toBe('#/3');
+});
+
+test('一覧で動画のスライドをクリックしても、動画にフォーカスが移らない（#58）', async ({
+  page,
+}) => {
+  await open(page, '07-media.md');
+  await page.keyboard.press('o');
+  await page.locator('.mds-slide').nth(2).locator('video').click({ force: true });
+  expect(await hash(page)).toBe('#/3');
+  await expect(page.locator('.mds-slide:visible')).toHaveCount(1);
+  expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('VIDEO');
+  await page.keyboard.press('ArrowRight');
+  expect(await hash(page)).toBe('#/4');
+});
+
+test('YouTube の埋め込みをクリックした後も、スライドのキーが効く（#58）', async ({ page }) => {
+  // 埋め込みの中身は、ネットワークを使わずにボタンだけのページで置き換える
+  await page.route(/youtube|vimeo/, (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<button>再生</button>' }),
+  );
+  await open(page, '07-media.md', '#/5');
+  const frame = current(page).locator('iframe');
+  await frame.contentFrame().locator('button').click();
+  await expect.poll(() => page.evaluate(() => document.activeElement?.tagName)).not.toBe('IFRAME');
+  await page.keyboard.press('ArrowRight');
+  expect(await hash(page)).toBe('#/6');
+});
+
 test('スワイプでページを送る', async ({ page }) => {
   await open(page, '01-plain-document.md');
   const swipe = (dx: number) =>
