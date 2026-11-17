@@ -174,11 +174,13 @@ test.describe('mds dev', () => {
     expect(box.height / box.width).toBeCloseTo(720 / 1280, 2);
     // 横長のウィンドウ：高さに合わせる
     await page.setViewportSize({ width: 1600, height: 600 });
+    // 大きさを変えた後の合わせ直し（resize のイベント）を待つ。変える前の高さ（513px）は、
+    // 「600 − 64 以下」をすでに満たすので、それでは待てない
     await expect
       .poll(async () => (await first.boundingBox())!.height)
-      .toBeLessThanOrEqual(600 - 64 + 1);
+      .toBeGreaterThan(600 - 64 - 2);
     box = (await first.boundingBox())!;
-    expect(box.height).toBeGreaterThan(600 - 64 - 2);
+    expect(box.height).toBeLessThanOrEqual(600 - 64 + 1);
   });
 
   test('S で見えているスライドから発表を始め、Esc でプレビューの同じスライドに戻る（#60）', async ({
