@@ -135,3 +135,38 @@ describe('formatDate', () => {
     expect(formatDate('2026年 秋', 'ja')).toBe('2026年 秋');
   });
 });
+
+describe('コードの色分け（#68）', () => {
+  const calls: string[] = [];
+  const highlight = (code: string, lang: string) => {
+    calls.push(lang);
+    if (lang !== 'ts') return undefined;
+    return code
+      .split('\n')
+      .map((line) =>
+        line ? `<span style="color:var(--mds-code-token-keyword)">${line}</span>` : '',
+      )
+      .join('\n');
+  };
+
+  it('色分けの関数の結果を pre の中に入れ、言語のクラスと {step} は残す', () => {
+    calls.length = 0;
+    const html = render(
+      '## A\n\n```ts {step}\nconst a\n```\n\n```python\nx = 1\n```\n\n```mermaid\nflowchart LR\n```\n',
+      { highlight },
+    );
+    expect(html).toContain(
+      '<pre data-step="1"><code class="language-ts"><span style="color:var(--mds-code-token-keyword)">const a</span>\n</code></pre>',
+    );
+    // 関数が undefined を返した言語は、今までどおり色なしで出す
+    expect(html).toContain('<pre><code class="language-python">x = 1\n</code></pre>');
+    // 図にするコード（mermaid・arch・math）は、関数に渡さない
+    expect(calls).not.toContain('mermaid');
+  });
+
+  it('関数がなければ、今までどおり色なしで出す', () => {
+    expect(render('## A\n\n```ts\nconst a\n```\n')).toContain(
+      '<pre><code class="language-ts">const a\n</code></pre>',
+    );
+  });
+});

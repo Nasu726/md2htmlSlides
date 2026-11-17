@@ -2,7 +2,7 @@ import { themeCss } from '@mds/themes';
 import type { Attrs } from '../attrs.js';
 import type { Block } from '../ir.js';
 import { md } from '../md/instance.js';
-import type { RenderEnv } from '../md/media.js';
+import type { CodeHighlighter, RenderEnv } from '../md/media.js';
 import type { MediaProbe } from '../media.js';
 import type { Slide, SlideDeck } from '../slides.js';
 import { BASE_CSS } from './base-css.js';
@@ -42,6 +42,8 @@ export interface RenderOptions {
   assetUrl?: (src: string) => string;
   /** 同梱するフォントの @font-face（docs/design.md §6）。デッキの外にも効くように、先頭に置く */
   fontCss?: string;
+  /** コードの色分け（#68）。色は span の CSS 変数（--mds-code-token-…）で、テーマが決める */
+  highlight?: CodeHighlighter;
 }
 
 const esc = (text: string) => md.utils.escapeHtml(text);
@@ -57,6 +59,7 @@ export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): st
     lang: meta.lang,
     ...(options.probe ? { probe: options.probe } : {}),
     ...(options.assetUrl ? { assetUrl: options.assetUrl } : {}),
+    ...(options.highlight ? { highlight: options.highlight } : {}),
   };
   const custom = options.customCss ? `@scope (.mds-deck) {\n${options.customCss}\n}` : '';
   const body = slides

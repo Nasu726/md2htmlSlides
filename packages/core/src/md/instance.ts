@@ -11,6 +11,9 @@ import {
   type RenderEnv,
 } from './media.js';
 
+/** 図として描くコードの言語（色分けしない。構文仕様 §7） */
+const FIGURE_LANGS = new Set(['mermaid', 'arch', 'math']);
+
 /**
  * パースと描画で共有する markdown-it。
  * 生 HTML は許可する（構文仕様 §9）。表と打ち消し線は既定で有効。
@@ -136,10 +139,22 @@ function renderRules(instance: MarkdownIt): void {
       applyStep(tokens[idx]!, (next.meta as BlockMeta | null)?.attrs);
     return self.renderToken(tokens, idx, options);
   };
-  // コード・図（```mermaid {step}）の {step} は pre に付ける
+  // コード・図（```mermaid {step}）の {step} は pre に付ける。
+  // 色分けの関数（#68）があれば、コードに色を付ける（図にするコードは除く）
   const fence = rules.fence!;
   rules.fence = (tokens, idx, options, env, renderer) => {
-    const html = fence(tokens, idx, options, env, renderer);
+    const token = tokens[idx]!;
+    const lang = token.info.trim().split(/\s+/)[0] ?? '';
+    const highlight = (env as RenderEnv | undefined)?.highlight;
+    const colored =
+      highlight && lang && !FIGURE_LANGS.has(lang) ? highlight(token.content, lang) : undefined;
+    const html = fence(
+      tokens,
+      idx,
+      colored === undefined ? options : { ...options, highlight: () => colored },
+      env,
+      renderer,
+    );
     const step = (tokens[idx]!.meta as BlockMeta | null)?.attrs?.values.step;
     if (step === undefined) return html;
     return html.replace(/^<pre/, `<pre data-mds-step="${step === true ? 'auto' : String(step)}"`);

@@ -13,7 +13,15 @@ export type RenderEnv = {
   assetUrl?: (src: string) => string;
   /** デッキの言語（見出しの文節改行に使う） */
   lang?: string;
+  /**
+   * コードの色分け（#68）。色を付けた HTML（エスケープ済みの文字と span）を返す。
+   * 対応していない言語なら undefined を返し、色を付けずに出す。
+   */
+  highlight?: CodeHighlighter;
 };
+
+/** コードの色分けをする関数。同期で返す（必要な文法は、呼ぶ側が先に読み込んでおく） */
+export type CodeHighlighter = (code: string, lang: string) => string | undefined;
 
 /** 画像・動画だけからなる段落に付ける印。 */
 export type MediaGroupMeta = {

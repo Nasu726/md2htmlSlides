@@ -112,6 +112,25 @@ body { margin: 0; background: #d1d5db; }
   overflow: hidden;
 }
 .mds-body pre code { padding: 0; background: none; font-size: inherit; }
+/*
+ * コードの色分け（#68）：Shiki の CSS 変数。コードの地はどのテーマでも暗いので、
+ * 既定は暗い地に合う配色にし、テーマで変える。
+ */
+.mds-deck {
+  --mds-code-foreground: var(--mds-code-fg);
+  --mds-code-token-keyword: #ff7b72;
+  --mds-code-token-string: #a5d6ff;
+  --mds-code-token-string-expression: #a5d6ff;
+  --mds-code-token-comment: #8b949e;
+  --mds-code-token-function: #d2a8ff;
+  --mds-code-token-constant: #79c0ff;
+  --mds-code-token-parameter: #ffa657;
+  --mds-code-token-punctuation: #c9d1d9;
+  --mds-code-token-link: #a5d6ff;
+  --mds-code-token-inserted: #7ee787;
+  --mds-code-token-deleted: #ffa198;
+  --mds-code-token-changed: #e3b341;
+}
 .mds-body table { border-collapse: collapse; font-size: 0.78em; }
 .mds-body th, .mds-body td {
   padding: 0.35em 0.8em;

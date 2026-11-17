@@ -21,6 +21,7 @@
     "@mds/runtime": "workspace:*",
     "@mds/themes": "workspace:*",
     "playwright-core": "1.63.0",
+    "shiki": "4.6.0",
     "subset-font": "2.9.0"
   }
 }

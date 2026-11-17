@@ -25,6 +25,16 @@ export const DARK_TOKENS = `
   --mds-pad-x: 80px;
   --mds-pad-y: 60px;
   --mds-radius: 10px;
+  /* コードの色分け（#68）：落ち着いた地に、明るめの色 */
+  --mds-code-token-keyword: #c792ea;
+  --mds-code-token-string: #c3e88d;
+  --mds-code-token-string-expression: #c3e88d;
+  --mds-code-token-comment: #697098;
+  --mds-code-token-function: #82aaff;
+  --mds-code-token-constant: #f78c6c;
+  --mds-code-token-parameter: #ffcb6b;
+  --mds-code-token-punctuation: #89ddff;
+  --mds-code-token-link: #7dd3fc;
 `;
 
 export function darkCss(selector: string): string {

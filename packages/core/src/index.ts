@@ -26,7 +26,7 @@ export {
   type MediaKind,
   type MediaProbe,
 } from './media.js';
-export type { RenderEnv } from './md/media.js';
+export type { CodeHighlighter, RenderEnv } from './md/media.js';
 export { formatOutline } from './outline.js';
 export { parseDeck } from './parse.js';
 export { SlugRegistry, slugify } from './slug.js';

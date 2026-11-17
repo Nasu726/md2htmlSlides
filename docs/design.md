@@ -274,6 +274,8 @@ for j in 1..n:                        # j = ページの最後の原子の次
 - **デザイントークン**は CSS カスタムプロパティで表す：`--slide-bg` `--slide-fg` `--accent` `--muted` `--surface` `--font-heading` `--font-body` `--font-mono` `--fs-title` `--fs-h2` `--fs-body` `--gap` `--pad-x` `--pad-y` `--radius` など。
 - 各レイアウトの格子（CSS grid）は core の基本 CSS で定義し、テーマはトークンと装飾だけを変える。こうすることで、計測と表示で同じ寸法になる。
 - コードハイライトと Mermaid の配色はテーマのトークンから作るので、図もテーマに自動で合う。
+  - コードハイライト（#68）は書き出しのときに Shiki で行い、発表用の runtime には含めない。Shiki の「CSS 変数のテーマ」を使い、span には `color: var(--mds-code-token-keyword)` のように変数だけを書く。色の値はテーマの CSS が決める（既定は基本の CSS、dark・bold は上書き）ので、テーマを変えても色分けをやり直さなくてよい。文字は変えずに span で囲むだけなので、計測の高さは変わらない。
+  - 読み込む文法は、資料で使っている言語だけ。Shiki が知らない言語と、図にするコード（`mermaid`・`arch`・`math`）は色を付けない。
 - **上書きの段階**：フロントマターの `accent` → （後で）`colors` / `fonts` → `css:` のカスタムCSS（`.mds-deck` 以下だけに効く） → スライドごとの `.class`。
 
 | テーマ | 方向性 | フォントの候補 |

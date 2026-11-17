@@ -19,6 +19,7 @@ import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createAssets, registerDeckAssets, type Assets } from './assets.js';
 import { FONT_HOST, codeText, linkedFontCss, subsetFontCss, visibleText } from './fonts.js';
+import { codeHighlighter, codeLanguages } from './highlight.js';
 import { ChromiumMeasurer } from './measurer.js';
 
 /**
@@ -88,7 +89,10 @@ export async function renderFile(
       if (value !== undefined) luminance.set(src, value);
     }
   }
+  // コードの色分け（#68）：資料で使っている言語の文法だけを読み込む
+  const highlight = await codeHighlighter(codeLanguages(source));
   const renderOptions: RenderOptions = {
+    highlight,
     probe: (src) => {
       const info = assets.probe(src);
       const value = luminance.get(src);

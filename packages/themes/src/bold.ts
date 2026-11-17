@@ -28,6 +28,16 @@ export const BOLD_TOKENS = `
   --mds-radius: 4px;
   /* 色面の色。accent: で変えると一緒に変わる（色面の中では --mds-accent を別の色にするため分ける） */
   --mds-strong: var(--mds-accent);
+  /* コードの色分け（#68）：黒い地に、はっきりした色。キーワードはアクセントに近いオレンジ */
+  --mds-code-token-keyword: #ff8a50;
+  --mds-code-token-string: #fde047;
+  --mds-code-token-string-expression: #fde047;
+  --mds-code-token-comment: #9ca3af;
+  --mds-code-token-function: #67e8f9;
+  --mds-code-token-constant: #f9a8d4;
+  --mds-code-token-parameter: #fdba74;
+  --mds-code-token-punctuation: #e5e7eb;
+  --mds-code-token-link: #93c5fd;
 `;
 
 export function boldCss(selector: string): string {
