@@ -13,6 +13,7 @@ import {
 } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 import type { MarkdownConfig } from '@lezer/markdown';
+import { slideGutter, type SlideGutterOptions } from './slide-gutter.js';
 
 /**
  * 先頭のフロントマター（`---` から `---` まで）を、ひとまとまりにする。
@@ -57,6 +58,10 @@ export interface EditorOptions {
   onChange(text: string): void;
   onSave(): void;
   onPresent(): void;
+  /** カーソルのある行が変わった（1 から始まる行番号） */
+  onCursor(line: number): void;
+  /** 行番号欄の目印（#74） */
+  gutter: SlideGutterOptions;
 }
 
 export interface Editor {
@@ -89,8 +94,12 @@ export function createEditor(parent: HTMLElement, options: EditorOptions): Edito
       ...searchKeymap,
       indentWithTab,
     ]),
+    slideGutter(options.gutter),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) options.onChange(update.state.doc.toString());
+      if (update.selectionSet || update.docChanged) {
+        options.onCursor(update.state.doc.lineAt(update.state.selection.main.head).number);
+      }
     }),
     EditorView.contentAttributes.of({ 'aria-label': 'Markdown' }),
   ];

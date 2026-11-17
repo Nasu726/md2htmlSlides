@@ -306,3 +306,53 @@ button.primary {
     display: none;
   }
 }
+
+/* 行番号欄の目印（#74）：スライドの番号と、自動で区切られた位置 */
+.cm-slide-gutter {
+  min-width: 34px;
+  cursor: pointer;
+}
+.cm-slide-marker {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font:
+    600 11px/1.6 system-ui,
+    sans-serif;
+  white-space: nowrap;
+}
+.cm-slide-marker.is-auto {
+  background: none;
+  border: 1px dashed var(--warn);
+  color: var(--warn);
+}
+.cm-line.cm-auto-break {
+  border-top: 1px dashed var(--warn);
+}
+.break-menu {
+  position: fixed;
+  z-index: 40;
+  display: grid;
+  gap: 4px;
+  min-width: 260px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
+.break-menu p {
+  margin: 0 0 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.break-menu button {
+  text-align: left;
+}
+.break-menu .cancel {
+  border: 0;
+  background: none;
+  color: var(--muted);
+}

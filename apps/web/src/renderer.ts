@@ -8,6 +8,7 @@ import {
   parseDeck,
   planSplit,
   renderDeckHtml,
+  renderSlide,
   type Diagnostic,
   type DiagramRenderer,
   type DiagramResult,
@@ -29,6 +30,10 @@ import {
 import { embeddedFontCss, facesFor, FontSender, visibleText, type WebFontFace } from './fonts.js';
 import { Frame, hostScript, scriptTag } from './frames.js';
 
+/** スライドの中身のキーから、行番号（src の範囲・line）を除く（行を足しても同じキーになるように） */
+const withoutLines = (key: string, value: unknown) =>
+  (key === 'src' && typeof value === 'object') || key === 'line' ? undefined : value;
+
 /** 描いている途中で、別の資料を開いた（その描画の結果は捨てる） */
 export class Cancelled extends Error {
   constructor() {
@@ -36,9 +41,22 @@ export class Cancelled extends Error {
   }
 }
 
+/** スライドと、元の Markdown の行の対応（行番号欄の目印・カーソルとの同期に使う。#74） */
+export interface SlideInfo {
+  id: string;
+  /** 1 から始まる行番号（両端を含む） */
+  start: number;
+  end: number;
+  /** 自動分割で、節の途中から始まるスライド */
+  auto: boolean;
+  hidden: boolean;
+}
+
 export interface RenderResult {
   /** 発表に出るスライドの数 */
   slides: number;
+  /** プレビューのスライドの順（隠したスライドも含む） */
+  map: SlideInfo[];
   diagnostics: Diagnostic[];
   /** 描くのにかかった時間（ミリ秒） */
   ms: number;
@@ -62,8 +80,17 @@ export class Renderer {
   private measured = new Map<string, Measurement>();
   private sentAssets = new Set<string>();
   private assets = new AssetStore(noAssets);
-  private last:
-    { slides: SlideDeck; options: RenderOptions; html: string; faces: WebFontFace[] } | undefined;
+  private last: { slides: SlideDeck; options: RenderOptions; faces: WebFontFace[] } | undefined;
+  /** プレビューにあるスライド（HTML のハッシュ）と、ページの部分（CSS など） */
+  private previewKeys = new Set<string>();
+  private previewHead: string | undefined;
+  /** プレビューに送ったフォント（発表の画面にも同じものを入れる） */
+  private previewFaces = new Map<string, WebFontFace>();
+  /** スライドごとの HTML（中身をキーに使い回す）と、それが有効な条件（テーマ・素材・図） */
+  private slideHtml = new Map<string, string>();
+  private slideContext = '';
+  /** 図の結果が変わるたびに増える（スライドの HTML を描き直すため） */
+  private diagramVersion = 0;
   /** Mermaid の図（ページの CSS とコードのハッシュで覚える） */
   private diagrams = new Map<string, DiagramResult>();
   /** n 番目の図の、最後に描けた結果（入力中に構文エラーになっても、前の図を出したままにする。§7.2） */
@@ -73,6 +100,8 @@ export class Renderer {
   private generation = 0;
   /** プレビューで S を押した・発表を Esc で終えた、など */
   onPresent?: (slide: string) => void;
+  /** プレビューでスライドをクリックした（何枚目か。隠したスライドも数える） */
+  onJump?: (index: number) => void;
 
   constructor(
     private previewParent: HTMLElement,
@@ -89,6 +118,7 @@ export class Renderer {
     });
     frame.onEvent = (message) => {
       if (message.type === 'present') this.onPresent?.(String(message.slide));
+      if (message.type === 'jump') this.onJump?.(Number(message.index));
     };
     void frame.load(
       `<!doctype html><html><head><meta charset="utf-8"></head><body>${scriptTag(hostScript('preview'))}</body></html>`,
@@ -103,6 +133,9 @@ export class Renderer {
     this.preview = this.createPreview();
     this.previewFonts.reset();
     this.sentAssets.clear();
+    this.previewKeys = new Set();
+    this.previewHead = undefined;
+    this.previewFaces.clear();
     this.last = undefined;
     this.lastGood = [];
     this.generation++;
@@ -173,8 +206,11 @@ export class Renderer {
     if (plan.jobs.length > 0) {
       await this.setMeasurePage(page);
       const css = hashString(page);
+      // 行番号（data-src）は高さに関係しないので、キーから除く（行を足しても、後ろの節を測り直さない）
       const keys = plan.jobs.map((job) =>
-        hashString(`${css}\n${job.skeleton}\n${job.atoms.join('\0')}\n${job.heads.join('\0')}`),
+        hashString(
+          `${css}\n${job.skeleton.replace(/ data-src="[^"]*"/g, '')}\n${job.atoms.join('\0')}\n${job.heads.join('\0')}`,
+        ),
       );
       const missing = plan.jobs.filter((_, i) => !this.measured.has(keys[i]!));
       if (missing.length > 0) {
@@ -206,32 +242,97 @@ export class Renderer {
       );
     }
 
-    // プレビュー：フォントと素材を先に渡してから、HTML を送る
-    const html = renderDeckHtml(slides, {
-      ...options,
-      includeHidden: true,
-      debug: true,
-      fit: false,
+    // プレビュー：スライドごとに描き、変わったスライドだけを送る（設計プラン §11.2）
+    const head = renderDeckHtml(
+      { ...slides, slides: [] },
+      { ...options, includeHidden: true, debug: true, fit: false },
+    );
+    const renderEnv: RenderEnv = {
+      lang: slides.meta.lang,
+      probe: this.assets.probe,
+      assetUrl: this.assets.url,
+      ...(options.highlight ? { highlight: options.highlight } : {}),
+      ...(options.diagram ? { diagram: options.diagram } : {}),
+      ...(options.math ? { math: options.math } : {}),
+    };
+    const total = slides.slides.length;
+    // スライドの HTML は、中身（行番号を除く）が同じなら前に描いたものを使う。
+    // 行を足しても、後ろのスライドを描き直さずに済む（プレビューは data-src を使わない）
+    const context = JSON.stringify([
+      slides.meta,
+      slides.slideLevel,
+      head,
+      this.assets.version,
+      this.diagramVersion,
+    ]);
+    if (context !== this.slideContext) {
+      this.slideContext = context;
+      this.slideHtml.clear();
+    }
+    const nextHtml = new Map<string, string>();
+    const parts = slides.slides.map((slide, i) => {
+      const key = JSON.stringify([i, total, slide], withoutLines);
+      let part = this.slideHtml.get(key) ?? nextHtml.get(key);
+      if (part === undefined) {
+        part = renderSlide(slide, slides, { page: i + 1, total }, renderEnv).replace(
+          / data-src="[^"]*"/,
+          '',
+        );
+      }
+      nextHtml.set(key, part);
+      return part;
     });
+    this.slideHtml = nextHtml;
     // 描くときに初めて使われた素材があれば、読み込んでから描き直す（縦横がわかるように）
     const late = this.assets.takeRequested();
     if (late.length > 0 && retry) {
       await this.assets.ensure(late);
       return this.render(text, false);
     }
-    const faces = [...facesFor(visibleText(html)), ...(math ? katexFaces(math) : [])];
+    // 同じ HTML のスライドが2枚あっても区別できるよう、何枚目かを付ける
+    const seen = new Map<string, number>();
+    const keys = parts.map((part) => {
+      const hash = hashString(part);
+      const n = seen.get(hash) ?? 0;
+      seen.set(hash, n + 1);
+      return `${hash}.${n}`;
+    });
+    const changed = parts
+      .map((part, i): [string, string] => [keys[i]!, part])
+      .filter(([key]) => !this.previewKeys.has(key));
+    // フォントは、新しく描いたスライドの文字の分だけ足す（ほかのスライドの文字は送ってある）
+    const faces = [
+      ...facesFor(visibleText(changed.map(([, part]) => part).join(' '))),
+      ...(math ? katexFaces(math) : []),
+    ];
+    for (const face of faces) this.previewFaces.set(face.url, face);
     await this.sendFonts(this.preview, this.previewFonts, faces);
     const assets = this.assets.blobs().filter(([key]) => !this.sentAssets.has(key));
     if (assets.length > 0) {
       await this.preview.request({ type: 'assets', assets });
       for (const [key] of assets) this.sentAssets.add(key);
     }
-    await this.preview.request({ type: 'update', html });
+    await this.preview.request({
+      type: 'update',
+      head: head === this.previewHead ? null : head,
+      order: keys,
+      slides: changed,
+    });
     check();
-    this.last = { slides, options, html, faces };
+    this.previewHead = head;
+    this.previewKeys = new Set(keys);
+    this.last = { slides, options, faces: [...this.previewFaces.values()] };
     diagnostics.sort((a, b) => a.line - b.line);
     return {
       slides: slides.slides.filter((s) => !s.hidden).length,
+      map: slides.slides.map((slide) => ({
+        id: slide.id,
+        start: slide.src.start,
+        end: slide.src.end,
+        // page.index は 1 から。2枚目からが、自動で区切られたスライド
+        auto: (slide.page?.index ?? 1) > 1,
+        hidden: slide.hidden,
+      })),
       diagnostics,
       ms: performance.now() - started,
     };
@@ -289,6 +390,7 @@ export class Renderer {
         const result = reply.results?.[i];
         if (result) this.diagrams.set(key(code), result);
       });
+      this.diagramVersion++;
     }
 
     const byCode = new Map<string, DiagramResult>();
@@ -299,8 +401,9 @@ export class Renderer {
       if ('error' in result) {
         diagnostics.push(diagramDiagnostic(item, result.error));
         result = this.lastGood[i] ?? result;
-      } else {
+      } else if (this.lastGood[i] !== result) {
         this.lastGood[i] = result;
+        this.diagramVersion++;
       }
       if (item.src !== undefined) bySrc.set(normalizePath(item.src), result);
       else byCode.set(normalizeCode(item.code), result);
@@ -329,6 +432,11 @@ export class Renderer {
       type: 'view',
     });
     return reply.slide;
+  }
+
+  /** エディタのカーソルがあるスライドに印を付け、見えるところまで動かす（何枚目か） */
+  async focus(index: number): Promise<void> {
+    await this.preview.request({ type: 'focus', index });
   }
 
   /** プレビューで、このスライドを表示する */

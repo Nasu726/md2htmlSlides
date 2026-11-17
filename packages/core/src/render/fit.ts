@@ -3,9 +3,15 @@
  * 自動分割（docs/design.md §4）で決めた倍率（data-scale）から始める。分割の計測と、
  * 発表する環境のフォントが違ってあふれたときの、最後の手段として残している。
  * 収まらなければ data-overflow を付ける（基本の CSS が赤い点線で示す）。
+ * root にスライド（`.mds-slide`）を渡すと、そのスライドだけを収める。
  */
 export function fitSlides(root: ParentNode = document): void {
-  for (const slide of Array.from(root.querySelectorAll<HTMLElement>('.mds-slide'))) {
+  // スライド1枚を渡したときは、そのスライドだけを収める（エディタのプレビューで、変わったスライドだけ）
+  const slides =
+    root instanceof HTMLElement && root.classList.contains('mds-slide')
+      ? [root]
+      : Array.from(root.querySelectorAll<HTMLElement>('.mds-slide'));
+  for (const slide of slides) {
     const body = slide.querySelector<HTMLElement>('.mds-body');
     if (!body) continue;
     let fit = Number(body.dataset.scale ?? 1);

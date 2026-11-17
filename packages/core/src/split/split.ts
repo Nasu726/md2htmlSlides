@@ -95,8 +95,13 @@ export function atomize(blocks: Block[]): Atom[] {
       items.forEach((item, index) => {
         const [from, to] = item.map!;
         const raw = lines.slice(from, to).join('\n').replace(/\n+$/, '');
+        // 項目ごとの行の範囲（自動分割したスライドの行の範囲に使う。#74）
+        const src = {
+          start: block.src.start + from,
+          end: block.src.start + from + raw.split('\n').length - 1,
+        };
         push({
-          block: { ...block, raw },
+          block: { ...block, raw, src },
           kind: 'list-item',
           group: { id: group, index, count: items.length },
         });
@@ -106,8 +111,9 @@ export function atomize(blocks: Block[]): Atom[] {
       group++;
       const headRaw = `${head}\n${sep}`;
       rows.forEach((row, index) => {
+        const line = block.src.start + 2 + index;
         push({
-          block: { ...block, raw: `${headRaw}\n${row}` },
+          block: { ...block, raw: `${headRaw}\n${row}`, src: { start: line, end: line } },
           kind: 'table-row',
           group: { id: group, index, count: rows.length, head: headRaw },
         });
@@ -358,6 +364,7 @@ function toSlides(slide: Slide, atoms: Atom[], pages: Page[]): Slide[] {
       if (last && sameGroup(last.atom, atom)) {
         const add = atom.kind === 'table-row' ? atom.block.raw.split('\n').pop()! : atom.block.raw;
         last.block.raw += `\n${add}`;
+        last.block.src = { start: last.block.src.start, end: atom.block.src.end };
         last.atom = atom;
       } else {
         const block = { ...atom.block };
@@ -365,9 +372,18 @@ function toSlides(slide: Slide, atoms: Atom[], pages: Page[]): Slide[] {
         last = { atom, block };
       }
     }
+    // そのページの行の範囲（最初のページは見出しから。続きのページは、そのページの最初の原子から）
+    const src =
+      own.length > 0
+        ? {
+            start: k === 0 ? slide.src.start : own[0]!.src.start,
+            end: k === pages.length - 1 ? slide.src.end : own.at(-1)!.src.end,
+          }
+        : slide.src;
     const next: Slide = {
       ...slide,
       id: k === 0 ? slide.id : `${slide.id}~p${k + 1}`,
+      src,
       blocks,
       ...(k > 0 ? { notes: [] } : {}),
       ...(page.scale < 1 ? { scale: page.scale } : {}),
