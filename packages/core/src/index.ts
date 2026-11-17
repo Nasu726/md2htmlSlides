@@ -88,6 +88,7 @@ export {
   DIRECTIVES,
   DIRECTIVE_NAMES,
   LAYOUTS,
+  LAYOUT_SUMMARIES,
   findAttributeKey,
   type AttrKey,
   type AttrPlace,

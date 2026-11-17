@@ -49,6 +49,8 @@ export interface SlideInfo {
   end: number;
   /** 自動分割で、節の途中から始まるスライド */
   auto: boolean;
+  /** 今のレイアウト（自動で選ばれたもの、または指定したもの） */
+  layout?: string;
   hidden: boolean;
 }
 
@@ -325,8 +327,11 @@ export class Renderer {
     diagnostics.sort((a, b) => a.line - b.line);
     return {
       slides: slides.slides.filter((s) => !s.hidden).length,
-      map: slides.slides.map((slide) => ({
+      map: slides.slides.map((slide, i) => ({
         id: slide.id,
+        ...(/\blayout-([a-z]+)/.exec(parts[i] ?? '')
+          ? { layout: /\blayout-([a-z]+)/.exec(parts[i]!)![1]! }
+          : {}),
         start: slide.src.start,
         end: slide.src.end,
         // page.index は 1 から。2枚目からが、自動で区切られたスライド

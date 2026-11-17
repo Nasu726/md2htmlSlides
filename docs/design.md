@@ -524,6 +524,15 @@ interface SyntaxEntry {
 - 外部のエディタ向けに、構文の定義からフロントマターの JSON Schema を書き出す（将来）。VS Code などでも、フロントマターの補完と検証が効くようになる。
 - 実装には CodeMirror 6 の `@codemirror/autocomplete`（補完）、`hoverTooltip`（説明）、`@codemirror/lint`（警告と修正の候補）を使う。
 
+#### 実装（#75）
+
+`apps/web/src/assist.ts`。候補・説明は core の構文の定義（`FRONTMATTER_KEYS`・`ATTRIBUTE_KEYS`・`CONTAINERS`・`DIRECTIVES`・`LAYOUTS` と、その説明 `LAYOUT_SUMMARIES`）から作る。
+
+- サジェスト（`@codemirror/autocomplete`）：フロントマターのキーと値、`{` の属性（見出し・`{…}` だけの行・画像・コード・コンテナで、使える属性を変える）、`key=` の値、行頭の `:::`（閉じる `:::` まで入れる）と `::`、`![](` の中のファイル、```` ``` ```` の言語名。キーを選ぶと、続けて値の候補を出す。`layout=` の値には、そのスライドの今のレイアウトを見出しに出す。
+- 挿入メニュー：空の行で `/`。構文ヒント：`hoverTooltip`（構文仕様へのリンク付き）。
+- 早見表：`Ctrl+/` かツールバーの「? 早見表」。構文の定義から項目を作り、検索して「挿入」でカーソルの位置に入れる。
+- 修正の候補：core の警告に、書き間違えた文字（`found`）と候補（`suggestion`）を持たせ、`@codemirror/lint` の「〜に直す」ボタンでその文字を置き換える。
+
 ### 9.4 隔離
 
 プレビューは `sandbox="allow-scripts"` を指定した iframe（オリジンは不透明）で表示する。テーマやカスタムCSSがエディタの画面に影響せず、Markdown 内の生HTMLからエディタやファイルのハンドルにアクセスすることもできない。

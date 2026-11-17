@@ -95,3 +95,17 @@ describe('parseDeck', () => {
     ]);
   });
 });
+
+describe('修正の候補（#75）', () => {
+  it('書き間違えた文字（found）と候補（suggestion）を、警告に付ける', () => {
+    const deck = parseDeck('---\nthme: dark\n---\n\n## A {lyout=split}\n\n:::rwo\n中身\n:::\n');
+    const fixes = deck.diagnostics
+      .filter((d) => d.suggestion)
+      .map((d) => [d.line, d.found, d.suggestion]);
+    expect(fixes).toEqual([
+      [2, 'thme', 'theme'],
+      [5, 'lyout', 'layout'],
+      [7, 'rwo', 'row'],
+    ]);
+  });
+});

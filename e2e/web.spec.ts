@@ -397,3 +397,128 @@ test('打鍵からプレビューに反映されるまでの時間（50枚ほど
   // 目標は p95 で 50ms（設計プラン §11.1）。CI の機械は遅いので、大きく遅くなっていないことだけを確かめる
   expect(p95).toBeLessThan(200);
 });
+
+const TALK_MD = [
+  '---',
+  'title: CI のビルド時間を 1/10 にした話',
+  'theme: dark',
+  '---',
+  '',
+  '::maketitle',
+  '',
+  '## やったこと',
+  '',
+  ':::steps',
+  '- 影響を受けるパッケージだけをビルドする',
+  ':::',
+  '',
+  '## Before / After {lyout=split}',
+  '',
+  '文章',
+  '',
+  '## 結果',
+  '',
+].join('\n');
+
+async function openTalk(page: Page) {
+  const dir = mkdtempSync(join(tmpdir(), 'mds-web-assist-'));
+  const md = join(dir, 'talk.md');
+  writeFileSync(md, TALK_MD);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(origin);
+  await page.getByTestId('file-input').setInputFiles([md]);
+  await expect(page.locator('.doc-name')).toHaveText('talk.md');
+  await expect(page.locator('.cm-slide-marker')).toHaveCount(4);
+}
+
+const completions = (page: Page) => page.locator('.cm-tooltip-autocomplete li');
+/** 候補を選ぶ（CodeMirror は、候補が出てから 75ms は Enter で選ばない。打ち間違いを防ぐため） */
+async function accept(page: Page) {
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Enter');
+}
+const lineWith = (page: Page, text: string) => page.locator('.cm-line', { hasText: text });
+
+test('サジェスト：layout= の値・場所に合う属性・フロントマター・コンテナ（#75）', async ({
+  page,
+}) => {
+  await openTalk(page);
+  // layout= の値：説明と、このスライドの今のレイアウト
+  await lineWith(page, '## 結果').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' {layout=');
+  await expect(page.locator('.cm-tooltip-autocomplete completion-section')).toHaveText(
+    /^layout の値・このスライドは今 \w+$/,
+  );
+  await expect(completions(page).filter({ hasText: 'split' })).toContainText(
+    '文章とメディアを左右に',
+  );
+  await page.keyboard.type('spl');
+  await expect(page.locator('.cm-tooltip-autocomplete li[aria-selected]')).toContainText('split');
+  await accept(page);
+  await expect(lineWith(page, '## 結果')).toHaveText('## 結果 {layout=split');
+  await page.keyboard.type('}');
+
+  // 見出しの { には、スライドに付けるキー（keep）が出て、画像の属性（bg）は出ない
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('\n## 次 {');
+  await expect(completions(page).filter({ hasText: /^keep/ })).toHaveCount(1);
+  await expect(completions(page).filter({ hasText: /^bg/ })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  // 画像の直後の { には、bg が出る
+  await page.keyboard.type('}\n\n![](a.png){');
+  await expect(completions(page).filter({ hasText: /^bg/ })).toHaveCount(1);
+  await page.keyboard.press('Escape');
+
+  // 行頭の ::: はコンテナ名。選ぶと閉じる ::: まで入れる
+  await page.keyboard.type('}\n\n:::ro');
+  await expect(page.locator('.cm-tooltip-autocomplete li[aria-selected]')).toContainText(
+    '中身を横に並べる',
+  );
+  await accept(page);
+  await expect(lineWith(page, ':::row')).toHaveCount(1);
+  await expect(page.locator('.cm-line', { hasText: /^:::$/ })).toHaveCount(2);
+});
+
+test('サジェスト：フロントマターのキーを選ぶと、続けて値の候補が出る（#75）', async ({ page }) => {
+  await openTalk(page);
+  await lineWith(page, 'theme: dark').click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('aspe');
+  await expect(page.locator('.cm-tooltip-autocomplete li[aria-selected]')).toContainText('aspect');
+  await accept(page);
+  // キーを選ぶと、続けて値の候補が出る
+  await expect(lineWith(page, 'aspect:')).toHaveText('aspect: ');
+  await expect(completions(page)).toHaveCount(3);
+  await expect(completions(page).filter({ hasText: '16:9' })).toContainText('既定');
+});
+
+test('挿入メニュー（空の行で /）・構文ヒント・修正の候補・早見表（#75）', async ({ page }) => {
+  await openTalk(page);
+  // 修正の候補：{lyout=split} → 「layout」に直す
+  await page.locator('.cm-lint-marker').first().hover();
+  await page.getByRole('button', { name: '「layout」に直す' }).click();
+  await expect(lineWith(page, '## Before / After')).toHaveText('## Before / After {layout=split}');
+  await expect(page.getByRole('button', { name: /警告/ })).toHaveText('警告 0 件');
+
+  // 構文ヒント：:::steps にカーソルを合わせる
+  await lineWith(page, ':::steps').hover({ position: { x: 20, y: 5 } });
+  await expect(page.locator('.cm-syntax-hint')).toContainText(':::steps — 中身を1つずつ表示する');
+
+  // 挿入メニュー：空の行で / → 「横に並べる」
+  await lineWith(page, '## 結果').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('\n\n/');
+  await expect(page.locator('.cm-tooltip-autocomplete completion-section')).toHaveText('挿入する');
+  await accept(page);
+  await expect(lineWith(page, ':::row')).toHaveCount(1);
+
+  // 早見表：Ctrl+/ で開き、探して入れる
+  await page.keyboard.press('Control+/');
+  const sheet = page.getByRole('complementary', { name: '早見表' });
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole('searchbox').fill('ノート');
+  await sheet.getByRole('button', { name: '挿入' }).first().click();
+  await expect(lineWith(page, ':::notes')).toHaveCount(1);
+});

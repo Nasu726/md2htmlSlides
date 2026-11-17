@@ -180,17 +180,45 @@ export function keepSection(view: EditorView, line: number): void {
   view.focus();
 }
 
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** このスライドの情報（行から引く） */
+export function slideInfoAt(view: EditorView, line: number): SlideInfo | undefined {
+  return view.state.field(slideMapField)[slideAt(view, line)];
+}
+
 /** 警告を、行番号欄の印と波線で出す（カーソルを合わせると内容が出る） */
 export function setWarnings(view: EditorView, diagnostics: Diagnostic[]): void {
   const doc = view.state.doc;
   const lint: LintDiagnostic[] = diagnostics.map((d) => {
     const line = doc.line(Math.min(Math.max(1, d.line), doc.lines));
+    // 書き間違いの修正の候補（#75）：その行の中の書き間違えた文字を、候補に置き換える
+    const at = d.found
+      ? line.text.search(new RegExp(`(?<![\\w-])${escapeRegExp(d.found)}(?![\\w-])`))
+      : -1;
+    const fix =
+      d.found && d.suggestion && at >= 0 ? { found: d.found, suggestion: d.suggestion } : undefined;
     return {
       from: line.from,
       to: line.to,
       severity: d.severity === 'error' ? 'error' : d.severity === 'info' ? 'info' : 'warning',
       message: d.message,
       source: d.code,
+      ...(fix
+        ? {
+            actions: [
+              {
+                name: `「${fix.suggestion}」に直す`,
+                apply: (view: EditorView) => {
+                  const from = line.from + at;
+                  view.dispatch({
+                    changes: { from, to: from + fix.found.length, insert: fix.suggestion },
+                  });
+                },
+              },
+            ],
+          }
+        : {}),
     };
   });
   view.dispatch(setDiagnostics(view.state, lint));

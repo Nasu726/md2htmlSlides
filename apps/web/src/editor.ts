@@ -13,6 +13,7 @@ import {
 } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 import type { MarkdownConfig } from '@lezer/markdown';
+import { assist, type AssistOptions } from './assist.js';
 import { slideGutter, type SlideGutterOptions } from './slide-gutter.js';
 
 /**
@@ -62,6 +63,10 @@ export interface EditorOptions {
   onCursor(line: number): void;
   /** 行番号欄の目印（#74） */
   gutter: SlideGutterOptions;
+  /** 入力の補助（#75） */
+  assist: AssistOptions;
+  /** Ctrl+/：早見表を開く・閉じる */
+  onCheatSheet(): void;
 }
 
 export interface Editor {
@@ -89,12 +94,14 @@ export function createEditor(parent: HTMLElement, options: EditorOptions): Edito
     keymap.of([
       { key: 'Mod-s', run: run(options.onSave), preventDefault: true },
       { key: 'F5', run: run(options.onPresent), preventDefault: true },
+      { key: 'Mod-/', run: run(options.onCheatSheet), preventDefault: true },
       ...defaultKeymap,
       ...historyKeymap,
       ...searchKeymap,
       indentWithTab,
     ]),
     slideGutter(options.gutter),
+    assist(options.assist),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) options.onChange(update.state.doc.toString());
       if (update.selectionSet || update.docChanged) {
