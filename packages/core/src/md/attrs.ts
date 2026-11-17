@@ -20,7 +20,7 @@ const PAUSE = /^\.[ \t]\.[ \t]\.$/;
  * 属性 `{…}`（構文仕様 §3）と `. . .`（§5.1）を読む。
  * - 見出し・段落の末尾（前に空白）：その見出しの節・その段落に付ける
  * - `{…}` だけの段落：それを含むスライドに付ける
- * - フェンスコードの情報文字列：そのブロックに付ける
+ * - フェンスコードの情報文字列・独立した数式の閉じる `$$` の後：そのブロックに付ける
  * - 画像の直後（空白なし）：その画像に付ける
  */
 export function attrsPlugin(md: MarkdownIt): void {
@@ -34,7 +34,7 @@ function blockAttrs(state: StateCore): void {
   const tokens = state.tokens;
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i]!;
-    if (token.type === 'fence') {
+    if (token.type === 'fence' || token.type === 'math_block') {
       fenceAttrs(token, env);
       continue;
     }

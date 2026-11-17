@@ -3,6 +3,7 @@ import type { Attrs } from '../attrs.js';
 import { attrsPlugin, type BlockMeta } from './attrs.js';
 import { containerPlugin } from './container.js';
 import { directivePlugin } from './directive.js';
+import { mathHtml, mathPlugin } from './math.js';
 import {
   diagramHtml,
   mediaPlugin,
@@ -24,6 +25,7 @@ export const md: MarkdownIt = markdownIt({ html: true, linkify: false, typograph
   .use(directivePlugin)
   .use(attrsPlugin)
   .use(mediaPlugin)
+  .use(mathPlugin)
   .use(alertsPlugin)
   .use(renderRules);
 
@@ -149,6 +151,15 @@ function renderRules(instance: MarkdownIt): void {
     const step = (token.meta as BlockMeta | null)?.attrs?.values.step;
     const stepAttr =
       step === undefined ? '' : ` data-mds-step="${step === true ? 'auto' : String(step)}"`;
+    // ```math は独立した数式にする（#72）
+    if (lang === 'math') {
+      return mathHtml(instance.utils.escapeHtml, token.content.replace(/\n$/, ''), {
+        display: true,
+        block: true,
+        render: (env as RenderEnv | undefined)?.math,
+        attrs: stepAttr,
+      });
+    }
     // ```mermaid は図にする（#71）。描けなければ（Chromium がないなど）コードのまま出す
     const diagram =
       lang === 'mermaid'
@@ -170,6 +181,26 @@ function renderRules(instance: MarkdownIt): void {
     );
     if (step === undefined) return html;
     return html.replace(/^<pre/, `<pre${stepAttr}`);
+  };
+
+  // 数式（#72）。描く関数がなければ TeX のまま出す
+  rules.math_inline = (tokens, idx, _options, env) => {
+    const token = tokens[idx]!;
+    return mathHtml(instance.utils.escapeHtml, token.content, {
+      display: token.markup === '$$',
+      block: false,
+      render: (env as RenderEnv | undefined)?.math,
+    });
+  };
+  rules.math_block = (tokens, idx, _options, env) => {
+    const token = tokens[idx]!;
+    const step = (token.meta as BlockMeta | null)?.attrs?.values.step;
+    return mathHtml(instance.utils.escapeHtml, token.content, {
+      display: true,
+      block: true,
+      render: (env as RenderEnv | undefined)?.math,
+      attrs: step === undefined ? '' : ` data-mds-step="${step === true ? 'auto' : String(step)}"`,
+    });
   };
 
   rules.image = (tokens, idx, _options, env) =>

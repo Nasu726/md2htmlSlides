@@ -21,6 +21,13 @@ import { pathToFileURL } from 'node:url';
 import { createAssets, registerDeckAssets, type Assets } from './assets.js';
 import { FONT_HOST, codeText, linkedFontCss, subsetFontCss, visibleText } from './fonts.js';
 import { codeHighlighter, codeLanguages } from './highlight.js';
+import {
+  linkedMathFontCss,
+  mathDiagnostics,
+  mathEngine,
+  mathLayoutCss,
+  subsetMathFontCss,
+} from './math.js';
 import { ChromiumMeasurer } from './measurer.js';
 
 /**
@@ -103,11 +110,21 @@ export async function renderFile(
     ...(customCss !== undefined ? { customCss } : {}),
   };
 
+  // 数式（#72）：KaTeX は、資料に数式があるときだけ読み込む。CSS とフォントも、そのときだけ入れる
+  const math = deck.math ? await mathEngine() : undefined;
+  if (math) {
+    renderOptions.math = math.render;
+    renderOptions.libraryCss = mathLayoutCss();
+    diagnostics.push(...mathDiagnostics(deck, math.render));
+  }
+  const linkedFonts = (prefix: string) =>
+    linkedFontCss(prefix) + (math ? `\n${linkedMathFontCss(prefix)}` : '');
+
   // スライドを空にしたデッキ：計測と図の描画に使う（テーマ・カスタム CSS・同じフォント）
   const emptyPage = () =>
     renderDeckHtml(
       { ...slides, slides: [] },
-      { ...renderOptions, fit: false, ...(fonts ? { fontCss: linkedFontCss(FONT_HOST) } : {}) },
+      { ...renderOptions, fit: false, ...(fonts ? { fontCss: linkedFonts(FONT_HOST) } : {}) },
     );
 
   // Mermaid の図（#71）：ヘッドレス Chromium で SVG にしておき、描画では結果を返すだけにする
@@ -135,7 +152,10 @@ export async function renderFile(
 
   // 自動分割：スライドを空にしたデッキの上で原子の高さを測り、節ごとに区切る
   if (measurer) {
-    const plan = planSplit(slides, renderOptions.diagram ? { diagram: renderOptions.diagram } : {});
+    const plan = planSplit(slides, {
+      ...(renderOptions.diagram ? { diagram: renderOptions.diagram } : {}),
+      ...(renderOptions.math ? { math: renderOptions.math } : {}),
+    });
     if (plan.jobs.length > 0) {
       const measurements = await measurer.measure(emptyPage(), plan.jobs);
       if (measurements) slides = applySplit(slides, plan, measurements);
@@ -145,14 +165,18 @@ export async function renderFile(
   let html = renderDeckHtml(slides, {
     ...htmlOptions,
     ...renderOptions,
-    ...(fonts === 'link' ? { fontCss: linkedFontCss('/__mds/fonts') } : {}),
+    ...(fonts === 'link' ? { fontCss: linkedFonts('/__mds/fonts') } : {}),
   });
-  // 書き出しでは、スライドに表示される文字だけに絞ったフォントを埋め込む
+  // 書き出しでは、スライドに表示される文字だけに絞ったフォントを埋め込む（数式のフォントも同じ）
   let fontBytes: number | undefined;
   if (fonts === 'embed') {
     const subset = await subsetFontCss(visibleText(html), codeText(html));
-    html = html.replace('<style>', `<style>${subset.css}\n`);
-    fontBytes = subset.bytes;
+    const mathSubset = math ? await subsetMathFontCss(math.used()) : { css: '', bytes: 0 };
+    html = html.replace(
+      '<style>',
+      `<style>${subset.css}\n${mathSubset.css ? `${mathSubset.css}\n` : ''}`,
+    );
+    fontBytes = subset.bytes + mathSubset.bytes;
   }
   diagnostics.sort((a, b) => a.line - b.line);
   return {

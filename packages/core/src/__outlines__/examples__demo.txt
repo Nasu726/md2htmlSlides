@@ -10,7 +10,7 @@ meta
 diagnostics
   (なし)
 sections
-  (先頭)  L11-L122
+  (先頭)  L11-L130
     - comment  L12-L17
     - ::maketitle  L19
     # はじめに  L21-L42  #はじめに
@@ -23,7 +23,7 @@ sections
             image ../fixtures/assets/landscape-16x9.png alt="エディタとプレビューを並べた画面" title="編集しながらプレビュー"
         - paragraph  L39
         - list  L41-L42
-    # 使い方  L44-L122  #使い方
+    # 使い方  L44-L130  #使い方
       ## 書き方の基本  L46-L62  #書き方の基本
         - paragraph  L48-L49
         ### 見出しで区切る  L51-L54  #見出しで区切る
@@ -49,16 +49,19 @@ sections
           - paragraph  L93
       ## 仕組み  L96-L102  #仕組み
         - code[mermaid]  L98-L102
-      ## デモ動画  L104-L106  #デモ動画
+      ## 数式  L104-L110  #数式
         - paragraph  L106
+        - math  L108-L110
+      ## デモ動画  L112-L114  #デモ動画
+        - paragraph  L114
             video ../fixtures/assets/demo.mp4 alt="操作のデモ" {autoplay loop muted}
-      ## 写真と一言  L108-L122  #写真と一言
-        - paragraph  L110
-            image ../fixtures/assets/portrait-3x4.png {bg=left}
-        - paragraph  L112
-        - rule[---]  L114
-        - comment  L116
+      ## 写真と一言  L116-L130  #写真と一言
         - paragraph  L118
+            image ../fixtures/assets/portrait-3x4.png {bg=left}
+        - paragraph  L120
+        - rule[---]  L122
+        - comment  L124
+        - paragraph  L126
             image ../fixtures/assets/bg-dark.jpg {bg dim=0.5}
-        - slide-attrs {layout=statement}  L120
-        - paragraph  L122
+        - slide-attrs {layout=statement}  L128
+        - paragraph  L130

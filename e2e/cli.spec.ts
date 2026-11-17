@@ -118,6 +118,55 @@ test('mds build は Mermaid を SVG にし、構文エラーは枠と行番号�
   expect(errors.map((d) => d.line)).toEqual([50]);
 });
 
+test('mds build は数式を KaTeX で描き、使った書体と文字だけのフォントを埋め込む（#72）', async ({
+  page,
+}) => {
+  const dir = mkdtempSync(join(tmpdir(), 'mds-math-'));
+  const md = join(dir, 'math.md');
+  writeFileSync(
+    md,
+    [
+      '## 数式',
+      '',
+      '二次方程式 $ax^2 + bx + c = 0$ の解。価格は $10 から $20。',
+      '',
+      '$$',
+      'x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}',
+      '$$',
+      '',
+      '## エラー',
+      '',
+      '閉じ忘れ $\\frac{1}{2$ です。',
+      '',
+    ].join('\n'),
+  );
+  const result = await build(md, { outDir: join(dir, 'dist') });
+  const html = readFileSync(result.index, 'utf8');
+  // 書き出した HTML には KaTeX の JS を含めない。CSS と、使った書体のフォントだけを入れる
+  expect(html).not.toContain('renderToString');
+  expect(html).toContain('<div class="mds-math-block"><span class="katex-display">');
+  expect(html).toContain('@font-face{font-family:KaTeX_Main;font-style:normal;font-weight:400');
+  expect(html).toContain('@font-face{font-family:KaTeX_Math;font-style:italic');
+  expect(html).not.toContain('@font-face{font-family:KaTeX_Fraktur');
+  // 金額は数式にしない
+  expect(html).toContain('価格は $10 から $20。');
+  expect(
+    result.diagnostics.filter((d) => d.code === 'math/katex-error').map((d) => d.line),
+  ).toEqual([11]);
+
+  // 開くと、数式は KaTeX のフォントで描かれる
+  await page.goto(pathToFileURL(result.index).href);
+  await page.evaluate(() => document.fonts.ready);
+  const loaded = await page.evaluate(
+    () =>
+      [...document.fonts].filter((f) => f.family === 'KaTeX_Main' && f.status === 'loaded').length,
+  );
+  expect(loaded).toBeGreaterThan(0);
+  const error = page.locator('.mds-slide code.mds-math-error');
+  await expect(error).toHaveText('$\\frac{1}{2$');
+  await expect(error).toHaveAttribute('title', /expected '\}'/);
+});
+
 /** PDF のページの数（Chromium が書く PDF では、ページごとに /Type /Page がある） */
 const pdfPages = (file: string) =>
   (readFileSync(file, 'latin1').match(/\/Type\s*\/Page(?![a-zA-Z])/g) ?? []).length;
@@ -221,6 +270,14 @@ test.describe('mds dev', () => {
       new URL('/__mds/fonts/@fontsource-variable/x.woff2', server.url).href,
     );
     expect(missing.status()).toBe(404);
+    // 数式のフォント（#72）も同じ場所から配る
+    const katex = await request.get(
+      new URL('/__mds/fonts/katex/KaTeX_Main-Regular.woff2', server.url).href,
+    );
+    expect(katex.status()).toBe(200);
+    expect(
+      (await request.get(new URL('/__mds/fonts/katex/x.woff2', server.url).href)).status(),
+    ).toBe(404);
   });
 
   test('プレビューは、スライド1枚がウィンドウに収まる大きさにする（#60）', async ({ page }) => {

@@ -24,7 +24,7 @@ sections
       - paragraph  L66
     ## 数式（M3）  L68-L74  #数式m3
       - paragraph  L70
-      - paragraph  L72-L74
+      - math  L72-L74
     ## コード：いくつかの言語  L76-L91  #コードいくつかの言語
       - code[python]  L78-L84
       - code[rust]  L86-L91

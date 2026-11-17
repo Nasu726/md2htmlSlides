@@ -55,10 +55,10 @@ export function renderTitleSlide(
   if (meta.logo) parts.push(`<img class="mds-logo" src="${esc(assetUrl(meta.logo))}" alt="">`);
   if (meta.event) parts.push(`<p class="mds-event">${esc(meta.event)}</p>`);
   parts.push(
-    `<h1 class="mds-title">${phraseBreaks(slide.titleOverride ? md.renderInline(title) : esc(title), meta.lang)}</h1>`,
+    `<h1 class="mds-title">${phraseBreaks(slide.titleOverride ? md.renderInline(title, env) : esc(title), meta.lang)}</h1>`,
   );
   if (subtitle) {
-    const html = slide.titleOverride?.subtitle ? md.renderInline(subtitle) : esc(subtitle);
+    const html = slide.titleOverride?.subtitle ? md.renderInline(subtitle, env) : esc(subtitle);
     parts.push(`<p class="mds-subtitle">${phraseBreaks(html, meta.lang)}</p>`);
   }
   parts.push(...renderAuthors(deck));
