@@ -13,6 +13,7 @@ import { md } from '../md/instance.js';
 import type { RenderEnv } from '../md/media.js';
 import { renderBlocks, renderSlide } from '../render/html.js';
 import { isBackgroundBlock } from '../render/background.js';
+import { FIT_MARGIN } from '../render/fit.js';
 import { isMediaBlock, isShortList } from '../render/layout.js';
 import type { Slide, SlideDeck } from '../slides.js';
 
@@ -46,6 +47,11 @@ export interface SplitWeights {
   minScale: number;
   /** 原子1つが収まらないときの最小の倍率（それでも収まらなければ警告） */
   atomMinScale: number;
+  /**
+   * 本文の下に残す余白（本文の高さに対する割合）。ここまで埋まったら収まっていないとみなす。
+   * 下端ぎりぎりまで文字が来ると見づらいため（#92）。fitSlides も同じ値（FIT_MARGIN）で縮める
+   */
+  margin: number;
 }
 
 export const DEFAULT_WEIGHTS: SplitWeights = {
@@ -65,6 +71,7 @@ export const DEFAULT_WEIGHTS: SplitWeights = {
   softMinScale: 0.85,
   minScale: 0.75,
   atomMinScale: 0.6,
+  margin: FIT_MARGIN,
 };
 
 /** 分けない最小単位（§4.1）。リストは項目ごと、表は行ごと、それ以外はブロックごと。 */
@@ -201,7 +208,8 @@ export function breakPenalty(atoms: Atom[], i: number, w: SplitWeights): number 
     const base = cur.kind === 'table-row' ? w.tableRow : w.listItem;
     return base + (index === 1 || count - index === 1 ? w.orphan : 0);
   }
-  return w.block;
+  // 小見出しと、その直後の1ブロックだけをページの最後に残さない（続きの内容と離れて見えるため。#92）
+  return w.block + (atoms[i - 2]?.kind === 'heading' ? w.orphan : 0);
 }
 
 /** ブロックに書いた明示のステップ番号（`{step=N}`）。 */
@@ -262,6 +270,8 @@ export function splitAtoms(
   const after: number[] = Array<number>(n + 1).fill(Infinity);
   for (let i = n - 1; i >= 0; i--) after[i] = Math.min(after[i + 1]!, ...explicit[i]!);
   const breaksStepOrder = (i: number) => before[i]! >= after[i]!;
+  // 埋めてよい高さ：下に余白を残す（#92）
+  const room = m.avail * (1 - w.margin);
   const best: number[] = Array<number>(n + 1).fill(Infinity);
   const from: number[] = Array<number>(n + 1).fill(-1);
   const pageOf: Page[] = Array<Page>(n + 1);
@@ -279,7 +289,7 @@ export function splitAtoms(
       let extra = resub ? heights[sub]! + m.gap : 0;
       if (hasHead(atom)) extra += m.heads[i] ?? 0;
       const text = sum + extra;
-      const needed = text > 0 ? (m.avail - gaps) / text : 1; // この倍率まで縮めれば収まる
+      const needed = text > 0 ? (room - gaps) / text : 1; // この倍率まで縮めれば収まる
       const single = j - i === 1;
       // i を前に戻すほど内容が増えるので打ち切る（まだ1つも収め方がなければ、あふれを覚悟で続ける）
       if (needed < w.minScale && !single && best[j]! < Infinity) break;
@@ -287,8 +297,11 @@ export function splitAtoms(
       if (penalty === Infinity || best[i] === Infinity) continue;
       const floor = single ? w.atomMinScale : w.minScale;
       const scale = Math.max(floor, Math.min(1, Math.floor(needed * 20) / 20));
-      const overflow = text * scale + gaps > m.avail + 1;
-      const fill = Math.min(1, (text * scale + gaps) / m.avail);
+      const height = text * scale + gaps;
+      // 余白に食い込む（tight）のは避ける。本文からはみ出す（overflow）のは、もっと避ける
+      const tight = height > room + 1;
+      const overflow = height > m.avail + 1;
+      const fill = Math.min(1, height / room);
       // 余白：最後以外のページは余白が多いほど悪い。どのページも、数行だけなら重く罰する
       // （節が1枚で済むときは罰しない）
       let badness = j < n ? w.fill * (1 - fill) ** 2 : 0;
@@ -296,7 +309,8 @@ export function splitAtoms(
         badness += w.last * ((w.lastMin - fill) / w.lastMin) ** 2;
       }
       const shrink = w.shrink * (1 - scale) + w.deepShrink * Math.max(0, w.softMinScale - scale);
-      const cost = best[i]! + penalty + badness + w.page + shrink + (overflow ? 1e4 : 0);
+      const cost =
+        best[i]! + penalty + badness + w.page + shrink + (tight ? 1e4 : 0) + (overflow ? 1e4 : 0);
       if (cost < best[j]!) {
         best[j] = cost;
         from[j] = i;

@@ -17,7 +17,7 @@ export type FrameMode = 'measure' | 'preview' | 'present';
 export function frameHost(
   mode: FrameMode,
   measureJobs: (jobs: MeasureJob[]) => Measurement[],
-  fitSlides: (root?: ParentNode) => void,
+  fitSlides: (root: ParentNode) => void,
   renderMermaid: (input: { codes: string[]; ids: string[] }) => Promise<unknown[]>,
 ): void {
   const doc = document;
