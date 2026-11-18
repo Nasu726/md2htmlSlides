@@ -1,0 +1,77 @@
+{
+  "elk": {
+    "version": "0.12.1"
+  },
+  "cases": [
+    {
+      "name": "order-system（横・グループ）",
+      "nodes": 7,
+      "groups": 1,
+      "edges": 6,
+      "size": [1022, 234],
+      "nodeMs": {
+        "first": 23.9,
+        "median": 11
+      },
+      "browserMs": {
+        "first": 103.2,
+        "median": 17.2
+      },
+      "nodeOverlaps": 0,
+      "outsideGroup": 0,
+      "edgeThroughNode": 0
+    },
+    {
+      "name": "13-arch のコードブロック（上から下）",
+      "nodes": 4,
+      "groups": 1,
+      "edges": 3,
+      "size": [334, 355],
+      "nodeMs": {
+        "first": 15.1,
+        "median": 10.2
+      },
+      "browserMs": {
+        "first": 48.5,
+        "median": 12.9
+      },
+      "nodeOverlaps": 0,
+      "outsideGroup": 0,
+      "edgeThroughNode": 0
+    },
+    {
+      "name": "大きめの構成（30ノード・入れ子3段）",
+      "nodes": 30,
+      "groups": 9,
+      "edges": 40,
+      "size": [1091, 1159],
+      "nodeMs": {
+        "first": 118.6,
+        "median": 84.7
+      },
+      "browserMs": {
+        "first": 219.5,
+        "median": 76.3
+      },
+      "nodeOverlaps": 0,
+      "outsideGroup": 0,
+      "edgeThroughNode": 0
+    }
+  ],
+  "motion": [
+    {
+      "length": 247,
+      "maxErrorPx": 0,
+      "frames": 74,
+      "meanGapMs": 16.7,
+      "maxGapMs": 16.8
+    },
+    {
+      "length": 226,
+      "maxErrorPx": 0,
+      "frames": 73,
+      "meanGapMs": 16.7,
+      "maxGapMs": 16.8
+    }
+  ]
+}
