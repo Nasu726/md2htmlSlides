@@ -1,7 +1,9 @@
 import {
   applySplit,
   buildSlides,
+  archDiagnostics,
   checkMediaFiles,
+  collectArch,
   collectMedia,
   hashString,
   isLocalPath,
@@ -165,6 +167,16 @@ export class Renderer {
     await this.assets.ensure([...media, ...(deck.meta.logo ? [deck.meta.logo] : [])]);
     check();
     const diagnostics = [...deck.diagnostics, ...checkMediaFiles(deck, this.assets.probe)];
+    // 動く構成図（#106）：`.arch` のファイルを読み、書き間違いなどを警告する
+    const archFiles = new Map<string, string>();
+    for (const m of collectMedia(deck)) {
+      if (m.kind !== 'arch' || !isLocalPath(m.src)) continue;
+      const content = await this.assets.text(m.src);
+      if (content !== undefined) archFiles.set(normalizePath(m.src), content);
+    }
+    diagnostics.push(
+      ...archDiagnostics(collectArch(slides, (src) => archFiles.get(normalizePath(src)))),
+    );
     let customCss: string | undefined;
     if (deck.meta.css) {
       customCss = await this.assets.text(deck.meta.css);

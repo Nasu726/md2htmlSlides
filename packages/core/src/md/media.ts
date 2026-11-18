@@ -117,9 +117,11 @@ export function renderMedia(
   const alt = md.renderer.renderInlineAsText(token.children ?? [], md.options, env ?? {});
   const kind = mediaKind(src);
   const info = kind === 'image' || kind === 'video' ? env?.probe?.(decodePath(src)) : undefined;
-  // 図のファイル（.mmd）：描いた図。描けなければファイル名の枠だけを出す（#71）
+  // 図のファイル（.mmd・.arch）：描いた図。描けなければファイル名の枠だけを出す（#71・#106）
   const diagram =
-    kind === 'diagram' ? env?.diagram?.({ lang: 'mermaid', src: decodePath(src) }) : undefined;
+    kind === 'diagram' || kind === 'arch'
+      ? env?.diagram?.({ lang: kind === 'arch' ? 'arch' : 'mermaid', src: decodePath(src) })
+      : undefined;
   const width = widthOf(token);
   const url = (path: string) => (env?.assetUrl ? env.assetUrl(path) : path);
 
@@ -166,7 +168,7 @@ function mediaElement(
   diagram?: DiagramResult,
 ): string {
   const flag = (name: string) => attrs?.values[name] !== undefined;
-  if (kind === 'diagram') {
+  if (kind === 'diagram' || kind === 'arch') {
     if (diagram) return diagramHtml(esc, diagram, alt || src);
     const label = alt || decodePath(src).split('/').pop() || src;
     return `<span class="mds-media-placeholder" role="img" aria-label="${esc(label)}">${esc(label)}</span>`;

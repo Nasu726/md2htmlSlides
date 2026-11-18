@@ -9,6 +9,9 @@ import {
 import { Prec, type Extension } from '@codemirror/state';
 import { EditorView, hoverTooltip, keymap, type Tooltip } from '@codemirror/view';
 import {
+  ARCH_KEYWORDS,
+  ARCH_KIND_SUMMARIES,
+  ARCH_NODE_KINDS,
   ATTRIBUTE_KEYS,
   CONTAINERS,
   DIRECTIVES,
@@ -17,6 +20,7 @@ import {
   LAYOUT_SUMMARIES,
   findAttributeKey,
   findFrontmatterKey,
+  parseArch,
   type AttrPlace,
 } from '@mds/core';
 import { SNIPPETS, valueOptions, type Snippet } from './cheatsheet.js';
@@ -265,8 +269,76 @@ function fenceCompletions(context: CompletionContext): CompletionResult | null {
     options: [
       { label: 'mermaid', detail: 'Mermaid の図', type: 'keyword', boost: 3 },
       { label: 'math', detail: '数式（KaTeX）', type: 'keyword', boost: 2 },
-      { label: 'arch', detail: '動く構成図（M4）', type: 'keyword', boost: 1 },
+      { label: 'arch', detail: '動く構成図', type: 'keyword', boost: 1 },
       ...LANGUAGES.map((label) => ({ label, type: 'text' })),
+    ],
+    validFor: /^[\w-]*$/,
+  };
+}
+
+/** カーソルが ```arch のコードブロックの中なら、その中身（カーソルの行の前まで）。違えば undefined */
+function archBlockBefore(context: CompletionContext): string | undefined {
+  const doc = context.state.doc;
+  const current = doc.lineAt(context.pos).number;
+  const lines: string[] = [];
+  for (let n = current - 1; n >= 1; n--) {
+    const text = doc.line(n).text;
+    if (/^\s*(`{3,}|~{3,})/.test(text)) {
+      return /^\s*(`{3,}|~{3,})\s*arch\b/.test(text) ? lines.reverse().join('\n') : undefined;
+    }
+    lines.push(text);
+  }
+  return undefined;
+}
+
+/**
+ * 動く構成図（```arch）の中（#106）：行頭のキーワード、`[` の後のノードの種類、
+ * 矢印の後と動きの行頭のノードの ID、`direction:` の値
+ */
+function archCompletions(context: CompletionContext): CompletionResult | null {
+  const block = archBlockBefore(context);
+  if (block === undefined) return null;
+  const line = context.state.doc.lineAt(context.pos);
+  const before = line.text.slice(0, context.pos - line.from);
+  const kind = /\[([\w-]*)$/.exec(before);
+  if (kind) {
+    return {
+      from: context.pos - kind[1]!.length,
+      options: ARCH_NODE_KINDS.map((name) => ({
+        label: name,
+        detail: ARCH_KIND_SUMMARIES[name],
+        type: 'keyword',
+      })),
+      validFor: /^[\w-]*$/,
+    };
+  }
+  const direction = /^\s*direction\s*:\s*(\w*)$/.exec(before);
+  if (direction) {
+    return {
+      from: context.pos - direction[1]!.length,
+      options: [
+        { label: 'right', detail: '左から右（既定）', type: 'enum' },
+        { label: 'down', detail: '上から下', type: 'enum' },
+      ],
+      validFor: /^\w*$/,
+    };
+  }
+  const { diagram } = parseArch(block);
+  const nodes = diagram.nodes.map((n) => ({ label: n.id, detail: n.label, type: 'variable' }));
+  const target = /(?:<->|-->|->|--)\s*([\w-]*)$/.exec(before);
+  if (target) {
+    return { from: context.pos - target[1]!.length, options: nodes, validFor: /^[\w-]*$/ };
+  }
+  const head = /^(\s*)([\w-]*)$/.exec(before);
+  if (!head || (!context.explicit && head[2]!.length === 0)) return null;
+  const inScenario = /^scenario\s/m.test(block);
+  return {
+    from: context.pos - head[2]!.length,
+    options: [
+      ...ARCH_KEYWORDS.filter((k) => k.scenario === inScenario || k.name === 'scenario').map(
+        (k) => ({ label: k.name, apply: k.insert, detail: k.summary, type: 'keyword', boost: 2 }),
+      ),
+      ...nodes,
     ],
     validFor: /^[\w-]*$/,
   };
@@ -424,6 +496,7 @@ export function assist(options: AssistOptions): Extension {
         frontmatterCompletions,
         blockCompletions,
         fenceCompletions,
+        archCompletions,
         (context) => fileCompletions(context, options),
         (context) => attributeCompletions(context, options),
       ],

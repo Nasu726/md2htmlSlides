@@ -51,6 +51,12 @@ const BASICS: Record<string, Snippet> = {
   image: { label: '画像・動画を入れる', hint: '![説明](a.png)', text: '![](a.png)', cursor: 2 },
   code: { label: 'コード', hint: '```ts', text: '```ts\n\n```', cursor: 6 },
   inlineMath: { label: '文中の数式', hint: '$x^2$', text: '$$', cursor: 1 },
+  arch: {
+    label: '動く構成図',
+    hint: '```arch',
+    text: '```arch\nuser ユーザー [user]\nweb Webサーバー\nuser -> web\n\nscenario 例\n  step リクエストを送る\n    user -> web : GET /\n```',
+    cursor: 8,
+  },
 };
 
 /** 属性の値の候補（サジェストと早見表で使う） */
@@ -201,6 +207,7 @@ export const CHEAT_SECTIONS: ReadonlyArray<{
     short: '図・数式',
     entries: [
       { snippet: '図（Mermaid）' },
+      { basic: 'arch' },
       { snippet: '数式' },
       { basic: 'inlineMath' },
       { basic: 'code' },

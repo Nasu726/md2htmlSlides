@@ -1,7 +1,9 @@
 import {
   applySplit,
+  archDiagnostics,
   buildSlides,
   checkMediaFiles,
+  collectArch,
   collectMedia,
   isLocalPath,
   parseDeck,
@@ -67,6 +69,12 @@ export async function renderFile(
   let slides = buildSlides(deck);
   const assets = createAssets(mdFile);
   const diagnostics = [...deck.diagnostics, ...checkMediaFiles(deck, (src) => assets.probe(src))];
+  // 動く構成図（#106）：書き間違い・存在しないシナリオ・1つのスライドに2つ以上
+  const readText = (src: string) => {
+    const file = resolve(assets.root, src);
+    return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
+  };
+  diagnostics.push(...archDiagnostics(collectArch(slides, readText)));
 
   // css: で指定したファイルを、デッキの中だけに効かせて埋め込む
   let customCss: string | undefined;
@@ -131,10 +139,7 @@ export async function renderFile(
 
   // Mermaid の図（#71）：ヘッドレス Chromium で SVG にしておき、描画では結果を返すだけにする
   if (measurer) {
-    const found = collectMermaid(source, deck, (src) => {
-      const file = resolve(assets.root, src);
-      return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
-    });
+    const found = collectMermaid(source, deck, readText);
     if (found.length > 0) {
       const results = await measurer.diagrams(
         emptyPage(),
