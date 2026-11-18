@@ -109,30 +109,15 @@ ${selector} .layout-title:not([class*='has-bg-']) {
 }
 ${selector} .layout-title .mds-title { font-weight: 800; }
 /*
- * 章扉：白地のまま、見出しだけを端から端までの帯に入れ、帯の中に小さく番号（01, 02, …）を出す（#100）。
- * 本文のスライドの見出しの帯とそろえる。一面を色で塗ると主張が強すぎるため
+ * 章扉：白地のまま、左に帯の色の縦の帯を置き、見出しは右に（#100・#114）。
+ * 一面を色で塗ると主張が強すぎるため。番号は付けない。背景画像のある章扉は、これまでどおり
  */
-${selector} { counter-reset: mds-section; }
-${selector} .layout-section { counter-increment: mds-section; }
 ${selector} .layout-section .mds-title { font-weight: 800; }
 ${selector} .layout-section .mds-title::before { width: 96px; height: 6px; border-radius: 0; }
-${selector} .layout-section:not([class*='has-bg-']) .mds-title {
-  margin-left: calc(var(--mds-pad-x) * -1);
-  margin-right: calc(var(--mds-pad-x) * -1);
-  padding: 0.45em var(--mds-pad-x) 0.5em;
-  background: var(--mds-band);
-  color: var(--mds-band-fg);
+${selector} .layout-section:not([class*='has-bg-']) {
+  background: linear-gradient(to right, var(--mds-band) 0 calc(var(--mds-w) * 0.28), var(--mds-bg) 0);
+  padding-left: calc(var(--mds-w) * 0.28 + 64px);
 }
-${selector} .layout-section:not([class*='has-bg-']) .mds-title::before {
-  content: counter(mds-section, decimal-leading-zero);
-  display: block;
-  width: auto;
-  height: auto;
-  margin: 0 0 0.15em;
-  background: none;
-  color: color-mix(in srgb, var(--mds-band-fg) 75%, transparent);
-  font-size: 0.42em;
-  letter-spacing: 0.08em;
-}
+${selector} .layout-section:not([class*='has-bg-']) .mds-title::before { background: var(--mds-band); }
 `;
 }

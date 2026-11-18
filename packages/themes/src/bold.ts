@@ -69,31 +69,17 @@ ${selector} .layout-title:not([class*='has-bg-']) {
 }
 ${selector} .layout-title .mds-title { font-weight: 900; }
 /*
- * 章扉：白地のまま、アクセントの色の大きな番号（01, 02, …）と、見出しの下の太い線（#100）。
- * 一面を色で塗ると主張が強すぎるため。背景画像のある章扉は、白い短い線だけ
+ * 章扉：白地のまま、見出しの下にアクセントの色の太い線（#100・#114）。
+ * 一面を色で塗ると主張が強すぎるため。番号は付けない。背景画像のある章扉は、白い短い線だけ
  */
-${selector} { counter-reset: mds-section; }
-${selector} .layout-section { counter-increment: mds-section; }
 ${selector} .layout-section .mds-title { font-weight: 900; }
 ${selector} .layout-section[class*='has-bg-'] .mds-title::before { height: 12px; width: 96px; border-radius: 0; background: #ffffff; }
+${selector} .layout-section:not([class*='has-bg-']) .mds-title::before { display: none; }
 ${selector} .layout-section:not([class*='has-bg-']) .mds-title {
   width: fit-content;
   max-width: 100%;
   padding-bottom: 0.22em;
-  border-bottom: 10px solid var(--mds-strong);
-}
-${selector} .layout-section:not([class*='has-bg-']) .mds-title::before {
-  content: counter(mds-section, decimal-leading-zero);
-  display: block;
-  width: auto;
-  height: auto;
-  margin: 0 0 0.05em;
-  border-radius: 0;
-  background: none;
-  color: var(--mds-strong);
-  font-size: 1.9em;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  border-bottom: 12px solid var(--mds-strong);
 }
 `;
 }
