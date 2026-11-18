@@ -1,0 +1,243 @@
+/**
+ * 動く構成図を、ELK で配置して SVG にする（#107、docs/arch-diagram.md §6・§8、S4 #104）。
+ *
+ * CLI は計測の Chromium で、エディタはプレビューの iframe で呼ぶ（どちらもテーマの CSS と
+ * 同梱のフォントがあるページ）。ページには先に elkjs（elk.bundled.js。グローバルの ELK）を入れておく。
+ * renderMermaid と同じく、外側の変数を使わない1つの関数にしている（文字列にして iframe に渡す）。
+ *
+ * - ノードの大きさは、本文のフォントで表示名の幅を測って決める
+ * - 色は SVG に書かず、クラスを付けて基本の CSS（テーマの変数）で塗る。テーマと accent: に合う
+ * - 再生（#108）のため、ノードに data-node、つながりに data-from・data-to を付ける
+ * - 書き出した HTML には SVG だけが入る（配置エンジンは入れない）
+ */
+export interface ArchRenderInput {
+  /** SVG の中の ID（矢印の印）を、資料の中で重ならないようにする接頭辞 */
+  id: string;
+  diagram: {
+    direction: 'right' | 'down';
+    nodes: Array<{ id: string; label: string; kind: string; group?: string }>;
+    groups: Array<{ id: string; label: string; parent?: string }>;
+    edges: Array<{ from: string; to: string; type: string; label?: string }>;
+  };
+}
+
+export async function renderArch(input: {
+  items: ArchRenderInput[];
+}): Promise<Array<{ svg: string; width: number; height: number } | { error: string }>> {
+  type ElkNode = {
+    id: string;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    children?: ElkNode[];
+    edges?: ElkEdge[];
+    layoutOptions?: Record<string, string>;
+    labels?: Array<{ text: string; x?: number; y?: number; width: number; height: number }>;
+  };
+  type Point = { x: number; y: number };
+  type ElkEdge = {
+    id: string;
+    sources: string[];
+    targets: string[];
+    container?: string;
+    sections?: Array<{ startPoint: Point; endPoint: Point; bendPoints?: Point[] }>;
+    labels?: Array<{ text: string; x?: number; y?: number; width: number; height: number }>;
+  };
+  const ELK = (window as unknown as { ELK?: new () => { layout(g: ElkNode): Promise<ElkNode> } })
+    .ELK;
+  if (!ELK) return input.items.map(() => ({ error: '配置エンジン（ELK）を読み込めません' }));
+  const elk = new ELK();
+  const deck = document.querySelector<HTMLElement>('.mds-deck') ?? document.body;
+  const family = getComputedStyle(deck).getPropertyValue('--mds-font-body').trim() || 'sans-serif';
+  const ctx = document.createElement('canvas').getContext('2d')!;
+  const textWidth = (text: string, size: number, weight = 500) => {
+    ctx.font = `${weight} ${size}px ${family}`;
+    return ctx.measureText(text).width;
+  };
+  const esc = (s: string) =>
+    s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+
+  // 文字の大きさ（SVG の座標で）。図は枠に合わせて縮むので、大きめに描いておく
+  const FONT = 20;
+  const GROUP_FONT = 16;
+  const LABEL_FONT = 15;
+  const ICON = 30;
+
+  const results: Array<{ svg: string; width: number; height: number } | { error: string }> = [];
+  for (const { id, diagram } of input.items) {
+    try {
+      const sizes = new Map<string, { w: number; h: number; icon: number }>();
+      for (const n of diagram.nodes) {
+        const icon = n.kind === 'user' || n.kind === 'storage' ? ICON : 0;
+        const extra = n.kind === 'queue' ? 24 : 0;
+        const w = Math.max(116, Math.ceil(textWidth(n.label, FONT) + 36 + icon + extra));
+        const h = n.kind === 'database' ? 78 : n.kind === 'client' ? 66 : 58;
+        sizes.set(n.id, { w, h, icon });
+      }
+      const childrenOf = (parent: string | undefined): ElkNode[] => [
+        ...diagram.groups
+          .filter((g) => g.parent === parent)
+          .map((g) => ({
+            id: g.id,
+            layoutOptions: { 'elk.padding': '[top=46,left=20,bottom=20,right=20]' },
+            children: childrenOf(g.id),
+          })),
+        ...diagram.nodes
+          .filter((n) => n.group === parent)
+          .map((n) => ({ id: n.id, width: sizes.get(n.id)!.w, height: sizes.get(n.id)!.h })),
+      ];
+      const known = new Set(diagram.nodes.map((n) => n.id));
+      const edges = diagram.edges.filter((e) => known.has(e.from) && known.has(e.to));
+      const graph: ElkNode = {
+        id: 'root',
+        layoutOptions: {
+          'elk.algorithm': 'layered',
+          'elk.direction': diagram.direction === 'down' ? 'DOWN' : 'RIGHT',
+          'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+          'elk.edgeRouting': 'ORTHOGONAL',
+          'elk.layered.spacing.nodeNodeBetweenLayers': '60',
+          'elk.spacing.nodeNode': '30',
+          'elk.spacing.edgeNode': '20',
+          'elk.spacing.edgeEdge': '14',
+          'elk.spacing.edgeLabel': '6',
+          'elk.edgeLabels.placement': 'CENTER',
+          'elk.padding': '[top=8,left=8,bottom=8,right=8]',
+        },
+        children: childrenOf(undefined),
+        edges: edges.map((e, i) => ({
+          id: `e${i}`,
+          sources: [e.from],
+          targets: [e.to],
+          labels: e.label
+            ? [{ text: e.label, width: Math.ceil(textWidth(e.label, LABEL_FONT) + 14), height: 24 }]
+            : [],
+        })),
+      };
+      const laid = await elk.layout(graph);
+
+      // 絶対座標（ELK の座標は親からの相対）
+      const boxes = new Map<string, { x: number; y: number; w: number; h: number }>();
+      const walk = (n: ElkNode, ox: number, oy: number) => {
+        const x = ox + (n.x ?? 0);
+        const y = oy + (n.y ?? 0);
+        boxes.set(n.id, { x, y, w: n.width ?? 0, h: n.height ?? 0 });
+        for (const c of n.children ?? []) walk(c, x, y);
+      };
+      walk(laid, 0, 0);
+      const routes = new Map<string, { points: Point[]; label?: { x: number; y: number } }>();
+      const visit = (n: ElkNode) => {
+        for (const e of n.edges ?? []) {
+          // INCLUDE_CHILDREN の経路は、e.container（共通の親）からの相対座標
+          const base = boxes.get(e.container ?? n.id) ?? { x: 0, y: 0 };
+          const points = (e.sections ?? []).flatMap((s) => [
+            s.startPoint,
+            ...(s.bendPoints ?? []),
+            s.endPoint,
+          ]);
+          const label = e.labels?.[0];
+          routes.set(e.id, {
+            points: points.map((p) => ({ x: base.x + p.x, y: base.y + p.y })),
+            ...(label && label.x !== undefined && label.y !== undefined
+              ? { label: { x: base.x + label.x, y: base.y + label.y } }
+              : {}),
+          });
+        }
+        for (const c of n.children ?? []) visit(c);
+      };
+      visit(laid);
+
+      const pathOf = (points: Point[]) =>
+        points.map((p, i) => `${i ? 'L' : 'M'}${r1(p.x)} ${r1(p.y)}`).join(' ');
+      const parts: string[] = [];
+      // グループ（外側から）
+      for (const g of diagram.groups) {
+        const b = boxes.get(g.id)!;
+        parts.push(
+          `<g class="arch-group" data-group="${esc(g.id)}"><rect class="shape" x="${r1(b.x)}" y="${r1(b.y)}" width="${r1(b.w)}" height="${r1(b.h)}" rx="14"/></g>`,
+        );
+      }
+      // つながり
+      edges.forEach((e, i) => {
+        const route = routes.get(`e${i}`);
+        if (!route || route.points.length < 2) return;
+        const marks =
+          e.type === 'line'
+            ? ''
+            : ` marker-end="url(#${id}-a)"${e.type === 'both' ? ` marker-start="url(#${id}-a)"` : ''}`;
+        parts.push(
+          `<g class="arch-edge" data-from="${esc(e.from)}" data-to="${esc(e.to)}" data-type="${esc(e.type)}"><path d="${pathOf(route.points)}"${marks}/></g>`,
+        );
+      });
+      edges.forEach((e, i) => {
+        const at = routes.get(`e${i}`)?.label;
+        if (!e.label || !at) return;
+        const w = Math.ceil(textWidth(e.label, LABEL_FONT) + 14);
+        parts.push(
+          `<g class="arch-edge-label"><rect x="${r1(at.x)}" y="${r1(at.y)}" width="${w}" height="24" rx="6"/><text x="${r1(at.x + w / 2)}" y="${r1(at.y + 12)}">${esc(e.label)}</text></g>`,
+        );
+      });
+      // グループの名前：線の上に、地の色を敷いて描く（S4：線が名前の上を通ることがあるため）
+      for (const g of diagram.groups) {
+        const b = boxes.get(g.id)!;
+        const w = Math.ceil(textWidth(g.label, GROUP_FONT, 600) + 16);
+        parts.push(
+          `<g class="arch-group-label"><rect x="${r1(b.x + 10)}" y="${r1(b.y + 10)}" width="${w}" height="26" rx="6"/><text x="${r1(b.x + 18)}" y="${r1(b.y + 23)}">${esc(g.label)}</text></g>`,
+        );
+      }
+      // ノード
+      for (const n of diagram.nodes) {
+        const b = boxes.get(n.id)!;
+        const { icon } = sizes.get(n.id)!;
+        const { x, y, w, h } = b;
+        const cy = y + h / 2;
+        let shape: string;
+        let decor = '';
+        switch (n.kind) {
+          case 'database':
+            shape = `<path class="shape" d="M${r1(x)} ${r1(y + 10)}a${r1(w / 2)} 10 0 0 0 ${r1(w)} 0v${r1(h - 20)}a${r1(w / 2)} 10 0 0 1 ${r1(-w)} 0z"/>`;
+            decor = `<path class="rim" d="M${r1(x)} ${r1(y + 10)}a${r1(w / 2)} 10 0 0 1 ${r1(w)} 0"/>`;
+            break;
+          case 'user':
+            shape = `<rect class="shape" x="${r1(x)}" y="${r1(y)}" width="${r1(w)}" height="${r1(h)}" rx="${r1(h / 2)}"/>`;
+            decor = `<circle class="icon" cx="${r1(x + 26)}" cy="${r1(cy - 6)}" r="6"/><path class="icon" d="M${r1(x + 15)} ${r1(cy + 13)}a11 9 0 0 1 22 0z"/>`;
+            break;
+          case 'client':
+            shape = `<rect class="shape" x="${r1(x)}" y="${r1(y)}" width="${r1(w)}" height="${r1(h)}" rx="8"/>`;
+            decor = `<path class="rim" d="M${r1(x)} ${r1(y + 15)}H${r1(x + w)}"/><circle class="dot" cx="${r1(x + 10)}" cy="${r1(y + 8)}" r="2.5"/><circle class="dot" cx="${r1(x + 18)}" cy="${r1(y + 8)}" r="2.5"/><circle class="dot" cx="${r1(x + 26)}" cy="${r1(y + 8)}" r="2.5"/>`;
+            break;
+          case 'queue':
+            shape = `<rect class="shape" x="${r1(x)}" y="${r1(y)}" width="${r1(w)}" height="${r1(h)}" rx="8"/>`;
+            decor = [10, 16, 22]
+              .map((d) => `<path class="rim" d="M${r1(x + w - d)} ${r1(y + 14)}V${r1(y + h - 14)}"/>`)
+              .join('');
+            break;
+          case 'storage':
+            shape = `<rect class="shape" x="${r1(x)}" y="${r1(y)}" width="${r1(w)}" height="${r1(h)}" rx="8"/>`;
+            decor = `<path class="icon-line" d="M${r1(x + 16)} ${r1(cy - 12)}h12l6 6v18h-18z M${r1(x + 28)} ${r1(cy - 12)}v6h6"/>`;
+            break;
+          default:
+            shape = `<rect class="shape" x="${r1(x)}" y="${r1(y)}" width="${r1(w)}" height="${r1(h)}" rx="10"/>`;
+        }
+        const ty = n.kind === 'client' ? cy + 7 : n.kind === 'database' ? cy + 5 : cy;
+        const tx = x + icon + (w - icon - (n.kind === 'queue' ? 24 : 0)) / 2;
+        parts.push(
+          `<g class="arch-node kind-${esc(n.kind)}" data-node="${esc(n.id)}">${shape}${decor}<text x="${r1(tx)}" y="${r1(ty)}">${esc(n.label)}</text></g>`,
+        );
+      }
+
+      const width = Math.ceil(laid.width ?? 0);
+      const height = Math.ceil(laid.height ?? 0);
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" class="mds-arch-svg" viewBox="-4 -4 ${width + 8} ${height + 8}" data-arch="${esc(id)}">` +
+        `<defs><marker id="${esc(id)}-a" class="arch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs>` +
+        parts.join('') +
+        '</svg>';
+      results.push({ svg, width: width + 8, height: height + 8 });
+    } catch (error) {
+      results.push({ error: String(error) });
+    }
+  }
+  return results;
+}

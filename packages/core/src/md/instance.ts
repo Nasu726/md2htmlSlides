@@ -160,14 +160,17 @@ function renderRules(instance: MarkdownIt): void {
         attrs: stepAttr,
       });
     }
-    // ```mermaid は図にする（#71）。描けなければ（Chromium がないなど）コードのまま出す
+    // ```mermaid・```arch は図にする（#71・#107）。描けなければ（Chromium がないなど）コードのまま出す
     const diagram =
-      lang === 'mermaid'
+      lang === 'mermaid' || lang === 'arch'
         ? (env as RenderEnv | undefined)?.diagram?.({ lang, code: token.content })
         : undefined;
     if (diagram) {
-      const inner = diagramHtml(instance.utils.escapeHtml, diagram, 'Mermaid の図');
-      return `<div class="mds-media-group is-flex"><figure class="mds-media mds-media-diagram"${stepAttr}><div class="mds-media-frame">${inner}</div></figure></div>\n`;
+      const arch = lang === 'arch';
+      const inner = arch
+        ? diagramHtml(instance.utils.escapeHtml, diagram, '動く構成図', '動く構成図を描けません')
+        : diagramHtml(instance.utils.escapeHtml, diagram, 'Mermaid の図');
+      return `<div class="mds-media-group is-flex"><figure class="mds-media mds-media-${arch ? 'arch' : 'diagram'}"${stepAttr}><div class="mds-media-frame">${inner}</div></figure></div>\n`;
     }
     const highlight = (env as RenderEnv | undefined)?.highlight;
     const colored =
