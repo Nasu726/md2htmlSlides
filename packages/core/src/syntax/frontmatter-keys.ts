@@ -126,6 +126,13 @@ export const FRONTMATTER_KEYS: readonly FrontmatterKey[] = [
     docAnchor: MVP,
   },
   {
+    name: 'transition',
+    summary: 'スライドの切り替え効果（none / fade / slide）',
+    value: { type: 'enum', values: ['none', 'fade', 'slide'] },
+    default: 'none',
+    docAnchor: MVP,
+  },
+  {
     name: 'footer',
     summary: '全スライド共通のフッター',
     value: { type: 'string' },

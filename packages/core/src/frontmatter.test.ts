@@ -122,3 +122,14 @@ describe('pdf（#70）', () => {
     expect(diagnostics.map((d) => [d.code, d.line])).toEqual([['frontmatter/invalid-value', 2]]);
   });
 });
+
+describe('transition（#110）', () => {
+  it('none・fade・slide を読み、ほかの値は警告して使わない', () => {
+    expect(meta('---\ntransition: slide\n---\n').meta.transition).toBe('slide');
+    expect(meta('---\ntitle: A\n---\n').meta.transition).toBeUndefined();
+    const { meta: m, diagnostics } = meta('---\ntransition: zoom\n---\n');
+    expect(m.transition).toBeUndefined();
+    expect(diagnostics.map((d) => [d.code, d.line])).toEqual([['frontmatter/invalid-value', 2]]);
+    expect(diagnostics[0]!.message).toContain('none・fade・slide');
+  });
+});

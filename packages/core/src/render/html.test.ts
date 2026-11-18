@@ -27,6 +27,18 @@ describe('renderDeckHtml', () => {
     expect(html).toContain('--mds-w:960px;--mds-h:720px;--mds-accent:#e11d48');
   });
 
+  it('切り替え効果（#110）：資料全体は deck に、スライドごとの指定は section に付ける', () => {
+    const html = render(
+      '---\ntransition: fade\n---\n## A\n\n本文\n\n## B {transition=slide}\n\n本文',
+    );
+    expect(html).toContain('class="mds-deck theme-clean" style="');
+    expect(html).toMatch(/<main class="mds-deck[^>]* data-transition="fade"/);
+    expect(sections(html)[0]).not.toContain('data-transition');
+    expect(sections(html)[1]).toContain('data-transition="slide"');
+    // none（既定）は何も付けない
+    expect(render('---\ntransition: none\n---\n## A\n\n本文')).not.toContain('data-transition');
+  });
+
   it('続きのスライドは同じ見出しを出し（「（続き）」は付けない。#91）、ページ番号を出す', () => {
     const html = render('## A\n\n前半\n\n- a\n- b\n\n---\n\n後半\n\n- c\n- d');
     expect(html).not.toContain('（続き）');

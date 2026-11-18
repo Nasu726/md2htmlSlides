@@ -146,6 +146,7 @@ export const CHEAT_SECTIONS: ReadonlyArray<{
       { container: 'keep' },
       { attr: 'keep' },
       { attr: 'hidden' },
+      { attr: 'transition', sample: 'transition=fade' },
     ],
   },
   {

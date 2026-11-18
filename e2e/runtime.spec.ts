@@ -84,6 +84,97 @@ test('? でヘルプ、B で暗転、O で一覧を出す', async ({ page }) => 
   await expect(page.locator('.mds-slide:visible')).toHaveCount(1);
 });
 
+test('一覧表示：大きな資料でも今のスライドが見え、矢印で選んで Enter で開く。Esc は元のスライドに戻る（03-long-lecture。#110）', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await open(page, '03-long-lecture.md', '#/14');
+  await page.keyboard.press('o');
+  const inView = () =>
+    current(page).evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= window.innerHeight;
+    });
+  expect(await inView()).toBe(true);
+  // 一覧では番号を出す
+  expect(await current(page).evaluate((el) => getComputedStyle(el, '::before').content)).not.toBe(
+    'none',
+  );
+  const columns = await page.locator('.mds-deck > .mds-slide').evaluateAll((els) => {
+    const top = (els[0] as HTMLElement).offsetTop;
+    return els.filter((el) => (el as HTMLElement).offsetTop === top).length;
+  });
+  expect(columns).toBeGreaterThan(1);
+  // ↓ は1行（columns 枚）、→ は1枚。選んだスライドは見える位置にある
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowRight');
+  const picked = 14 + columns + 1;
+  expect(await hash(page)).toBe(`#/${picked}`);
+  expect(await inView()).toBe(true);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.mds-slide:visible')).toHaveCount(1);
+  expect(await hash(page)).toBe(`#/${picked}`);
+  // Esc：選ぶのをやめて、開いたときのスライドに戻る
+  await page.keyboard.press('o');
+  await page.keyboard.press('Home');
+  expect(await hash(page)).toBe('#/1');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.mds-slide:visible')).toHaveCount(1);
+  expect(await hash(page)).toBe(`#/${picked}`);
+});
+
+test('切り替え効果：別のスライドに入るときだけ View Transitions で切り替える。スライドの指定が優先、ステップと動きを減らす設定では使わない（#110）', async ({
+  page,
+}) => {
+  const source = [
+    '---\ntransition: slide\n---',
+    '## A\n\n1つ目\n\n. . .\n\n2つ目',
+    '## B {transition=fade}\n\n本文',
+    '## C {transition=none}\n\n本文',
+  ].join('\n\n');
+  const path = test.info().outputPath('transition.html');
+  writeFileSync(
+    path,
+    renderDeckHtml(buildSlides(parseDeck(source)), { scripts: [RUNTIME_SCRIPT] }),
+  );
+  // startViewTransition を呼んだときの効果と向きを記録する
+  await page.addInitScript(() => {
+    const log: string[] = [];
+    (window as unknown as { vtLog: string[] }).vtLog = log;
+    const original = document.startViewTransition?.bind(document);
+    if (!original) return;
+    document.startViewTransition = ((update: () => void) => {
+      const root = document.documentElement;
+      log.push(`${root.dataset.mdsTransition}:${root.dataset.mdsDirection}`);
+      return original(update);
+    }) as typeof document.startViewTransition;
+  });
+  const vtLog = () => page.evaluate(() => (window as unknown as { vtLog: string[] }).vtLog);
+  await page.goto(pathToFileURL(path).href);
+  const title = () => current(page).locator('.mds-title').textContent();
+  await page.keyboard.press('ArrowRight'); // A のステップ（効果なし）
+  await page.keyboard.press('ArrowRight'); // B（fade）
+  await expect.poll(title).toBe('B');
+  await page.keyboard.press('ArrowRight'); // C（none）
+  await expect.poll(title).toBe('C');
+  await page.keyboard.press('ArrowLeft'); // B に戻る（fade・逆向き）
+  await page.keyboard.press('ArrowLeft'); // A に戻る（資料全体の slide・逆向き）
+  await expect.poll(title).toBe('A');
+  expect(await vtLog()).toEqual(['fade:forward', 'fade:back', 'slide:back']);
+  // 続けて押しても、最後の位置になる
+  await page.keyboard.press('Home');
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowRight');
+  await expect.poll(title).toBe('C');
+  expect(await hash(page)).toBe('#/3');
+  await expect(page.locator('.mds-slide:visible')).toHaveCount(1);
+  // 動きを減らす設定では使わない
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const before = (await vtLog()).length;
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(title).toBe('B');
+  expect((await vtLog()).length).toBe(before);
+});
+
 test('動画にフォーカスがあっても、→ と ← でスライドを送る（#58）', async ({ page }) => {
   await open(page, '07-media.md', '#/3');
   const video = current(page).locator('video');

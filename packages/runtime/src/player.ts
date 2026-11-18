@@ -139,8 +139,36 @@ export function startPlayer(doc: Document): void {
   /* 一覧では、クリックを中身（動画など）に渡さず、スライドを選ぶだけにする */
   .mds-deck.is-overview > .mds-slide > * { pointer-events: none; }
   .mds-deck.is-overview > .mds-slide.is-current { outline: 14px solid var(--mds-accent); outline-offset: 6px; }
+  /* 大きな資料でも探せるように、一覧では番号を出す（#110。縮小しているので大きく書く） */
+  .mds-deck.is-overview { counter-reset: mds-overview; }
+  .mds-deck.is-overview > .mds-slide { counter-increment: mds-overview; }
+  .mds-deck.is-overview > .mds-slide::before {
+    content: counter(mds-overview);
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 5;
+    padding: 4px 30px;
+    border-radius: 0 0 28px 0;
+    background: rgb(15 23 42 / 0.78);
+    color: #fff;
+    font: 700 64px/1.3 system-ui, sans-serif;
+  }
+  .mds-deck.is-overview > .mds-slide.is-current::before { background: var(--mds-accent); }
   .mds-deck:not(.is-presenting) > .mds-player-progress { display: none; }
 }
+/* 切り替え効果（#110）：View Transitions API の画面全体の写しを動かす */
+html[data-mds-transition]::view-transition { background: #000; }
+html[data-mds-transition='fade']::view-transition-old(root),
+html[data-mds-transition='fade']::view-transition-new(root) { animation-duration: 0.4s; }
+html[data-mds-transition='slide']::view-transition-old(root) { animation: 0.45s cubic-bezier(0.4, 0, 0.2, 1) both mds-slide-out; }
+html[data-mds-transition='slide']::view-transition-new(root) { animation: 0.45s cubic-bezier(0.4, 0, 0.2, 1) both mds-slide-in; }
+html[data-mds-transition='slide'][data-mds-direction='back']::view-transition-old(root) { animation-name: mds-slide-out-back; }
+html[data-mds-transition='slide'][data-mds-direction='back']::view-transition-new(root) { animation-name: mds-slide-in-back; }
+@keyframes mds-slide-out { to { transform: translateX(-100%); } }
+@keyframes mds-slide-in { from { transform: translateX(100%); } }
+@keyframes mds-slide-out-back { to { transform: translateX(100%); } }
+@keyframes mds-slide-in-back { from { transform: translateX(-100%); } }
 /* 読み上げ用の要素（1px）も隠す。最後のスライドの下にはみ出し、白いページができるため（#69） */
 @media print { .mds-player-progress, .mds-player-layer, .mds-player-jump, .mds-player-sr { display: none !important; } }
 .mds-player-progress {
@@ -313,47 +341,96 @@ export function startPlayer(doc: Document): void {
     showEmbeds(slide, upTo, animate, summary);
   };
 
+  /*
+   * 切り替え効果（#110）：別のスライドに入るときだけ、View Transitions API で切り替える。
+   * スライドの data-transition（{transition=…}）、なければ資料全体（フロントマター）の指定。
+   * 対応していないブラウザ・prefers-reduced-motion・一覧では、効果なしで切り替える
+   */
+  let settle: (() => void) | undefined;
+  const transitionOf = (slide: HTMLElement) => {
+    const t = slide.dataset.transition ?? deck.dataset.transition;
+    if (t !== 'fade' && t !== 'slide') return undefined;
+    if (win.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined;
+    return typeof doc.startViewTransition === 'function' ? t : undefined;
+  };
+
   const go = (target: number, targetStep = 0) => {
+    // 前の切り替えの表示がまだなら、先に終える（キーを続けて押したとき）
+    settle?.();
     const next = Math.max(0, Math.min(slides.length - 1, target));
     const before = step;
+    const previous = index;
+    // 状態はすぐに変える（続けて押したキーが、新しい位置から数えるように）
     step = Math.max(0, Math.min(stepsOf(next), targetStep));
+    index = next;
     const slide = slides[next]!;
-    const entering = next !== index;
-    // 別のスライドに移るときは、ステップの効果を止めて一瞬で切り替える
-    // （隠す要素が表示されてから消えたり、表示する要素がスライドの表示に遅れて出たりするのを防ぐ）
-    if (entering) slide.setAttribute('data-no-anim', '');
-    // 同じスライドの中ではフェードで出す。1つ進めたときだけ、埋め込みの動きを見せる
-    showSteps(
-      slide,
-      overview ? Infinity : step,
-      !entering && !overview && step === before + 1,
-      overview,
-    );
-    if (entering) {
-      const previous = slides[index];
-      if (previous) playMedia(previous, false);
-      // 前のスライドの動画などに残ったフォーカスを外す（#58）
-      const active = doc.activeElement;
-      if (active instanceof win.HTMLElement && active !== deck && deck.contains(active)) {
-        active.blur();
+    const entering = next !== previous;
+    const shown = step;
+    const update = () => {
+      // 別のスライドに移るときは、ステップの効果を止めて一瞬で切り替える
+      // （隠す要素が表示されてから消えたり、表示する要素がスライドの表示に遅れて出たりするのを防ぐ）
+      if (entering) slide.setAttribute('data-no-anim', '');
+      // 同じスライドの中ではフェードで出す。1つ進めたときだけ、埋め込みの動きを見せる
+      showSteps(
+        slide,
+        overview ? Infinity : shown,
+        !entering && !overview && shown === before + 1,
+        overview,
+      );
+      if (entering) {
+        const old = slides[previous];
+        if (old) playMedia(old, false);
+        // 前のスライドの動画などに残ったフォーカスを外す（#58）
+        const active = doc.activeElement;
+        if (active instanceof win.HTMLElement && active !== deck && deck.contains(active)) {
+          active.blur();
+        }
+        slides.forEach((s, k) => {
+          const current = k === next;
+          s.classList.toggle('is-current', current);
+          if (overview) return;
+          s.inert = !current;
+          s.setAttribute('aria-hidden', String(!current));
+        });
+        playMedia(slide, true);
+        const heading = slide.querySelector('.mds-title')?.textContent?.trim();
+        live.textContent = `${text.slide} ${next + 1} / ${slides.length}${heading ? `：${heading}` : ''}`;
+        void slide.offsetWidth; // ここまでの変更を、効果なしで反映する
+        slide.removeAttribute('data-no-anim');
+        if (overview) slide.scrollIntoView({ block: 'nearest' });
       }
-      index = next;
-      slides.forEach((s, k) => {
-        const current = k === index;
-        s.classList.toggle('is-current', current);
-        if (overview) return;
-        s.inert = !current;
-        s.setAttribute('aria-hidden', String(!current));
-      });
-      playMedia(slide, true);
-      const heading = slide.querySelector('.mds-title')?.textContent?.trim();
-      live.textContent = `${text.slide} ${index + 1} / ${slides.length}${heading ? `：${heading}` : ''}`;
-      void slide.offsetWidth; // ここまでの変更を、効果なしで反映する
-      slide.removeAttribute('data-no-anim');
-    }
-    progress.style.setProperty('--mds-progress', String((index + 1) / slides.length));
+      progress.style.setProperty('--mds-progress', String((next + 1) / slides.length));
+      updatePresenter();
+    };
     writeHash();
-    updatePresenter();
+    const effect = entering && previous >= 0 && !overview ? transitionOf(slide) : undefined;
+    if (!effect) {
+      update();
+      return;
+    }
+    const root = doc.documentElement;
+    root.dataset.mdsTransition = effect;
+    root.dataset.mdsDirection = next > previous ? 'forward' : 'back';
+    let done = false;
+    const run = () => {
+      if (done) return;
+      done = true;
+      settle = undefined;
+      update();
+    };
+    const vt = doc.startViewTransition!(run);
+    settle = () => {
+      run();
+      vt.skipTransition();
+    };
+    void vt.finished
+      .catch(() => undefined)
+      .then(() => {
+        if (root.dataset.mdsTransition === effect && !settle) {
+          delete root.dataset.mdsTransition;
+          delete root.dataset.mdsDirection;
+        }
+      });
   };
 
   /** 次のステップ。最後のステップなら次のスライドへ */
@@ -364,7 +441,10 @@ export function startPlayer(doc: Document): void {
     else if (index > 0) go(index - 1, stepsOf(index - 1));
   };
 
+  /** 一覧を開いたときのスライドとステップ（Esc で戻る） */
+  let overviewFrom: [number, number] = [0, 0];
   const setOverview = (on: boolean) => {
+    if (on && !overview) overviewFrom = [index, step];
     overview = on;
     // 一覧ではすべてのステップを表示する
     slides.forEach((slide, k) =>
@@ -380,6 +460,30 @@ export function startPlayer(doc: Document): void {
     });
     if (on) slides[index]?.scrollIntoView({ block: 'center' });
     updatePresenterStatus();
+  };
+
+  /**
+   * 一覧表示のキー（#110）：矢印で選び（↑ ↓ は1行ずつ）、Enter・Space で開く。
+   * Esc は開いたときのスライドに戻る（発表者ビューの一覧と同じ）
+   */
+  const overviewKey = (key: string): boolean => {
+    const top = slides[0]?.offsetTop ?? 0;
+    let columns = 0;
+    while (columns < slides.length && slides[columns]!.offsetTop === top) columns++;
+    columns = Math.max(1, columns);
+    const pick = (k: number) => go(Math.max(0, Math.min(slides.length - 1, k)));
+    if (key === 'Enter' || key === ' ') setOverview(false);
+    else if (key === 'Escape') {
+      go(overviewFrom[0], overviewFrom[1]);
+      setOverview(false);
+    } else if (key === 'ArrowRight') pick(index + 1);
+    else if (key === 'ArrowLeft') pick(index - 1);
+    else if (key === 'ArrowDown') pick(index + columns);
+    else if (key === 'ArrowUp') pick(index - columns);
+    else if (key === 'Home') pick(0);
+    else if (key === 'End') pick(slides.length - 1);
+    else return false;
+    return true;
   };
 
   // 暗転とヘルプ。発表者ビューの「現在」の枠にも、観客の画面の状態を示す
@@ -806,8 +910,8 @@ html, body { height: 100%; margin: 0; background: #0f172a; color: #e2e8f0; font-
       setHelp(true);
     } else if (key === 'o' || key === 'O') {
       setOverview(!overview);
-    } else if (key === 'Escape' && overview) {
-      setOverview(false);
+    } else if (overview && overviewKey(key)) {
+      // 一覧の中で選ぶ・開く
     } else if (key === 'Escape' && canExit) {
       exitShow();
     } else if (key === 'f' || key === 'F') {

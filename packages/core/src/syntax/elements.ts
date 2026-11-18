@@ -104,6 +104,13 @@ export const ATTRIBUTE_KEYS: readonly AttrKey[] = [
     places: ['slide', 'maketitle'],
     docAnchor: SLIDE,
   },
+  {
+    name: 'transition',
+    summary: 'このスライドに入るときの切り替え効果',
+    value: { type: 'enum', values: ['none', 'fade', 'slide'] },
+    places: ['slide', 'maketitle'],
+    docAnchor: SLIDE,
+  },
   // 要素に付けるキー（構文仕様 §3.4）
   {
     name: 'step',
