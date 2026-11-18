@@ -24,12 +24,17 @@ describe('themeCss（#66）', () => {
     expect(css).toMatch(/\.layout-title[^{]*\{[^}]*background: var\(--mds-strong\)/);
   });
 
-  it('bold・band の章扉は、一面を色で塗らない（番号と線・見出しの帯。#100）', () => {
+  it('bold・band の章扉は、一面を色で塗らず、番号も付けない（#100・#114）', () => {
+    // bold：見出しの下の太い線。band：左の縦の帯（スライドの 28%）
+    expect(themeCss('bold')).toMatch(
+      /\.layout-section:not\([^)]*\) \.mds-title \{[^}]*border-bottom: 12px solid/,
+    );
+    expect(themeCss('bold')).not.toMatch(/\.layout-section(:not\([^)]*\))?\s*[,{][^}]*background:/);
+    expect(themeCss('band')).toMatch(
+      /\.layout-section:not\([^)]*\) \{[^}]*linear-gradient\(to right, var\(--mds-band\) 0 calc\(var\(--mds-w\) \* 0\.28\)/,
+    );
     for (const id of ['bold', 'band'] as const) {
-      const css = themeCss(id);
-      // 章扉のスライドそのもの（.layout-section の直後に { が来る規則）に背景の色を付けない
-      expect(css, id).not.toMatch(/\.layout-section(:not\([^)]*\))?\s*[,{][^}]*background:/);
-      expect(css, id).toContain('counter(mds-section, decimal-leading-zero)');
+      expect(themeCss(id), id).not.toContain('counter(');
     }
   });
 });
