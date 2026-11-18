@@ -158,16 +158,27 @@ export async function renderArch(input: {
           `<g class="arch-group" data-group="${esc(g.id)}"><rect class="shape" x="${r1(b.x)}" y="${r1(b.y)}" width="${r1(b.w)}" height="${r1(b.h)}" rx="14"/></g>`,
         );
       }
+      // 矢印の先：線の端に直接描く（marker の ID は、同じ図を何枚かのスライドに置くと重なり、
+      // 隠れたスライドの印を参照して消えてしまうため）
+      const head = (tip: Point, from: Point) => {
+        const len = Math.hypot(tip.x - from.x, tip.y - from.y) || 1;
+        const ux = (tip.x - from.x) / len;
+        const uy = (tip.y - from.y) / len;
+        const bx = tip.x - ux * 11;
+        const by = tip.y - uy * 11;
+        return `<path class="arch-head" d="M${r1(tip.x)} ${r1(tip.y)}L${r1(bx - uy * 6)} ${r1(by + ux * 6)}L${r1(bx + uy * 6)} ${r1(by - ux * 6)}z"/>`;
+      };
       // つながり
       edges.forEach((e, i) => {
         const route = routes.get(`e${i}`);
         if (!route || route.points.length < 2) return;
-        const marks =
+        const pts = route.points;
+        const heads =
           e.type === 'line'
             ? ''
-            : ` marker-end="url(#${id}-a)"${e.type === 'both' ? ` marker-start="url(#${id}-a)"` : ''}`;
+            : head(pts.at(-1)!, pts.at(-2)!) + (e.type === 'both' ? head(pts[0]!, pts[1]!) : '');
         parts.push(
-          `<g class="arch-edge" data-from="${esc(e.from)}" data-to="${esc(e.to)}" data-type="${esc(e.type)}"><path d="${pathOf(route.points)}"${marks}/></g>`,
+          `<g class="arch-edge" data-from="${esc(e.from)}" data-to="${esc(e.to)}" data-type="${esc(e.type)}"><path d="${pathOf(pts)}"/>${heads}</g>`,
         );
       });
       edges.forEach((e, i) => {
@@ -210,7 +221,9 @@ export async function renderArch(input: {
           case 'queue':
             shape = `<rect class="shape" x="${r1(x)}" y="${r1(y)}" width="${r1(w)}" height="${r1(h)}" rx="8"/>`;
             decor = [10, 16, 22]
-              .map((d) => `<path class="rim" d="M${r1(x + w - d)} ${r1(y + 14)}V${r1(y + h - 14)}"/>`)
+              .map(
+                (d) => `<path class="rim" d="M${r1(x + w - d)} ${r1(y + 14)}V${r1(y + h - 14)}"/>`,
+              )
               .join('');
             break;
           case 'storage':
@@ -231,7 +244,6 @@ export async function renderArch(input: {
       const height = Math.ceil(laid.height ?? 0);
       const svg =
         `<svg xmlns="http://www.w3.org/2000/svg" class="mds-arch-svg" viewBox="-4 -4 ${width + 8} ${height + 8}" data-arch="${esc(id)}">` +
-        `<defs><marker id="${esc(id)}-a" class="arch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs>` +
         parts.join('') +
         '</svg>';
       results.push({ svg, width: width + 8, height: height + 8 });

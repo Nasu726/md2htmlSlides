@@ -71,6 +71,9 @@ importers:
       '@mds/themes':
         specifier: workspace:*
         version: link:../../packages/themes
+      elkjs:
+        specifier: 0.12.1
+        version: 0.12.1
       katex:
         specifier: 0.19.1
         version: 0.19.1
@@ -143,6 +146,9 @@ importers:
       '@preact/signals':
         specifier: 2.11.4
         version: 2.11.4(preact@10.29.8)
+      elkjs:
+        specifier: 0.12.1
+        version: 0.12.1
       katex:
         specifier: 0.19.1
         version: 0.19.1

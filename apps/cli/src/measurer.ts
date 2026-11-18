@@ -6,7 +6,7 @@ import {
   type MeasureJob,
   type Measurement,
 } from '@mds/core';
-import { renderMermaid } from '@mds/runtime';
+import { renderArch, renderMermaid, type ArchRenderInput } from '@mds/runtime';
 import { isThemeId, themeFonts } from '@mds/themes';
 import type { Browser, Page } from 'playwright-core';
 import { readFileSync, statSync } from 'node:fs';
@@ -31,6 +31,9 @@ export class ChromiumMeasurer {
   private diagramPage: Page | undefined;
   private diagramPageHtml: string | undefined;
   private readonly diagramCache = new Map<string, DiagramResult>();
+  private archPage: Page | undefined;
+  private archPageHtml: string | undefined;
+  private readonly archCache = new Map<string, DiagramResult>();
   /** Chromium を起動できなかった理由 */
   error: string | undefined;
 
@@ -139,6 +142,46 @@ export class ChromiumMeasurer {
   }
 
   /**
+   * 動く構成図を配置して SVG にする（#107）。テーマの CSS と同梱のフォントのページに elkjs を入れ、
+   * runtime の renderArch を呼ぶ。構成（とページの CSS）が同じなら、前の結果を使う。
+   * Chromium がなければ undefined。結果は items と同じ順。
+   */
+  async archs(pageHtml: string, items: ArchRenderInput[]): Promise<DiagramResult[] | undefined> {
+    const css = hashString(pageHtml);
+    const key = (item: ArchRenderInput) => hashString(`${css}\n${JSON.stringify(item)}`);
+    const missing = items.filter((item) => !this.archCache.has(key(item)));
+    if (missing.length > 0) {
+      const browser = await this.browser();
+      if (!browser) return undefined;
+      this.archPage ??= await fontPage(browser);
+      const page = this.archPage;
+      if (this.archPageHtml !== pageHtml) {
+        await page.setContent(pageHtml);
+        await page.addScriptTag({ path: require.resolve('elkjs/lib/elk.bundled.js') });
+        this.archPageHtml = pageHtml;
+      }
+      // 表示名の幅を正しく測れるよう、使う文字の分のフォントを先に読み込む
+      if (pageHtml.includes(FONT_HOST)) {
+        const text = missing
+          .flatMap((item) => [
+            ...item.diagram.nodes.map((n) => n.label),
+            ...item.diagram.groups.map((g) => g.label),
+            ...item.diagram.edges.map((e) => e.label ?? ''),
+          ])
+          .join(' ');
+        const families = JSON.stringify(fontFamiliesOf(pageHtml));
+        await page.evaluate(
+          `Promise.all(${families}.map((family) =>
+            document.fonts.load('20px "' + family + '"', ${JSON.stringify(text)}).catch(() => [])))`,
+        );
+      }
+      const results = await page.evaluate(renderArch, { items: missing });
+      missing.forEach((item, i) => this.archCache.set(key(item), results[i]!));
+    }
+    return items.map((item) => this.archCache.get(key(item))!);
+  }
+
+  /**
    * 背景の画像・動画（最初のフレーム）の明るさ（0〜1）を測る。文字色を選ぶのに使う（構文仕様 §6.2）。
    * 測れなかったファイルは結果に含めない。
    */
@@ -192,6 +235,8 @@ export class ChromiumMeasurer {
     this.pageHtml = undefined;
     this.diagramPage = undefined;
     this.diagramPageHtml = undefined;
+    this.archPage = undefined;
+    this.archPageHtml = undefined;
   }
 }
 

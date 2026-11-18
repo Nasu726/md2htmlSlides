@@ -235,3 +235,52 @@ describe('Mermaid の図（#71）', () => {
     );
   });
 });
+
+describe('動く構成図の説明のリスト（#107）', () => {
+  const result = (width: number, height: number) => ({
+    svg: '<svg class="mds-arch-svg"></svg>',
+    width,
+    height,
+    scenarios: [
+      {
+        name: '正常時',
+        line: 1,
+        steps: [
+          { title: '注文を送る', actions: [], notes: [], line: 2 },
+          { title: '<保存>する', actions: [], notes: [], line: 3 },
+        ],
+      },
+    ],
+  });
+  const slideOf = (md: string, width: number, height: number) =>
+    renderDeckHtml(buildSlides(parseDeck(md)), {
+      fit: false,
+      diagram: () => result(width, height),
+    }).match(/<section [^>]*>[\s\S]*?<\/section>/)![0];
+
+  it('横長の図は、図の下に横一列の説明（is-row）', () => {
+    const html = slideOf('## A\n\n![図](a.arch)\n', 1000, 200);
+    expect(html).toContain('class="mds-slide layout-stack');
+    expect(html).toContain('<figure class="mds-media mds-media-arch"');
+    expect(html).toContain(
+      '<ol class="mds-arch-captions is-row"><li>注文を送る</li><li>&lt;保存&gt;する</li></ol>',
+    );
+  });
+
+  it('縦長の図は、図を左・説明を右（split）', () => {
+    const html = slideOf('## A\n\n```arch\na\n```\n', 300, 500);
+    expect(html).toContain('layout-split');
+    expect(html).toMatch(
+      /<div class="mds-split-media">[\s\S]*mds-media-arch[\s\S]*<div class="mds-split-text">\n<ol class="mds-arch-captions">/,
+    );
+  });
+
+  it('captions=none・scenario=none では、説明を出さない', () => {
+    expect(slideOf('## A\n\n![](a.arch){captions=none}\n', 300, 500)).not.toContain(
+      'mds-arch-captions',
+    );
+    expect(slideOf('## A\n\n![](a.arch){scenario=none}\n', 300, 500)).not.toContain(
+      'mds-arch-captions',
+    );
+  });
+});

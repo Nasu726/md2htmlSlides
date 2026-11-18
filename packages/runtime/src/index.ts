@@ -25,3 +25,6 @@ export { preparePrint } from './print.js';
 
 /** Mermaid の図を描く（#71）。CLI が page.evaluate で呼ぶ */
 export { renderMermaid } from './diagrams.js';
+
+/** 動く構成図を配置して SVG にする（#107）。CLI とエディタが、ELK を入れたページで呼ぶ */
+export { renderArch, type ArchRenderInput } from './arch.js';
