@@ -1,4 +1,4 @@
-import { archCaptionsHtml, archUse } from './arch.js';
+import { archCaptionsHtml, archNotesHtml, archUse } from './arch.js';
 import { themeCss } from '@mds/themes';
 import type { Attrs } from '../attrs.js';
 import type { Block } from '../ir.js';
@@ -171,8 +171,13 @@ export function renderSlide(
 
 /** 発表者ノート（`:::notes`）。発表の画面には出さず、発表者ビューが読む（設計プラン §8.4）。 */
 export function renderNotes(slide: Slide, slideLevel: number, env: RenderEnv = {}): string {
-  if (slide.notes.length === 0) return '';
-  return `<aside class="mds-notes" hidden>\n${renderBlocks(slide.notes, slideLevel, env)}</aside>`;
+  // 動く構成図のステップのノート（`note:`。#108）も足す
+  const arch = archNotesHtml(
+    slide.blocks.map((b) => archUse(b, env.diagram)).find((use) => use !== undefined),
+    esc,
+  );
+  if (slide.notes.length === 0 && !arch) return '';
+  return `<aside class="mds-notes" hidden>\n${renderBlocks(slide.notes, slideLevel, env)}${arch}</aside>`;
 }
 
 /** レイアウトに合わせて本文を組む（§5.1）。 */

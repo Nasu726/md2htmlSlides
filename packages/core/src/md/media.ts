@@ -1,4 +1,5 @@
 import type { ArchScenario } from '../arch/parse.js';
+import { archEmbedAttrs, selectArchScenario } from '../render/arch.js';
 import type { MarkdownIt, Renderer, StateCore, Token } from 'markdown-it';
 import { cssPosition, isPosition, type Attrs } from '../attrs.js';
 import { embedUrl, mediaKind, type MediaInfo, type MediaKind, type MediaProbe } from '../media.js';
@@ -156,7 +157,12 @@ export function renderMedia(
     step === undefined ? '' : ` data-mds-step="${step === true ? 'auto' : esc(String(step))}"`;
   const style = width ? ` style="width:${esc(width)}"` : '';
   const figcaption = caption ? `<figcaption>${esc(caption)}</figcaption>` : '';
-  return `<figure class="${classes.map(esc).join(' ')}"${id}${stepAttr}${style}><div class="mds-media-frame">${element}</div>${figcaption}</figure>`;
+  // 動く構成図（#108）：シナリオの再生のための属性
+  const embed =
+    kind === 'arch' && diagram && !('error' in diagram)
+      ? archEmbedAttrs(selectArchScenario(diagram.scenarios, attrs), esc)
+      : '';
+  return `<figure class="${classes.map(esc).join(' ')}"${id}${stepAttr}${embed}${style}><div class="mds-media-frame">${element}</div>${figcaption}</figure>`;
 }
 
 function mediaElement(
