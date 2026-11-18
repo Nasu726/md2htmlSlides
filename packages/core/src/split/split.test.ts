@@ -165,7 +165,7 @@ describe('planSplit・applySplit', () => {
     '',
   ].join('\n');
 
-  it('続きのスライドは見出しを引き継ぎ、小見出しを（続き）付きで再掲し、番号は元のまま', () => {
+  it('続きのスライドは見出しを引き継ぎ、小見出しを同じ文言で再掲し、番号は元のまま', () => {
     const deck = slidesOf(md);
     const plan = planSplit(deck);
     expect(plan.jobs).toHaveLength(2);
@@ -180,7 +180,7 @@ describe('planSplit・applySplit', () => {
     expect(pages[1]!.notes).toEqual([]);
     expect(pages[0]!.page).toEqual({ index: 1, total: pages.length });
     const [resub, list] = pages[1]!.blocks;
-    expect(resub!.raw).toBe('### 手順（続き）');
+    expect(resub!.raw.trim()).toBe('### 手順');
     expect(list!.kind).toBe('list');
     expect(list!.raw).toMatch(/^[2-6]\. /);
   });

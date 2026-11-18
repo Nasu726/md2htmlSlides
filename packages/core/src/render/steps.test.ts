@@ -14,7 +14,7 @@ function stepsOf(name: string): Record<string, number> {
   for (const m of html.matchAll(/<section [^>]*>[\s\S]*?<\/section>/g)) {
     const section = m[0];
     const title = /<h[12] class="mds-title">([\s\S]*?)<\/h[12]>/.exec(section)?.[1] ?? '';
-    const text = title.replace(/<[^>]+>/g, '').replace(/（続き）$/, '');
+    const text = title.replace(/<[^>]+>/g, '');
     const steps = Number(/data-steps="(\d+)"/.exec(section)?.[1] ?? 0);
     out[text] = (out[text] ?? 0) + steps;
   }
