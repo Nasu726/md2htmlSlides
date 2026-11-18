@@ -17,9 +17,9 @@ import {
   LAYOUT_SUMMARIES,
   findAttributeKey,
   findFrontmatterKey,
-  type AttrKey,
   type AttrPlace,
 } from '@mds/core';
+import { SNIPPETS, valueOptions, type Snippet } from './cheatsheet.js';
 
 /**
  * 入力の補助（#75、設計プラン §9.3）。候補・説明は、すべて core の構文の定義（syntax/）から作る。
@@ -61,25 +61,6 @@ function placeOf(lineText: string, before: string): AttrPlace {
   }
   return 'block';
 }
-
-const valueOptions = (key: AttrKey): string[] => {
-  const v = key.value;
-  if (v.type === 'enum' || v.type === 'flag-or-enum') return [...v.values];
-  if (v.type === 'position') {
-    return [
-      'top',
-      'bottom',
-      'left',
-      'right',
-      'center',
-      'top-left',
-      'top-right',
-      'bottom-left',
-      'bottom-right',
-    ];
-  }
-  return [];
-};
 
 const PLACE_NAMES: Record<AttrPlace, string> = {
   slide: 'スライド',
@@ -313,34 +294,6 @@ function fileCompletions(
   };
 }
 
-/** 挿入メニューの項目：書き方の雛形 */
-export interface Snippet {
-  label: string;
-  hint: string;
-  text: string;
-  /** 入れた後のカーソルの位置（text の中の何文字目）。なければ最後 */
-  cursor?: number;
-}
-
-export const SNIPPETS: Snippet[] = [
-  { label: '横に並べる', hint: ':::row', text: ':::row\n\n:::', cursor: 7 },
-  { label: '縦に並べる', hint: ':::stack', text: ':::stack\n\n:::', cursor: 9 },
-  { label: '段階表示（ここで止める）', hint: '. . .', text: '. . .\n' },
-  { label: '1つずつ表示', hint: ':::steps', text: ':::steps\n- \n:::', cursor: 11 },
-  { label: '背景画像', hint: '{bg}', text: '![](bg.jpg){bg}', cursor: 4 },
-  { label: '左半分を画像に', hint: '{bg=left}', text: '![](photo.jpg){bg=left}', cursor: 4 },
-  { label: 'タイトルスライド', hint: '::maketitle', text: '::maketitle\n' },
-  {
-    label: '図（Mermaid）',
-    hint: '```mermaid',
-    text: '```mermaid\nflowchart LR\n  A --> B\n```',
-    cursor: 11,
-  },
-  { label: '数式', hint: '$$', text: '$$\n\n$$', cursor: 3 },
-  { label: '発表者ノート', hint: ':::notes', text: ':::notes\n\n:::', cursor: 9 },
-  { label: '1枚にまとめる', hint: ':::keep', text: ':::keep\n\n:::', cursor: 8 },
-];
-
 /** 雛形を入れる（選んでいる範囲を置き換え、カーソルを雛形の中に置く） */
 export function insertSnippet(view: EditorView, snippet: Snippet, from: number, to: number): void {
   view.dispatch({
@@ -480,38 +433,4 @@ export function assist(options: AssistOptions): Extension {
     Prec.highest(keymap.of([{ key: 'Tab', run: acceptCompletion }])),
     syntaxHover,
   ];
-}
-
-/** 早見表の項目（構文の定義から作る。検索して、カーソルの位置に入れる） */
-export interface CheatItem {
-  label: string;
-  code: string;
-  snippet: Snippet;
-  group: string;
-}
-
-export function cheatSheet(): CheatItem[] {
-  const items: CheatItem[] = [];
-  const add = (label: string, code: string, text: string, group: string, cursor?: number) =>
-    items.push({
-      label,
-      code,
-      group,
-      snippet: { label, hint: code, text, ...(cursor !== undefined ? { cursor } : {}) },
-    });
-  for (const s of SNIPPETS)
-    items.push({ label: s.label, code: s.hint, snippet: s, group: 'よく使う' });
-  for (const c of CONTAINERS) {
-    add(c.summary, `:::${c.name} … :::`, `:::${c.name}\n\n:::`, 'コンテナ', c.name.length + 4);
-  }
-  for (const l of LAYOUTS)
-    add(`レイアウト：${LAYOUT_SUMMARIES[l]}`, `{layout=${l}}`, ` {layout=${l}}`, 'レイアウト');
-  for (const k of ATTRIBUTE_KEYS) {
-    if (k.name === 'layout') continue;
-    const sample = k.value.type === 'flag' ? k.name : `${k.name}=${valueOptions(k)[0] ?? ''}`;
-    const places = k.places.map((p) => PLACE_NAMES[p]).join('・');
-    add(k.summary, `{${sample}}`, `{${sample}}`, `属性（${places}）`);
-  }
-  for (const k of FRONTMATTER_KEYS) add(k.summary, `${k.name}:`, `${k.name}: `, 'フロントマター');
-  return items;
 }
