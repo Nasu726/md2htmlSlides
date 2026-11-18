@@ -14,7 +14,10 @@ export interface AssetSource {
 
 export const noAssets: AssetSource = { read: async () => undefined };
 
-/** パスを、資料のフォルダからの相対パスにそろえる（`./a.png` → `a.png`、`img/../a.png` → `a.png`） */
+/**
+ * パスを、資料のフォルダからの相対パスにそろえる（`./a.png` → `a.png`、`img/../a.png` → `a.png`）。
+ * 資料のフォルダより上（`../assets/a.png`）は、`..` を残す（URL から開いたときは、その先を読む。#90）
+ */
 export function normalizePath(src: string): string {
   let path = src.split(/[?#]/)[0]!;
   try {
@@ -25,7 +28,7 @@ export function normalizePath(src: string): string {
   const parts: string[] = [];
   for (const part of path.split('/')) {
     if (part === '' || part === '.') continue;
-    if (part === '..') parts.pop();
+    if (part === '..' && parts.length > 0 && parts.at(-1) !== '..') parts.pop();
     else parts.push(part);
   }
   return parts.join('/');

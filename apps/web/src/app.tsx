@@ -23,6 +23,13 @@ import {
 import { Frame } from './frames.js';
 import { Cancelled, Renderer, type RenderResult } from './renderer.js';
 import { SAMPLE } from './sample.js';
+import {
+  describeFailure,
+  fetchMarkdown,
+  nameOf,
+  toSourceUrl,
+  type SourceUrl,
+} from './source-url.js';
 import { getItem, setItem, type Draft, type LastDocument } from './storage.js';
 
 /** 開いている資料。key は下書きを保存する名前 */
@@ -268,25 +275,30 @@ async function openFiles(files: File[]): Promise<void> {
   );
 }
 
-async function openUrl(url: string): Promise<void> {
+/** URL の md を開く。読み込めなければ、理由を知らせて false を返す */
+async function openUrl(input: string): Promise<boolean> {
   let content: string;
+  let source: SourceUrl | undefined;
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-    content = await response.text();
+    source = toSourceUrl(input);
+    content = await fetchMarkdown(source.url);
   } catch (error) {
-    notice.value = { text: `読み込めませんでした：${url}（${String(error)}）` };
-    return;
+    notice.value = { text: describeFailure(source?.url ?? input, error) };
+    return false;
   }
   folder.value = null;
-  const name = decodeURIComponent(new URL(url).pathname.split('/').pop() || 'slides.md');
-  await openText({ kind: 'url', name, key: `url:${url}` }, content, urlSource(url));
+  await openText(
+    { kind: 'url', name: nameOf(source.url), key: `url:${source.url}` },
+    content,
+    urlSource(source.base),
+  );
+  return true;
 }
 
 function askUrl(): void {
-  const value = window.prompt('Markdown の URL（GitHub の raw など）');
-  if (!value) return;
-  const url = new URL(value, location.href).href;
+  const value = window.prompt('Markdown の URL（GitHub・Gist の画面の URL も、そのまま使えます）');
+  if (!value?.trim()) return;
+  const url = new URL(value.trim(), location.href).href;
   const next = new URL(location.href);
   next.searchParams.set('src', url);
   history.replaceState(null, '', next);
@@ -368,17 +380,17 @@ function jumpTo(line: number): void {
 
 async function start(): Promise<void> {
   const src = new URLSearchParams(location.search).get('src');
-  if (src) {
-    await openUrl(new URL(src, location.href).href);
-    return;
-  }
+  if (src && (await openUrl(new URL(src, location.href).href))) return;
+  // ?src= を読み込めなかったときも、前回の下書きか説明の資料を開く（読み込めなかった理由は残す）
+  const failure = src ? notice.value : null;
   const last = await getItem<LastDocument>('last');
   if (last && last.text !== SAMPLE) {
     await openText({ kind: 'draft', name: last.name, key: last.key }, last.text, noAssets);
-    notice.value = { text: `前回の下書き「${last.name}」を開きました。` };
+    notice.value = failure ?? { text: `前回の下書き「${last.name}」を開きました。` };
     return;
   }
   await openText(doc.value, SAMPLE, noAssets);
+  notice.value = failure;
 }
 
 // ---- 画面 ----
