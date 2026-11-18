@@ -22,6 +22,7 @@ const FONT_PACKAGES = [
   { family: 'MDS Inter', package: '@fontsource-variable/inter' },
   { family: 'MDS Noto Sans JP', package: '@fontsource-variable/noto-sans-jp' },
   { family: 'MDS JetBrains Mono', package: '@fontsource-variable/jetbrains-mono' },
+  { family: 'MDS Noto Serif JP', package: '@fontsource-variable/noto-serif-jp' },
 ];
 
 interface FontFile {
