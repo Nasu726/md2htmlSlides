@@ -1,4 +1,5 @@
 import { build, pdf, startDev, type DevServer } from '@mds/cli';
+import { preparePrint } from '@mds/runtime';
 import { expect, test } from '@playwright/test';
 import { cpSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -273,6 +274,81 @@ test('mds build：動く構成図のシナリオを再生する。進むとパ�
     return Math.abs(badge.right - db.right) < 30 && Math.abs(badge.bottom - db.top) < 30;
   });
   expect(near).toBe(true);
+});
+
+test('動く構成図のカメラ：文字が 14px より小さい図だけ、ステップのノードへ寄り、ミニマップを出す（13-arch。#109）', async ({
+  page,
+}) => {
+  const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
+  const result = await build(join(fixtures, '13-arch.md'), { outDir: out });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.emulateMedia({ reducedMotion: 'reduce' }); // 動きなしで、すぐ寄った状態にする
+  const url = pathToFileURL(result.index).href;
+  const jump = async (hash: string) => {
+    await page.evaluate((h) => (location.hash = h), hash);
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe(hash);
+  };
+  const camera = () =>
+    page.locator('.mds-slide.is-current .mds-media-arch').evaluate((el) => {
+      const svg = el.querySelector('svg.mds-arch-svg')!;
+      const mini = el.querySelector('svg.arch-minimap');
+      return {
+        zoomed: el.classList.contains('is-zoomed'),
+        full: svg.getAttribute('viewBox') === svg.getAttribute('data-arch-full'),
+        label: Number((el as HTMLElement).dataset.archLabel),
+        minimap: mini ? getComputedStyle(mini).display : 'none',
+      };
+    });
+  // 説明を図の横に出す：全体では文字が小さい
+  await page.goto(`${url}#/5`);
+  const start = await camera();
+  expect(start).toMatchObject({ zoomed: false, full: true, minimap: 'none' });
+  expect(start.label).toBeLessThan(14);
+  // 1：ユーザー → Web → API に寄り、ミニマップを出す
+  await page.keyboard.press('ArrowRight');
+  expect(await camera()).toMatchObject({ zoomed: true, full: false, minimap: 'block' });
+  // 4：関係するノードが図の全体に広がるので、全体を見せる
+  await jump('#/5/4');
+  expect(await camera()).toMatchObject({ zoomed: false, full: true, minimap: 'none' });
+  // 横長で文字が十分に大きい図（1枚目）は寄らない
+  await jump('#/1/1');
+  const wide = await camera();
+  expect(wide).toMatchObject({ zoomed: false, full: true });
+  expect(wide.label).toBeGreaterThanOrEqual(14);
+});
+
+test('動く構成図の PDF：既定はまとめの1枚（すべての番号・最後のバッジ・強調なし）、--steps はステップごと（13-arch。#109）', async ({
+  page,
+}) => {
+  const out = mkdtempSync(join(tmpdir(), 'mds-pdf-'));
+  const final = await pdf(join(fixtures, '13-arch.md'), { out: join(out, 'final.pdf') });
+  expect(final.pages).toBe(8);
+  // 8 枚 + ステップ（4・4・4・0・4・3・6・2）
+  const steps = await pdf(join(fixtures, '13-arch.md'), {
+    out: join(out, 'steps.pdf'),
+    steps: true,
+  });
+  expect(steps.pages).toBe(35);
+  // まとめの中身は、書き出した HTML で印刷の準備をして確かめる
+  const result = await build(join(fixtures, '13-arch.md'), { outDir: join(out, 'html') });
+  await page.goto(pathToFileURL(result.index).href);
+  await page.evaluate(preparePrint, { steps: 'final' as const });
+  const summary = await page.locator('.mds-deck > .mds-slide').evaluateAll((els) =>
+    els.slice(0, 5).map((el) => ({
+      marks: el.querySelectorAll('.arch-mark').length,
+      badges: Array.from(el.querySelectorAll('.arch-badge'), (b) => b.textContent).sort(),
+      dim: el.querySelectorAll('.is-dim').length,
+      current: el.querySelectorAll('.mds-arch-captions .is-current, .is-future').length,
+      zoomed: el.querySelectorAll('.is-zoomed').length,
+    })),
+  );
+  expect(summary).toEqual([
+    { marks: 9, badges: ['保存済み'], dim: 0, current: 0, zoomed: 0 }, // 正常時：2 + 1 + 3 + 3
+    { marks: 8, badges: ['失敗', '障害'], dim: 0, current: 0, zoomed: 0 }, // 決済の障害：4 + 1 + 1 + 2
+    { marks: 9, badges: ['保存済み'], dim: 0, current: 0, zoomed: 0 },
+    { marks: 0, badges: [], dim: 0, current: 0, zoomed: 0 }, // 動きのない構成図
+    { marks: 9, badges: ['保存済み'], dim: 0, current: 0, zoomed: 0 }, // カメラも使わない
+  ]);
 });
 
 test('mds build：動く構成図の書き間違いを、行番号付きで警告する（13-arch。#106）', async () => {

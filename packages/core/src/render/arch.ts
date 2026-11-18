@@ -88,8 +88,11 @@ export function selectArchScenario(
 export function archEmbedAttrs(
   scenario: ArchScenario | undefined,
   esc: (s: string) => string,
+  attrs?: Attrs,
 ): string {
   if (!scenario || scenario.steps.length === 0) return '';
+  // カメラ（#109、§6.2）を使わない
+  const focus = attrs?.values.focus === 'none' ? ' data-arch-focus="none"' : '';
   const steps = scenario.steps.map((step) =>
     step.actions.map((a) =>
       a.type === 'move'
@@ -103,7 +106,7 @@ export function archEmbedAttrs(
         : { s: a.node, t: a.text, ...(a.error ? { e: 1 } : {}) },
     ),
   );
-  return ` data-embed="arch" data-mds-substeps="${scenario.steps.length}" data-arch-steps="${esc(JSON.stringify(steps))}"`;
+  return ` data-embed="arch" data-mds-substeps="${scenario.steps.length}" data-arch-steps="${esc(JSON.stringify(steps))}"${focus}`;
 }
 
 /** ステップの発表者ノート（`note:`）を、スライドのノートに足す HTML */

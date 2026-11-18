@@ -181,18 +181,151 @@ export function startArch(doc: Document): void {
       e.classList.toggle('is-dim', on && !edges.has(e));
     }
   };
-  /** 説明のリスト（同じスライドの中）：今のステップを強調し、まだのステップを薄くする */
-  const captions = (figure: HTMLElement, stage: number) => {
+  /** 説明のリスト（同じスライドの中）：今のステップを強調し、まだのステップを薄くする。まとめではすべて同じ */
+  const captions = (figure: HTMLElement, stage: number, summary = false) => {
     const list = figure.closest('.mds-slide')?.querySelector('.mds-arch-captions');
     Array.from(list?.children ?? []).forEach((li, i) => {
-      li.classList.toggle('is-current', i === stage - 1);
-      li.classList.toggle('is-future', i >= stage);
+      li.classList.toggle('is-current', !summary && i === stage - 1);
+      li.classList.toggle('is-future', !summary && i >= stage);
     });
   };
 
-  const show = (figure: HTMLElement, stage: number) => {
+  /*
+   * カメラ（#109、§6.2）：図を全体で見せたときにノードの文字が 14px より小さくなる図だけ、
+   * ステップに関係するノードを囲む範囲へ寄る（viewBox を変える）。寄っている間は右下にミニマップ。
+   */
+  type Box = { x: number; y: number; width: number; height: number };
+  const boxText = (b: Box) =>
+    [b.x, b.y, b.width, b.height].map((n) => Math.round(n * 10) / 10).join(' ');
+  const parseBox = (text: string | null): Box => {
+    const [x = 0, y = 0, width = 0, height = 0] = (text ?? '').split(/[\s,]+/).map(Number);
+    return { x, y, width, height };
+  };
+  /** 図の全体（最初の viewBox を覚えておく） */
+  const fullOf = (svg: Element): Box => {
+    if (!svg.hasAttribute('data-arch-full')) {
+      svg.setAttribute('data-arch-full', svg.getAttribute('viewBox') ?? '0 0 0 0');
+    }
+    return parseBox(svg.getAttribute('data-arch-full'));
+  };
+  /**
+   * 全体を見せたときのノードの文字の大きさ（スライドの px）。測れたら図に覚えておく
+   * （発表者ビューや印刷の複製は、まだ描かれていないので測れない。属性ごと複製される）
+   */
+  const labelPx = (figure: HTMLElement, svg: SVGSVGElement): number | undefined => {
+    if (figure.dataset.archLabel) return Number(figure.dataset.archLabel);
+    const full = fullOf(svg);
+    const w = svg.clientWidth;
+    const h = svg.clientHeight;
+    if (!w || !h || !full.width || !full.height) return undefined;
+    const px = 20 * Math.min(w / full.width, h / full.height);
+    figure.dataset.archLabel = px.toFixed(1);
+    return px;
+  };
+  /** ステップで寄る範囲。寄らないなら undefined */
+  const focusOf = (figure: HTMLElement, svg: SVGSVGElement, step: Action[] | undefined) => {
+    const px = labelPx(figure, svg);
+    if (!step || px === undefined || px >= 14 || figure.dataset.archFocus === 'none') return;
+    const full = fullOf(svg);
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const a of step) {
+      for (const id of 's' in a ? [a.s] : a.m) {
+        const node = nodeOf(svg, id);
+        if (!node) continue;
+        const b = boxOf(node);
+        x0 = Math.min(x0, b.x);
+        y0 = Math.min(y0, b.y);
+        x1 = Math.max(x1, b.x + b.width);
+        y1 = Math.max(y1, b.y + b.height);
+      }
+    }
+    if (!Number.isFinite(x0)) return;
+    // 周りに余白（バッジ・パケットのラベル）。縦横比は図のまま。寄りすぎない（文字は 26px まで）
+    const pad = 48;
+    const aspect = full.width / full.height;
+    let width = Math.max(x1 - x0 + pad * 2, (y1 - y0 + pad * 2) * aspect, (full.width * px) / 26);
+    if (width >= full.width * 0.92) return;
+    width = Math.min(width, full.width);
+    const height = width / aspect;
+    const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+    return {
+      x: clamp((x0 + x1) / 2 - width / 2, full.x, full.x + full.width - width),
+      y: clamp((y0 + y1) / 2 - height / 2, full.y, full.y + full.height - height),
+      width,
+      height,
+    };
+  };
+  /** ミニマップ（構成だけの複製と、今見ている範囲の枠）。view がなければ隠す */
+  const minimap = (figure: HTMLElement, svg: SVGSVGElement, view: Box | undefined) => {
+    figure.classList.toggle('is-zoomed', Boolean(view));
+    let mini = figure.querySelector('svg.arch-minimap');
+    if (!view) return;
+    if (!mini) {
+      mini = make('svg', { class: 'arch-minimap', viewBox: boxText(fullOf(svg)) });
+      mini.setAttribute('aria-hidden', 'true');
+      for (const child of Array.from(svg.children)) {
+        if (!child.classList.contains('arch-fx')) mini.append(child.cloneNode(true));
+      }
+      for (const e of Array.from(mini.querySelectorAll('.is-active, .is-dim, .is-flash'))) {
+        e.classList.remove('is-active', 'is-dim', 'is-flash');
+      }
+      make('rect', { class: 'arch-minimap-view' }, mini);
+      svg.after(mini);
+    }
+    const rect = mini.querySelector('.arch-minimap-view')!;
+    rect.setAttribute('x', String(view.x));
+    rect.setAttribute('y', String(view.y));
+    rect.setAttribute('width', String(view.width));
+    rect.setAttribute('height', String(view.height));
+  };
+  const setView = (figure: HTMLElement, svg: SVGSVGElement, view: Box | undefined) => {
+    svg.setAttribute('viewBox', boxText(view ?? fullOf(svg)));
+    minimap(figure, svg, view);
+  };
+  /** 今の範囲から次の範囲へ、なめらかに動かす */
+  const moveView = (figure: HTMLElement, svg: SVGSVGElement, to: Box | undefined, run: number) =>
+    new Promise<void>((done) => {
+      const from = parseBox(svg.getAttribute('viewBox'));
+      const end = to ?? fullOf(svg);
+      if (boxText(from) === boxText(end)) {
+        setView(figure, svg, to);
+        done();
+        return;
+      }
+      const start = win.performance.now();
+      const tick = (now: number) => {
+        if (runs.get(figure) !== run) return done();
+        const t = Math.min(1, (now - start) / 500);
+        const e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+        const mid = {
+          x: from.x + (end.x - from.x) * e,
+          y: from.y + (end.y - from.y) * e,
+          width: from.width + (end.width - from.width) * e,
+          height: from.height + (end.height - from.height) * e,
+        };
+        if (t < 1) {
+          svg.setAttribute('viewBox', boxText(mid));
+          minimap(figure, svg, mid);
+          win.requestAnimationFrame(tick);
+        } else {
+          setView(figure, svg, to);
+          done();
+        }
+      };
+      win.requestAnimationFrame(tick);
+    });
+
+  /**
+   * 「段」個のステップが終わった状態を、動きなしで表示する。
+   * summary（一覧・PDF の既定）では、通ったすべての経路に番号を付け、1つのステップを強調せず、
+   * 説明をすべて同じに見せ、図の全体を見せる（まとめの1枚。#109）
+   */
+  const show = (figure: HTMLElement, stage: number, summary = false) => {
     runs.set(figure, (runs.get(figure) ?? 0) + 1); // 再生中なら止める
-    const svg = figure.querySelector('svg.mds-arch-svg');
+    const svg = figure.querySelector<SVGSVGElement>('svg.mds-arch-svg');
     if (!svg) return;
     svg.querySelector('.arch-fx')?.remove();
     const fx = make('g', { class: 'arch-fx' }, svg);
@@ -210,8 +343,8 @@ export function startArch(doc: Document): void {
         for (let i = 0; i + 1 < a.m.length; i++) {
           const seg = segment(svg, a.m[i]!, a.m[i + 1]!, Boolean(a.r[i]));
           if (!seg) continue;
-          // 構成にない経路は、そのステップのあいだだけ点線で描く
-          if (seg.temp && k === done - 1) {
+          // 構成にない経路は、そのステップのあいだだけ点線で描く（まとめではすべて）
+          if (seg.temp && (summary || k === done - 1)) {
             make('path', { class: 'arch-temp', d: pathOf(seg.pts) }, fx);
           }
           const key = seg.edge ?? `${a.m[i]}>${a.m[i + 1]}`;
@@ -222,12 +355,14 @@ export function startArch(doc: Document): void {
       }
     }
     for (const [id, b] of badges) badge(fx, svg, id, b.t, b.e);
-    highlight(svg, done > 0 ? steps[done - 1] : undefined);
-    captions(figure, done);
+    const last = done > 0 && !summary ? steps[done - 1] : undefined;
+    highlight(svg, last);
+    captions(figure, done, summary);
+    setView(figure, svg, focusOf(figure, svg, last));
   };
 
   const play = async (figure: HTMLElement, stage: number) => {
-    const svg = figure.querySelector('svg.mds-arch-svg');
+    const svg = figure.querySelector<SVGSVGElement>('svg.mds-arch-svg');
     const step = stepsOf(figure)[stage - 1];
     const reduced = win.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     if (!svg || !step || reduced) {
@@ -239,6 +374,9 @@ export function startArch(doc: Document): void {
     runs.set(figure, run);
     highlight(svg, step);
     captions(figure, stage);
+    // カメラ：このステップのノードへ寄ってから動かす
+    await moveView(figure, svg, focusOf(figure, svg, step), run);
+    if (runs.get(figure) !== run) return;
     const fx = svg.querySelector('.arch-fx')!;
     for (const a of step) {
       if ('s' in a) continue;
@@ -287,11 +425,19 @@ export function startArch(doc: Document): void {
   const host = win as unknown as {
     mdsEmbeds?: Record<
       string,
-      { show(el: HTMLElement, stage: number): void; play?(el: HTMLElement, stage: number): void }
+      {
+        show(el: HTMLElement, stage: number, summary?: boolean): void;
+        play?(el: HTMLElement, stage: number): void;
+      }
     >;
   };
   (host.mdsEmbeds ??= {}).arch = {
     show,
     play: (figure, stage) => void play(figure, stage),
   };
+  // 文字の大きさは、描かれているうちに測っておく（複製に属性ごと引き継ぐ）
+  for (const figure of Array.from(doc.querySelectorAll<HTMLElement>('[data-embed="arch"]'))) {
+    const svg = figure.querySelector<SVGSVGElement>('svg.mds-arch-svg');
+    if (svg) labelPx(figure, svg);
+  }
 }

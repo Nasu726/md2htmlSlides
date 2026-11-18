@@ -18,19 +18,20 @@ export async function preparePrint(options: { steps: 'final' | 'each' }): Promis
 
   // 1. ステップごとのページ。発表用の印（data-step-hidden）は外し、
   //    印刷用の印（data-step-print-hidden）で、そのページでまだ出ていない要素を隠す
-  // 埋め込みの内部ステップ（#105）：そのページのステップまでに来た段を表示する（既定は最後の段）
-  type EmbedRuntime = { show(el: HTMLElement, stage: number): void };
+  // 埋め込みの内部ステップ（#105）：そのページのステップまでに来た段を表示する（既定は最後の段）。
+  // 既定（final）では、1つのステップを強調しない「まとめ」にする（動く構成図のまとめの1枚。#109）
+  type EmbedRuntime = { show(el: HTMLElement, stage: number, summary?: boolean): void };
   const embeds = (window as unknown as { mdsEmbeds?: Record<string, EmbedRuntime> }).mdsEmbeds;
-  const showEmbeds = (root: ParentNode, upTo: number) => {
+  const showEmbeds = (root: ParentNode, upTo: number, summary = false) => {
     for (const el of Array.from(root.querySelectorAll<HTMLElement>('[data-substeps]'))) {
       const stage = (el.dataset.substeps ?? '')
         .split(',')
         .filter((n) => n !== '' && Number(n) <= upTo).length;
       el.dataset.stage = String(stage);
-      embeds?.[el.dataset.embed ?? '']?.show(el, stage);
+      embeds?.[el.dataset.embed ?? '']?.show(el, stage, summary);
     }
   };
-  for (const slide of slides) showEmbeds(slide, Infinity);
+  for (const slide of slides) showEmbeds(slide, Infinity, options.steps === 'final');
 
   let pages = slides.length;
   if (options.steps === 'each') {

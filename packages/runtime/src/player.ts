@@ -274,9 +274,10 @@ export function startPlayer(doc: Document): void {
    * 今のステップまでに来た段の数（0〜）を、種類（data-embed）ごとの関数で表示する。
    * 関数は window.mdsEmbeds に登録する（動く構成図は別のスクリプトが足す）。
    * show は動きなしで、その段の状態にする（戻る・一覧・発表者ビュー・印刷）。play は進むときの動き。
+   * summary は一覧と PDF（既定）：1つのステップを強調せず、全体をまとめて見せる（#109）
    */
   type EmbedRuntime = {
-    show(el: HTMLElement, stage: number): void;
+    show(el: HTMLElement, stage: number, summary?: boolean): void;
     play?(el: HTMLElement, stage: number): void;
   };
   const host = win as unknown as { mdsEmbeds?: Record<string, EmbedRuntime> };
@@ -292,24 +293,24 @@ export function startPlayer(doc: Document): void {
   };
   const stageOf = (el: HTMLElement, upTo: number) =>
     (el.dataset.substeps ?? '').split(',').filter((n) => n !== '' && Number(n) <= upTo).length;
-  const showEmbeds = (root: ParentNode, upTo: number, animate: boolean) => {
+  const showEmbeds = (root: ParentNode, upTo: number, animate: boolean, summary = false) => {
     for (const el of Array.from(root.querySelectorAll<HTMLElement>('[data-substeps]'))) {
       const embed = embeds[el.dataset.embed ?? ''];
       const stage = stageOf(el, upTo);
       const before = Number(el.dataset.stage ?? -1);
       el.dataset.stage = String(stage);
       if (animate && stage === before + 1 && embed?.play) embed.play(el, stage);
-      else embed?.show(el, stage);
+      else embed?.show(el, stage, summary);
     }
   };
 
   // 段階的表示：今のステップより後の要素を隠す（構文仕様 §5）
   const stepsOf = (k: number) => Number(slides[k]?.dataset.steps ?? 0);
-  const showSteps = (slide: HTMLElement, upTo: number, animate = false) => {
+  const showSteps = (slide: HTMLElement, upTo: number, animate = false, summary = false) => {
     for (const el of Array.from(slide.querySelectorAll<HTMLElement>('[data-step]'))) {
       el.toggleAttribute('data-step-hidden', Number(el.dataset.step) > upTo);
     }
-    showEmbeds(slide, upTo, animate);
+    showEmbeds(slide, upTo, animate, summary);
   };
 
   const go = (target: number, targetStep = 0) => {
@@ -322,7 +323,12 @@ export function startPlayer(doc: Document): void {
     // （隠す要素が表示されてから消えたり、表示する要素がスライドの表示に遅れて出たりするのを防ぐ）
     if (entering) slide.setAttribute('data-no-anim', '');
     // 同じスライドの中ではフェードで出す。1つ進めたときだけ、埋め込みの動きを見せる
-    showSteps(slide, overview ? Infinity : step, !entering && !overview && step === before + 1);
+    showSteps(
+      slide,
+      overview ? Infinity : step,
+      !entering && !overview && step === before + 1,
+      overview,
+    );
     if (entering) {
       const previous = slides[index];
       if (previous) playMedia(previous, false);
@@ -361,7 +367,9 @@ export function startPlayer(doc: Document): void {
   const setOverview = (on: boolean) => {
     overview = on;
     // 一覧ではすべてのステップを表示する
-    slides.forEach((slide, k) => showSteps(slide, on ? Infinity : k === index ? step : 0));
+    slides.forEach((slide, k) =>
+      showSteps(slide, on ? Infinity : k === index ? step : 0, false, on),
+    );
     deck.classList.toggle('is-presenting', !on);
     deck.classList.toggle('is-overview', on);
     doc.documentElement.classList.toggle('mds-presenting', !on);

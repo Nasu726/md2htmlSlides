@@ -160,7 +160,7 @@ export function renderMedia(
   // 動く構成図（#108）：シナリオの再生のための属性
   const embed =
     kind === 'arch' && diagram && !('error' in diagram)
-      ? archEmbedAttrs(selectArchScenario(diagram.scenarios, attrs), esc)
+      ? archEmbedAttrs(selectArchScenario(diagram.scenarios, attrs), esc, attrs)
       : '';
   return `<figure class="${classes.map(esc).join(' ')}"${id}${stepAttr}${embed}${style}><div class="mds-media-frame">${element}</div>${figcaption}</figure>`;
 }
