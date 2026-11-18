@@ -1,10 +1,12 @@
-import { fitSlides, measureJobs } from '@mds/core';
+import { FIT_MARGIN, fitSlides, measureJobs } from '@mds/core';
 import { renderMermaid } from '@mds/runtime';
 import { frameHost, type FrameMode } from './frame-host.js';
 
 /** iframe の中で frameHost を動かすスクリプト */
 export function hostScript(mode: FrameMode): string {
-  return `(${frameHost.toString()})(${JSON.stringify(mode)}, ${measureJobs.toString()}, ${fitSlides.toString()}, ${renderMermaid.toString()});`;
+  // fitSlides には、本文の下に残す余白（#92）を渡す
+  const fit = `(root) => (${fitSlides.toString()})(root, ${FIT_MARGIN})`;
+  return `(${frameHost.toString()})(${JSON.stringify(mode)}, ${measureJobs.toString()}, ${fit}, ${renderMermaid.toString()});`;
 }
 
 /** `</script>` を含んでも閉じないようにして、HTML の最後に入れる */

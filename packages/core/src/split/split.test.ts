@@ -85,7 +85,13 @@ describe('splitAtoms', () => {
 
   it('収まるなら1枚のまま', () => {
     expect(splitAtoms(paragraphs(3), uniform(3, 100))).toEqual([
-      { start: 0, end: 3, scale: 1, fill: 340 / 480, overflow: false },
+      {
+        start: 0,
+        end: 3,
+        scale: 1,
+        fill: 340 / (480 * (1 - DEFAULT_WEIGHTS.margin)),
+        overflow: false,
+      },
     ]);
   });
 
@@ -109,8 +115,26 @@ describe('splitAtoms', () => {
 
   it('1つの原子が収まらなければ縮め、60% でも収まらなければあふれとする', () => {
     const one = paragraphs(1);
-    expect(splitAtoms(one, uniform(1, 600))[0]).toMatchObject({ scale: 0.8, overflow: false });
+    expect(splitAtoms(one, uniform(1, 600))[0]).toMatchObject({ scale: 0.75, overflow: false });
     expect(splitAtoms(one, uniform(1, 2000))[0]).toMatchObject({ scale: 0.6, overflow: true });
+  });
+
+  it('本文の下に余白を残す：下端ぎりぎりまで埋まるなら、少し縮めるか分ける（#92）', () => {
+    // 本文 480px に 470px：余白（6%）に食い込むので縮める
+    expect(splitAtoms(paragraphs(1), uniform(1, 470))[0]).toMatchObject({
+      scale: 0.95,
+      overflow: false,
+    });
+    // 余白なしなら、そのまま収まる
+    const flush = { ...DEFAULT_WEIGHTS, margin: 0 };
+    expect(splitAtoms(paragraphs(1), uniform(1, 470), flush)[0]).toMatchObject({ scale: 1 });
+    // 複数の原子でも、どのページも余白を残す
+    for (const height of [90, 110, 150]) {
+      for (const p of splitAtoms(paragraphs(8), uniform(8, height))) {
+        const used = (p.end - p.start) * height * p.scale + (p.end - p.start - 1) * 20;
+        expect(used).toBeLessThanOrEqual(480 * (1 - DEFAULT_WEIGHTS.margin) + 1);
+      }
+    }
   });
 });
 

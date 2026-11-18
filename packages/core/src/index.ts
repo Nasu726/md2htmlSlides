@@ -97,7 +97,7 @@ export {
 } from './syntax/elements.js';
 export { md } from './md/instance.js';
 export { BASE_CSS } from './render/base-css.js';
-export { FIT_SCRIPT, fitSlides } from './render/fit.js';
+export { FIT_MARGIN, FIT_SCRIPT, fitSlides } from './render/fit.js';
 export {
   SLIDE_SIZES,
   numberSteps,
