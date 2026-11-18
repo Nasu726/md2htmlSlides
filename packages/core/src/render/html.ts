@@ -126,15 +126,15 @@ export function renderSlide(
   ];
   const parts: string[] = bg ? [bg.html.trimEnd()] : [];
 
-  // 章の名前と見出し。statement と media では、引き継いだ見出し（続き）は出さない（§4.5）
+  // 章の名前と見出し。statement と media では、引き継いだ見出しは出さない（§4.5）。
+  // 続きのスライドも、見出しは同じ文言のまま（「（続き）」は付けない。#91）
   const titled =
     layout === 'stack' || layout === 'split' || layout === 'columns' || layout === 'grid';
   if (slide.chapter && titled) parts.push(`<p class="mds-chapter">${esc(slide.chapter)}</p>`);
   if (slide.heading && (titled || !slide.heading.continued)) {
     const tag = layout === 'section' ? 'h1' : 'h2';
-    const continued = slide.heading.continued ? '<span class="mds-continued">（続き）</span>' : '';
     parts.push(
-      `<${tag} class="mds-title">${phraseBreaks(md.renderInline(slide.heading.raw, env), deck.meta.lang)}${continued}</${tag}>`,
+      `<${tag} class="mds-title">${phraseBreaks(md.renderInline(slide.heading.raw, env), deck.meta.lang)}</${tag}>`,
     );
   }
   const body = renderBody(slide, choice, deck.slideLevel, env);

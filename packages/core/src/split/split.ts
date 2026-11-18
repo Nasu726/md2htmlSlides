@@ -407,8 +407,8 @@ function toSlides(slide: Slide, atoms: Atom[], pages: Page[]): Slide[] {
     const own = atoms.slice(page.start, page.end).map((a) => a.block);
     blocks.push(...backgrounds.filter((b) => !own.includes(b)));
     if (page.subheading !== undefined) {
-      const h = atoms[page.subheading]!.block;
-      blocks.push({ ...h, raw: `${h.raw.replace(/\s+$/, '')}（続き）` });
+      // 小見出しの途中で区切ったら、続きのスライドにも小見出しを同じ文言で出す（「（続き）」は付けない。#91）
+      blocks.push({ ...atoms[page.subheading]!.block });
     }
     // 同じリスト・表の原子は1つのブロックにまとめる（番号付きのリストは元の番号が残る）
     let last: { atom: Atom; block: Block } | undefined;
