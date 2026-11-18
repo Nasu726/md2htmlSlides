@@ -10,7 +10,7 @@ export const BAND_TOKENS = `
   --mds-bg: #ffffff;
   --mds-fg: #1e293b;
   --mds-muted: #64748b;
-  --mds-accent: #1d4ed8;
+  --mds-accent: #1e40af;
   --mds-surface: #eef2f7;
   --mds-border: #d5dde8;
   --mds-code-bg: #0f172a;

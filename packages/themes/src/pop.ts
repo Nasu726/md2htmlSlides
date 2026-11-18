@@ -116,6 +116,7 @@ ${selector} .layout-section:not([class*='has-bg-']) {
     #ff4d6d;
 }
 ${selector} .layout-section .mds-title { font-weight: 900; }
+${selector} .layout-section .mds-page { background: rgb(255 255 255 / 0.28); color: #ffffff; }
 ${selector} .layout-section .mds-title::before { width: 88px; height: 12px; border-radius: 999px; }
 /* タイトルスライド：明るい地に、丸い模様 */
 ${selector} .layout-title:not([class*='has-bg-']) {

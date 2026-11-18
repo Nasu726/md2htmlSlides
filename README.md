@@ -62,6 +62,6 @@ pnpm build                   # apps/web/dist に書き出す（GitHub Pages に�
 |---|---|
 | `packages/core` | パース・分割・レイアウト・描画（DOM に依存しない） |
 | `packages/runtime` | 発表用のプレイヤー |
-| `packages/themes` | テーマ（clean / dark / bold） |
+| `packages/themes` | テーマ（clean / dark / bold / band / academic / pop） |
 | `apps/cli` | コマンドライン `mds` |
 | `e2e/` | ブラウザでのテスト |

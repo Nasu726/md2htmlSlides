@@ -182,6 +182,39 @@ test('GitHub の画面の URL（blob）でも、raw に読み替えて開き、�
   await expect(page.locator('.notice')).toContainText('md ファイルを GitHub で開き');
 });
 
+test('明朝体（academic の見出し）は、academic のときだけ読み込む（#93）', async ({ page }) => {
+  const cors = { 'access-control-allow-origin': '*' };
+  await page.context().route('https://example.test/**', (route) =>
+    route.fulfill({
+      body: `---\ntheme: ${new URL(route.request().url()).pathname.slice(1, -3)}\n---\n\n## 見出しの書体\n\n本文\n`,
+      contentType: 'text/plain; charset=utf-8',
+      headers: cors,
+    }),
+  );
+  const fonts: string[] = [];
+  page.on('request', (request) => {
+    const match = /\/fonts\/([^/]+)\//.exec(new URL(request.url()).pathname);
+    if (match) fonts.push(match[1]!);
+  });
+  for (const theme of ['clean', 'academic']) {
+    fonts.length = 0;
+    await page.goto(`${origin}/?src=${encodeURIComponent(`https://example.test/${theme}.md`)}`);
+    await expect(preview(page).locator('.mds-slide .mds-title').first()).toHaveText('見出しの書体');
+    await expect(slideCount(page)).toHaveText('1 枚');
+    const family = await preview(page)
+      .locator('.mds-slide .mds-title')
+      .first()
+      .evaluate((el) => getComputedStyle(el).fontFamily);
+    if (theme === 'academic') {
+      expect(family).toMatch(/^"MDS Noto Serif JP"/);
+      await expect.poll(() => fonts).toContain('noto-serif-jp');
+    } else {
+      expect(family).toMatch(/^"MDS Inter"/);
+      expect(fonts).not.toContain('noto-serif-jp');
+    }
+  }
+});
+
 test('書いている内容は下書きとして保存され、開き直すと戻る（#73）', async ({ page }) => {
   await page.goto(origin);
   await expect(slideCount(page)).toHaveText(/^\d+ 枚$/);

@@ -2,7 +2,7 @@
  * コードの色分け（#68）。Shiki で書き出しのときに色を付け、発表用の runtime は大きくしない。
  *
  * 配色は Shiki の「CSS 変数のテーマ」を使い、span に `color: var(--mds-code-token-…)` を書く。
- * 色の値はテーマ（clean・dark・bold）の CSS が決めるので、テーマを変えても色分けをやり直さなくてよい。
+ * 色の値はテーマの CSS が決めるので、テーマを変えても色分けをやり直さなくてよい。
  * 文字は変えずに span で囲むだけなので、コードの高さ（計測）は変わらない。
  */
 import type { CodeHighlighter } from '@mds/core';

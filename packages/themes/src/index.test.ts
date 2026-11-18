@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { THEMES, isThemeId, themeCss } from './index.js';
+import { SERIF_FAMILY, THEMES, isThemeId, themeCss, themeFonts } from './index.js';
 
 describe('themeCss（#66）', () => {
-  it('3つのテーマは、それぞれのセレクタの中だけに効き、配色が違う', () => {
+  it('どのテーマも、それぞれのセレクタの中だけに効き、配色が違う', () => {
     const css = Object.fromEntries(THEMES.map((id) => [id, themeCss(id)]));
     for (const id of THEMES) {
       const selectors = css[id]!.match(/^[^{}\n]+(?=\s*\{)/gm) ?? [];
@@ -10,8 +10,12 @@ describe('themeCss（#66）', () => {
       for (const selector of selectors) expect(selector).toContain(`.theme-${id}`);
     }
     const bg = (id: string) => /--mds-bg:\s*([^;]+);/.exec(css[id]!)?.[1];
-    expect(new Set(THEMES.map(bg)).size).toBe(2); // clean と bold は白、dark は暗い
+    // clean・bold・band・academic は白、dark は暗い、pop はクリーム色
+    expect(new Set(THEMES.map(bg)).size).toBe(3);
     expect(bg('dark')).toBe('#0b1120');
+    expect(bg('pop')).toBe('#fffaf0');
+    const accent = (id: string) => /--mds-accent:\s*([^;]+);/.exec(css[id]!)?.[1];
+    expect(new Set(THEMES.map(accent)).size).toBe(THEMES.length);
   });
 
   it('bold の色面は accent に合わせて変わる（色面の中では accent を別の色にする）', () => {
@@ -21,9 +25,25 @@ describe('themeCss（#66）', () => {
   });
 });
 
+describe('band・academic・pop（#93）', () => {
+  it('band の帯の色は accent に合わせて変わる', () => {
+    const css = themeCss('band');
+    expect(css).toContain('--mds-band: var(--mds-accent);');
+    expect(css).toMatch(/\.layout-section[^{]*\{[^}]*background: var\(--mds-band\)/);
+  });
+
+  it('academic だけが見出しに明朝体を使い、その書体を読み込む', () => {
+    expect(themeCss('academic')).toMatch(/--mds-font-heading: 'MDS Noto Serif JP'/);
+    for (const id of THEMES) {
+      expect(themeFonts(id).includes(SERIF_FAMILY), id).toBe(id === 'academic');
+      expect(themeFonts(id)).toContain('MDS Noto Sans JP');
+    }
+  });
+});
+
 describe('themes', () => {
-  it('最初のテーマは clean・dark・bold の3つ', () => {
-    expect(THEMES).toEqual(['clean', 'dark', 'bold']);
+  it('テーマは clean・dark・bold と、#93 で足した band・academic・pop', () => {
+    expect(THEMES).toEqual(['clean', 'dark', 'bold', 'band', 'academic', 'pop']);
   });
 
   it('テーマ名かどうかを判定できる', () => {
