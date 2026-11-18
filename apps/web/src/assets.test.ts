@@ -6,6 +6,9 @@ describe('エディタの素材（#73）', () => {
     expect(normalizePath('./img/a.png')).toBe('img/a.png');
     expect(normalizePath('img/../a.png')).toBe('a.png');
     expect(normalizePath('img/%E5%86%99%E7%9C%9F.png?v=1#x')).toBe('img/写真.png');
+    // 資料のフォルダより上は、.. を残す（#90）
+    expect(normalizePath('../fixtures/./assets/a.png')).toBe('../fixtures/assets/a.png');
+    expect(normalizePath('../../a/../b.png')).toBe('../../b.png');
   });
 
   it("印は、CSS の url('…') の中でも終わりがわかるように符号化する", () => {

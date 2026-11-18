@@ -460,7 +460,7 @@ KaTeX（M3、数式）→ Vega-Lite（グラフ）→ Graphviz（viz.js の WASM
 | フォルダを開く（File System Access API） | Chrome / Edge | 相対パスの画像も表示でき、その場で上書き保存できる |
 | ドラッグ＆ドロップ / ファイル選択 | すべて | 読み込みだけ。保存はダウンロードになる |
 | `mds dev` 経由 | すべて | ローカルサーバーが読み書きし、外部エディタでの変更も監視して反映する |
-| `?src=URL` | すべて | Web上の md（GitHub の raw など）を読み込みだけで開く |
+| `?src=URL` | すべて | Web上の md を読み込みだけで開く。GitHub・Gist の画面の URL（`blob` など）は raw の URL に読み替える（CORS を許しているのは raw だけのため） |
 
 下書きは IndexedDB に自動保存する。最近開いたファイルのハンドルも IndexedDB に保存しておく。
 

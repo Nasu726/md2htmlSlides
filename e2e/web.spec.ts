@@ -131,6 +131,57 @@ test('?src=URL で開き、ブラウザで測って分割した枚数は mds bui
   await expect(slideCount(page)).toHaveText(`${expected} 枚`);
 });
 
+test('GitHub の画面の URL（blob）でも、raw に読み替えて開き、相対パスの画像も読む（#90）', async ({
+  page,
+}) => {
+  const cors = { 'access-control-allow-origin': '*' };
+  // 資料のフォルダの中（img/）と、上のフォルダ（../shared/）の画像
+  const md = '# GitHub から開く\n\n![](img/dot.png)\n![](../shared/dot.png)\n';
+  const dot = readFileSync(join(fixtures, 'assets/square.png'));
+  const seen: string[] = [];
+  // GitHub の raw だけを用意する（github.com の画面は CORS を許さないので、読みに行ったら失敗する）
+  await page.context().route('https://raw.githubusercontent.com/**', (route) => {
+    const url = route.request().url();
+    seen.push(url);
+    if (url === 'https://raw.githubusercontent.com/o/r/main/docs/slides.md') {
+      return route.fulfill({ body: md, contentType: 'text/plain; charset=utf-8', headers: cors });
+    }
+    if (
+      url === 'https://raw.githubusercontent.com/o/r/main/docs/img/dot.png' ||
+      url === 'https://raw.githubusercontent.com/o/r/main/shared/dot.png'
+    ) {
+      return route.fulfill({ body: dot, contentType: 'image/png', headers: cors });
+    }
+    return route.fulfill({ status: 404, headers: cors });
+  });
+  await page.goto(
+    `${origin}/?src=${encodeURIComponent('https://github.com/o/r/blob/main/docs/slides.md')}`,
+  );
+  await expect(page.locator('.doc-name')).toHaveText('slides.md');
+  await expect(preview(page).locator('.mds-slide .mds-title').first()).toHaveText(
+    'GitHub から開く',
+  );
+  await expect
+    .poll(() =>
+      preview(page)
+        .locator('.mds-slide img')
+        .evaluateAll((imgs: HTMLImageElement[]) => imgs.map((img) => img.naturalWidth > 0)),
+    )
+    .toEqual([true, true]);
+  expect(seen).toContain('https://raw.githubusercontent.com/o/r/main/shared/dot.png');
+
+  // 見つからないときは、理由と対処を出す
+  await page.goto(
+    `${origin}/?src=${encodeURIComponent('https://github.com/o/r/blob/main/missing.md')}`,
+  );
+  await expect(page.locator('.notice')).toContainText('見つかりませんでした（404）');
+  // 読み込めなくても、説明の資料を開いて描く（「描画中…」のまま止まらない）
+  await expect(slideCount(page)).toHaveText(/^\d+ 枚$/);
+  // フォルダの URL は、md ファイルの URL を入れるよう伝える
+  await page.goto(`${origin}/?src=${encodeURIComponent('https://github.com/o/r/tree/main/docs')}`);
+  await expect(page.locator('.notice')).toContainText('md ファイルを GitHub で開き');
+});
+
 test('書いている内容は下書きとして保存され、開き直すと戻る（#73）', async ({ page }) => {
   await page.goto(origin);
   await expect(slideCount(page)).toHaveText(/^\d+ 枚$/);
