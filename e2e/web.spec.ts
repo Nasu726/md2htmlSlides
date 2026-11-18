@@ -583,6 +583,26 @@ test('サジェスト：Tab でも候補を入れる。出ていないときの 
   await expect(lineWith(page, '- 項目')).toHaveText('- 項目');
 });
 
+test('動く構成図：```arch の中の候補と、書き間違いの警告（#106）', async ({ page }) => {
+  await openTalk(page);
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type('\n\n## 構成図\n\n```arch\nweb Webサーバー [ser');
+  // [ の後は、ノードの種類
+  await expect(page.locator('.cm-tooltip-autocomplete li[aria-selected]')).toContainText('server');
+  await accept(page);
+  await page.keyboard.type(']\ndb DB [database]\nweb -> ');
+  // 矢印の後は、定義したノードの ID
+  await expect(completions(page).filter({ hasText: /^db/ })).toHaveCount(1);
+  await page.keyboard.type('db\nscenario 例\n  st');
+  await expect(page.locator('.cm-tooltip-autocomplete li[aria-selected]')).toContainText('step');
+  await page.keyboard.press('Escape');
+  await page.keyboard.type('ep 読む\n    db -> cache\n```');
+  // 未定義のノード（cache）を警告する
+  await page.getByRole('button', { name: /^警告 \d+ 件$/ }).click();
+  await expect(page.locator('.warnings')).toContainText('ノード cache は定義されていません');
+});
+
 test('サジェスト：フロントマターのキーを選ぶと、続けて値の候補が出る（#75）', async ({ page }) => {
   await openTalk(page);
   await lineWith(page, 'theme: dark').click();

@@ -2,8 +2,11 @@ import type { Diagnostic } from './diagnostics.js';
 import type { Block, Deck, MediaRef, SectionNode } from './ir.js';
 
 /** 本文中のメディアの種類（構文仕様 §6.1）。 */
-/** `diagram` は Mermaid のファイル（`.mmd`）。書き出しのときに図にする（#71） */
-export type MediaKind = 'image' | 'video' | 'youtube' | 'vimeo' | 'diagram';
+/**
+ * `diagram` は Mermaid のファイル（`.mmd`）。書き出しのときに図にする（#71）。
+ * `arch` は動く構成図のファイル（`.arch`。docs/arch-diagram.md、#106）
+ */
+export type MediaKind = 'image' | 'video' | 'youtube' | 'vimeo' | 'diagram' | 'arch';
 
 const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mov', 'm4v', 'ogv']);
 
@@ -14,6 +17,7 @@ export function mediaKind(src: string): MediaKind {
   const path = src.split(/[?#]/)[0] ?? '';
   const ext = /\.([a-z0-9]+)$/i.exec(path)?.[1]?.toLowerCase();
   if (ext === 'mmd') return 'diagram';
+  if (ext === 'arch') return 'arch';
   return ext && VIDEO_EXTENSIONS.has(ext) ? 'video' : 'image';
 }
 

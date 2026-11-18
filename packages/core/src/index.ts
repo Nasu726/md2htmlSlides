@@ -96,6 +96,24 @@ export {
   type LayoutName,
 } from './syntax/elements.js';
 export { md } from './md/instance.js';
+export {
+  ARCH_KEYWORDS,
+  ARCH_KIND_SUMMARIES,
+  ARCH_NODE_KINDS,
+  parseArch,
+  type ArchAction,
+  type ArchDiagnostic,
+  type ArchDiagram,
+  type ArchEdge,
+  type ArchGroup,
+  type ArchMove,
+  type ArchNode,
+  type ArchNodeKind,
+  type ArchScenario,
+  type ArchState,
+  type ArchStep,
+} from './arch/parse.js';
+export { archDiagnostics, collectArch, selectScenario, type ArchSource } from './arch/collect.js';
 export { BASE_CSS } from './render/base-css.js';
 export { FIT_MARGIN, FIT_SCRIPT, fitSlides } from './render/fit.js';
 export {

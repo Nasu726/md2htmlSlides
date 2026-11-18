@@ -142,9 +142,12 @@ export function chooseLayout(
       const block = media[0]!;
       const aspect = isFigureCode(block)
         ? diagramAspect(diagram?.({ lang: block.lang ?? '', code: fenceContent(block.raw) }))
-        : visibleMedia(block)[0]?.kind === 'diagram'
+        : visibleMedia(block)[0]?.kind === 'diagram' || visibleMedia(block)[0]?.kind === 'arch'
           ? diagramAspect(
-              diagram?.({ lang: 'mermaid', src: decodeSrc(visibleMedia(block)[0]!.src) }),
+              diagram?.({
+                lang: visibleMedia(block)[0]!.kind === 'arch' ? 'arch' : 'mermaid',
+                src: decodeSrc(visibleMedia(block)[0]!.src),
+              }),
             )
           : aspectOf(visibleMedia(block)[0]?.src, probe);
       // とても横長（2.2:1 以上）なら上下に積む。縦長なら文章 60：メディア 40

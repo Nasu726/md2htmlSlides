@@ -107,6 +107,22 @@ test('書き出した HTML は、使う文字だけに絞ったフォントを�
   expect(family).toMatch(/^"MDS Inter", "MDS Noto Sans JP"/);
 });
 
+test('mds build：動く構成図の書き間違いを、行番号付きで警告する（13-arch。#106）', async () => {
+  const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
+  const result = await build(join(fixtures, '13-arch.md'), { outDir: out, measure: false });
+  const lines = readFileSync(join(fixtures, '13-arch.md'), 'utf8').split('\n');
+  const at = (text: string) => lines.findIndex((l) => l.includes(text)) + 1;
+  const arch = result.diagnostics.filter((d) => d.code.startsWith('arch/'));
+  expect(arch.map((d) => [d.code, d.line])).toEqual([
+    ['arch/unknown-node', at('    a -> c')],
+    ['arch/unknown-route', at('    b -> a')],
+    ['arch/unknown-scenario', at('存在しないシナリオ')],
+    ['arch/multiple', at('存在しないシナリオ')],
+  ]);
+  // .arch のファイルは画像として扱わない（見つからない画像の警告を出さない）
+  expect(result.diagnostics.filter((d) => d.code === 'media/not-found')).toEqual([]);
+});
+
 test('mds build は Mermaid を SVG にし、構文エラーは枠と行番号付きの警告にする（#71）', async () => {
   const out = mkdtempSync(join(tmpdir(), 'mds-mermaid-'));
   const result = await build(join(fixtures, '09-embeds.md'), { outDir: out });
