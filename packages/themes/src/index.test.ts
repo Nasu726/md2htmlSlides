@@ -21,7 +21,16 @@ describe('themeCss（#66）', () => {
   it('bold の色面は accent に合わせて変わる（色面の中では accent を別の色にする）', () => {
     const css = themeCss('bold');
     expect(css).toContain('--mds-strong: var(--mds-accent);');
-    expect(css).toMatch(/\.layout-section[^{]*\{[^}]*background: var\(--mds-strong\)/);
+    expect(css).toMatch(/\.layout-title[^{]*\{[^}]*background: var\(--mds-strong\)/);
+  });
+
+  it('bold・band の章扉は、一面を色で塗らない（番号と線・見出しの帯。#100）', () => {
+    for (const id of ['bold', 'band'] as const) {
+      const css = themeCss(id);
+      // 章扉のスライドそのもの（.layout-section の直後に { が来る規則）に背景の色を付けない
+      expect(css, id).not.toMatch(/\.layout-section(:not\([^)]*\))?\s*[,{][^}]*background:/);
+      expect(css, id).toContain('counter(mds-section, decimal-leading-zero)');
+    }
   });
 });
 
@@ -29,7 +38,7 @@ describe('band・academic・pop（#93）', () => {
   it('band の帯の色は accent に合わせて変わる', () => {
     const css = themeCss('band');
     expect(css).toContain('--mds-band: var(--mds-accent);');
-    expect(css).toMatch(/\.layout-section[^{]*\{[^}]*background: var\(--mds-band\)/);
+    expect(css).toMatch(/\.layout-title[^{]*\{[^}]*background: var\(--mds-band\)/);
   });
 
   it('academic だけが見出しに明朝体を使い、その書体を読み込む', () => {

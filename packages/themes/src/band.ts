@@ -99,8 +99,7 @@ ${selector} .mds-card h3, ${selector} .mds-card h4 { padding-left: 0; border-lef
 ${selector} .mds-card { border-top: 6px solid var(--mds-band); border-radius: 0 0 var(--mds-radius) var(--mds-radius); }
 ${selector} .mds-body th { color: var(--mds-band-fg); background: var(--mds-band); border-bottom: none; }
 ${selector} .mds-body tr:nth-child(even) td { background: var(--mds-surface); }
-/* 章扉とタイトルスライド：帯の色の面に白い文字（背景画像があるときはそのまま） */
-${selector} .layout-section:not([class*='has-bg-']),
+/* タイトルスライド：帯の色の面に白い文字（背景画像があるときはそのまま） */
 ${selector} .layout-title:not([class*='has-bg-']) {
   --mds-fg: #ffffff;
   --mds-muted: rgb(255 255 255 / 0.82);
@@ -108,8 +107,32 @@ ${selector} .layout-title:not([class*='has-bg-']) {
   --mds-surface: rgb(255 255 255 / 0.16);
   background: var(--mds-band);
 }
-${selector} .layout-section .mds-title::before { width: 96px; height: 6px; border-radius: 0; background: var(--mds-band-fg); }
-${selector} .layout-section .mds-title { font-weight: 800; }
 ${selector} .layout-title .mds-title { font-weight: 800; }
+/*
+ * 章扉：白地のまま、見出しだけを端から端までの帯に入れ、帯の中に小さく番号（01, 02, …）を出す（#100）。
+ * 本文のスライドの見出しの帯とそろえる。一面を色で塗ると主張が強すぎるため
+ */
+${selector} { counter-reset: mds-section; }
+${selector} .layout-section { counter-increment: mds-section; }
+${selector} .layout-section .mds-title { font-weight: 800; }
+${selector} .layout-section .mds-title::before { width: 96px; height: 6px; border-radius: 0; }
+${selector} .layout-section:not([class*='has-bg-']) .mds-title {
+  margin-left: calc(var(--mds-pad-x) * -1);
+  margin-right: calc(var(--mds-pad-x) * -1);
+  padding: 0.45em var(--mds-pad-x) 0.5em;
+  background: var(--mds-band);
+  color: var(--mds-band-fg);
+}
+${selector} .layout-section:not([class*='has-bg-']) .mds-title::before {
+  content: counter(mds-section, decimal-leading-zero);
+  display: block;
+  width: auto;
+  height: auto;
+  margin: 0 0 0.15em;
+  background: none;
+  color: color-mix(in srgb, var(--mds-band-fg) 75%, transparent);
+  font-size: 0.42em;
+  letter-spacing: 0.08em;
+}
 `;
 }

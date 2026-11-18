@@ -59,8 +59,7 @@ ${selector} .mds-body pre { font-size: 0.65em; }
 ${selector} .mds-body strong { color: var(--mds-strong); }
 ${selector} .mds-body blockquote { border-left-width: 10px; color: var(--mds-fg); }
 ${selector} .mds-body th { color: var(--mds-fg); border-bottom-color: var(--mds-fg); }
-/* 章扉とタイトルスライドは、アクセントの色面に白い文字 */
-${selector} .layout-section:not([class*='has-bg-']),
+/* タイトルスライドは、アクセントの色面に白い文字 */
 ${selector} .layout-title:not([class*='has-bg-']) {
   --mds-fg: #ffffff;
   --mds-muted: rgb(255 255 255 / 0.86);
@@ -68,8 +67,33 @@ ${selector} .layout-title:not([class*='has-bg-']) {
   --mds-surface: rgb(255 255 255 / 0.18);
   background: var(--mds-strong);
 }
-${selector} .layout-section .mds-title { font-weight: 900; }
-${selector} .layout-section .mds-title::before { height: 12px; width: 96px; border-radius: 0; background: #ffffff; }
 ${selector} .layout-title .mds-title { font-weight: 900; }
+/*
+ * 章扉：白地のまま、アクセントの色の大きな番号（01, 02, …）と、見出しの下の太い線（#100）。
+ * 一面を色で塗ると主張が強すぎるため。背景画像のある章扉は、白い短い線だけ
+ */
+${selector} { counter-reset: mds-section; }
+${selector} .layout-section { counter-increment: mds-section; }
+${selector} .layout-section .mds-title { font-weight: 900; }
+${selector} .layout-section[class*='has-bg-'] .mds-title::before { height: 12px; width: 96px; border-radius: 0; background: #ffffff; }
+${selector} .layout-section:not([class*='has-bg-']) .mds-title {
+  width: fit-content;
+  max-width: 100%;
+  padding-bottom: 0.22em;
+  border-bottom: 10px solid var(--mds-strong);
+}
+${selector} .layout-section:not([class*='has-bg-']) .mds-title::before {
+  content: counter(mds-section, decimal-leading-zero);
+  display: block;
+  width: auto;
+  height: auto;
+  margin: 0 0 0.05em;
+  border-radius: 0;
+  background: none;
+  color: var(--mds-strong);
+  font-size: 1.9em;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
 `;
 }
