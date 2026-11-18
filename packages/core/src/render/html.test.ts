@@ -275,6 +275,19 @@ describe('動く構成図の説明のリスト（#107）', () => {
     );
   });
 
+  it('再生の属性（#108）。focus=none ならカメラを使わない印を付ける（#109）', () => {
+    const file = slideOf('## A\n\n![](a.arch)\n', 1000, 200);
+    expect(file).toContain('data-embed="arch"');
+    expect(file).toContain('data-substeps="1,2"');
+    expect(file).not.toContain('data-arch-focus');
+    expect(slideOf('## A\n\n![](a.arch){focus=none}\n', 1000, 200)).toContain(
+      'data-arch-focus="none"',
+    );
+    expect(slideOf('## A\n\n```arch {focus=none}\na\n```\n', 1000, 200)).toContain(
+      'data-arch-focus="none"',
+    );
+  });
+
   it('captions=none・scenario=none では、説明を出さない', () => {
     expect(slideOf('## A\n\n![](a.arch){captions=none}\n', 300, 500)).not.toContain(
       'mds-arch-captions',

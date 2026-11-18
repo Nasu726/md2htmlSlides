@@ -285,6 +285,32 @@ body { margin: 0; background: #d1d5db; }
 .mds-arch-svg .arch-badge text { fill: #ffffff; font-size: 13px; font-weight: 700; }
 .mds-arch-svg .arch-mark circle { fill: var(--mds-accent); stroke: var(--mds-bg); stroke-width: 2; }
 .mds-arch-svg .arch-mark text { fill: var(--mds-bg); font-size: 12px; font-weight: 700; }
+/*
+ * カメラ（#109）：寄っている間は図の枠で切り、図の右下の外にミニマップ（構成だけと、見ている範囲の枠）。
+ * カメラが働くのは、図が幅で縮んだとき（上下に空きがある）なので、図に重ねずに下に出す
+ */
+.mds-diagram:has(> .mds-arch-svg) { position: relative; }
+.mds-media-arch.is-zoomed .mds-arch-svg { overflow: hidden; }
+.mds-diagram > svg.arch-minimap {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 12px);
+  width: max(36%, 220px);
+  height: auto;
+  padding: 6px;
+  background: var(--mds-bg);
+  border: 1px solid var(--mds-border);
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.12);
+  overflow: hidden;
+}
+.mds-media-arch.is-zoomed .mds-diagram > svg.arch-minimap { display: block; }
+.arch-minimap :is(text, .icon, .icon-line, .rim, .dot, .arch-head, .arch-edge-label, .arch-group-label) { display: none; }
+.arch-minimap .arch-group .shape { fill: color-mix(in srgb, var(--mds-surface) 75%, var(--mds-bg)); stroke: var(--mds-border); stroke-width: 3; }
+.arch-minimap .arch-node .shape { fill: color-mix(in srgb, var(--mds-accent) 18%, var(--mds-bg)); stroke: var(--mds-accent); stroke-width: 3; }
+.arch-minimap .arch-edge path { fill: none; stroke: var(--mds-muted); stroke-width: 3; }
+.arch-minimap .arch-minimap-view { fill: color-mix(in srgb, var(--mds-accent) 10%, transparent); stroke: var(--mds-accent); stroke-width: 8; }
 .mds-body .mds-arch-captions li.is-future { opacity: 0.5; }
 .mds-body .mds-arch-captions li.is-current {
   border-left-color: var(--mds-accent);

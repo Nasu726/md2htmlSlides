@@ -177,6 +177,7 @@ function renderRules(instance: MarkdownIt): void {
           ? archEmbedAttrs(
               selectArchScenario(diagram.scenarios, (token.meta as BlockMeta | null)?.attrs),
               instance.utils.escapeHtml,
+              (token.meta as BlockMeta | null)?.attrs,
             )
           : '';
       return `<div class="mds-media-group is-flex"><figure class="mds-media mds-media-${arch ? 'arch' : 'diagram'}"${stepAttr}${embed}><div class="mds-media-frame">${inner}</div></figure></div>\n`;
