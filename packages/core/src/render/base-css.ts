@@ -54,12 +54,6 @@ body { margin: 0; background: #d1d5db; }
   /* 見出しは約物（「、」など）を詰める。本文は詰めない（読みやすさのため） */
   font-feature-settings: 'palt';
 }
-.mds-continued {
-  margin-left: 0.5em;
-  font-size: 0.5em;
-  font-weight: 400;
-  color: var(--mds-muted);
-}
 
 .mds-body {
   flex: 1;

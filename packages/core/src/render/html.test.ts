@@ -27,9 +27,10 @@ describe('renderDeckHtml', () => {
     expect(html).toContain('--mds-w:960px;--mds-h:720px;--mds-accent:#e11d48');
   });
 
-  it('続きのスライドには（続き）を付け、ページ番号を出す', () => {
+  it('続きのスライドは同じ見出しを出し（「（続き）」は付けない。#91）、ページ番号を出す', () => {
     const html = render('## A\n\n前半\n\n- a\n- b\n\n---\n\n後半\n\n- c\n- d');
-    expect(html).toContain('（続き）');
+    expect(html).not.toContain('（続き）');
+    expect(html.match(/<h2 class="mds-title">A<\/h2>/g)).toHaveLength(2);
     expect(html).toContain('<span class="mds-page">2 / 2</span>');
     expect(render('---\npaginate: false\n---\n## A\n\n本文')).not.toContain('mds-page');
   });
