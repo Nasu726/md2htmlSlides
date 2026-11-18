@@ -68,9 +68,11 @@ describe('breakPenalty', () => {
     expect(breakPenalty(atoms, 1, w)).toBe(Infinity);
     expect(breakPenalty(atoms, 6, w)).toBe(Infinity);
   });
-  it('小見出しの直前は 0、ブロックの間は 10', () => {
+  it('小見出しの直前は 0、ブロックの間は 10。小見出しと1ブロックだけを残すなら +50（#92）', () => {
     expect(breakPenalty(atoms, 5, w)).toBe(0);
-    expect(breakPenalty(atoms, 7, w)).toBe(10);
+    expect(breakPenalty(atoms, 7, w)).toBe(10 + w.orphan);
+    const plain = atomize(blocksOf('## A\n\n一\n\n二\n\n三\n'));
+    expect(breakPenalty(plain, 2, w)).toBe(10);
   });
   it('リストの項目の間は 30、片方に1項目だけ残るなら +50', () => {
     expect(breakPenalty(atoms, 3, w)).toBe(30);

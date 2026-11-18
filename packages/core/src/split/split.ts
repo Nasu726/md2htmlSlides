@@ -208,7 +208,8 @@ export function breakPenalty(atoms: Atom[], i: number, w: SplitWeights): number 
     const base = cur.kind === 'table-row' ? w.tableRow : w.listItem;
     return base + (index === 1 || count - index === 1 ? w.orphan : 0);
   }
-  return w.block;
+  // 小見出しと、その直後の1ブロックだけをページの最後に残さない（続きの内容と離れて見えるため。#92）
+  return w.block + (atoms[i - 2]?.kind === 'heading' ? w.orphan : 0);
 }
 
 /** ブロックに書いた明示のステップ番号（`{step=N}`）。 */
