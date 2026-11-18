@@ -1,12 +1,13 @@
 import {
+  acceptCompletion,
   autocompletion,
   startCompletion,
   type Completion,
   type CompletionContext,
   type CompletionResult,
 } from '@codemirror/autocomplete';
-import type { Extension } from '@codemirror/state';
-import { EditorView, hoverTooltip, type Tooltip } from '@codemirror/view';
+import { Prec, type Extension } from '@codemirror/state';
+import { EditorView, hoverTooltip, keymap, type Tooltip } from '@codemirror/view';
 import {
   ATTRIBUTE_KEYS,
   CONTAINERS,
@@ -475,6 +476,8 @@ export function assist(options: AssistOptions): Extension {
       ],
       icons: false,
     }),
+    // サジェストが出ているときは、Tab でも候補を入れる（#98）。出ていなければ字下げに回す
+    Prec.highest(keymap.of([{ key: 'Tab', run: acceptCompletion }])),
     syntaxHover,
   ];
 }

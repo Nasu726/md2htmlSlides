@@ -564,6 +564,25 @@ test('サジェスト：layout= の値・場所に合う属性・フロントマ
   await expect(page.locator('.cm-line', { hasText: /^:::$/ })).toHaveCount(2);
 });
 
+test('サジェスト：Tab でも候補を入れる。出ていないときの Tab は字下げ（#98）', async ({ page }) => {
+  await openTalk(page);
+  await lineWith(page, '## 結果').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' {layout=spl');
+  await expect(page.locator('.cm-tooltip-autocomplete li[aria-selected]')).toContainText('split');
+  await page.waitForTimeout(150); // 候補が出てから 75ms は選ばない（打ち間違いを防ぐ）
+  await page.keyboard.press('Tab');
+  await expect(lineWith(page, '## 結果')).toHaveText('## 結果 {layout=split');
+  await expect(page.locator('.cm-tooltip-autocomplete')).toHaveCount(0);
+  // サジェストがなければ、Tab は字下げ・Shift+Tab は字下げの解除
+  await page.keyboard.type('}\n\n- 項目');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Tab');
+  await expect(lineWith(page, '- 項目')).toHaveText(/^\s+- 項目$/);
+  await page.keyboard.press('Shift+Tab');
+  await expect(lineWith(page, '- 項目')).toHaveText('- 項目');
+});
+
 test('サジェスト：フロントマターのキーを選ぶと、続けて値の候補が出る（#75）', async ({ page }) => {
   await openTalk(page);
   await lineWith(page, 'theme: dark').click();
