@@ -22,6 +22,7 @@
     "@mds/embeds": "workspace:*",
     "@mds/runtime": "workspace:*",
     "@mds/themes": "workspace:*",
+    "elkjs": "0.12.1",
     "katex": "0.19.1",
     "mermaid": "12.2.0",
     "playwright-core": "1.63.0",

@@ -19,6 +19,7 @@ export function frameHost(
   measureJobs: (jobs: MeasureJob[]) => Measurement[],
   fitSlides: (root: ParentNode) => void,
   renderMermaid: (input: { codes: string[]; ids: string[] }) => Promise<unknown[]>,
+  renderArch: (input: { items: unknown[] }) => Promise<unknown[]>,
 ): void {
   const doc = document;
   const win = window;
@@ -191,6 +192,7 @@ export function frameHost(
     | { id: number; type: 'assets'; assets: Array<[string, Blob]> }
     | { id: number; type: 'script'; name: string; code: string }
     | { id: number; type: 'diagrams'; codes: string[]; ids: string[] }
+    | { id: number; type: 'archs'; items: unknown[] }
     | { id: number; type: 'measure'; jobs: MeasureJob[] }
     | { id: number; type: 'page'; html: string }
     | {
@@ -244,6 +246,9 @@ export function frameHost(
       }
       case 'diagrams':
         return { type: 'diagrams', results: await renderMermaid({ codes: m.codes, ids: m.ids }) };
+      case 'archs':
+        // 動く構成図（#107）：ELK で配置して SVG にする
+        return { type: 'archs', results: await renderArch({ items: m.items }) };
       case 'page': {
         // 計測のページ：テーマ・縦横比・カスタム CSS を差し替える（フォントは読み込んだまま）
         const next = new DOMParser().parseFromString(m.html, 'text/html');

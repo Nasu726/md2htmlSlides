@@ -51,6 +51,20 @@ export function katexFaces({ engine, css }: MathKit): WebFontFace[] {
     }));
 }
 
+let elk: Promise<string> | undefined;
+
+/** ELK（動く構成図の配置。#107）。計測用の iframe に入れる。構成図があるときだけ読み込む */
+export function loadElkScript(): Promise<string> {
+  elk ??= import('elkjs/lib/elk.bundled.js?url')
+    .then((m) => fetch(m.default))
+    .then((response) => {
+      if (!response.ok) throw new Error(`elk: ${response.status}`);
+      return response.text();
+    });
+  elk.catch(() => (elk = undefined));
+  return elk;
+}
+
 let mermaid: Promise<string> | undefined;
 
 /** Mermaid の本体（計測用の iframe に入れて、図を描く）。図があるときだけ読み込む */

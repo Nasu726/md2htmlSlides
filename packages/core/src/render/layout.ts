@@ -7,6 +7,7 @@ import type { DiagramRenderer, DiagramResult } from '../md/media.js';
 import type { MediaProbe } from '../media.js';
 import type { Slide } from '../slides.js';
 import { LAYOUTS, type LayoutName } from '../syntax/elements.js';
+import { archUse, captionsBelow, hasCaptions } from './arch.js';
 
 export interface LayoutChoice {
   layout: LayoutName;
@@ -112,6 +113,17 @@ export function chooseLayout(
   const texts = blocks.filter((b) => !media.includes(b) && !codes.includes(b));
   const mediaCount = media.reduce((n, b) => n + (isFigureCode(b) ? 1 : visibleMedia(b).length), 0);
   const only = blocks.length === 1 ? blocks[0]! : undefined;
+
+  // 動く構成図（#107、arch-diagram.md §5.4）：説明のリストを文章として数える。
+  // 図が横長なら説明を下（stack）、そうでなければ図 3：説明 2 の左右（split。図は左）
+  const arch = media.length === 1 ? archUse(media[0]!, diagram) : undefined;
+  if (arch && hasCaptions(arch) && codes.length === 0) {
+    if (captionsBelow(arch)) return { layout: 'stack' };
+    const plain = texts.every((b) => b.kind === 'paragraph' || b.kind === 'list');
+    if (texts.length === 0 || (plain && texts.reduce((n, b) => n + textLength(b), 0) <= 200)) {
+      return { layout: 'split', ratio: ratio ?? [3, 2], mediaLeft: values.media !== 'right' };
+    }
+  }
 
   // statement：短い一文、または引用だけ
   const statement = only?.kind === 'paragraph' && !isMediaBlock(only) && !only.media?.length;

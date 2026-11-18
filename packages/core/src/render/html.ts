@@ -1,3 +1,4 @@
+import { archCaptionsHtml, archUse } from './arch.js';
 import { themeCss } from '@mds/themes';
 import type { Attrs } from '../attrs.js';
 import type { Block } from '../ir.js';
@@ -183,14 +184,17 @@ function renderBody(
 ): string {
   const blocks = slide.blocks;
   const html = (list: Block[]) => renderBlocks(list, slideLevel, env);
+  // 動く構成図の説明のリスト（#107）：split では文章の側、ほかは図の後ろ
+  const arch = blocks.map((b) => archUse(b, env.diagram)).find((use) => use !== undefined);
+  const captions = arch ? archCaptionsHtml(arch, esc) : '';
   switch (choice.layout) {
     case 'split': {
       // 文章とメディア（またはコード）を左右に並べる
       const isMedia = (b: Block) => isMediaBlock(b) || isFigureCode(b) || b.kind === 'code';
       const media = blocks.filter(isMedia);
       const text = blocks.filter((b) => !isMedia(b));
-      if (media.length === 0) return html(blocks);
-      const textHtml = `<div class="mds-split-text">\n${html(text)}</div>\n`;
+      if (media.length === 0) return html(blocks) + captions;
+      const textHtml = `<div class="mds-split-text">\n${html(text)}${captions}</div>\n`;
       const mediaHtml = `<div class="mds-split-media">\n${html(media)}</div>\n`;
       // 並びは左から。比（--mds-split）も左：右
       return choice.mediaLeft ? mediaHtml + textHtml : textHtml + mediaHtml;
@@ -214,7 +218,7 @@ function renderBody(
       return `<div class="mds-columns">\n${cards.join('')}</div>\n`;
     }
     default:
-      return html(blocks);
+      return html(blocks) + captions;
   }
 }
 

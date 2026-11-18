@@ -12,6 +12,7 @@ import {
   renderDeckHtml,
   renderSlide,
   type Diagnostic,
+  type ArchSource,
   type DiagramRenderer,
   type DiagramResult,
   type Measurement,
@@ -26,6 +27,7 @@ import {
   katexFaces,
   loadHighlighter,
   loadMath,
+  loadElkScript,
   loadMermaidScript,
   type MathKit,
 } from './embeds.js';
@@ -103,6 +105,9 @@ export class Renderer {
   /** n 番目の図の、最後に描けた結果（入力中に構文エラーになっても、前の図を出したままにする。§7.2） */
   private lastGood: DiagramResult[] = [];
   private mermaidLoaded = false;
+  /** 動く構成図（#107）：ELK を読み込んだか、描いた結果 */
+  private elkLoaded = false;
+  private archs = new Map<string, DiagramResult>();
   /** 資料を開き直すたびに増える。描画の途中で変わったら、その描画をやめる */
   private generation = 0;
   /** プレビューで S を押した・発表を Esc で終えた、など */
@@ -174,9 +179,8 @@ export class Renderer {
       const content = await this.assets.text(m.src);
       if (content !== undefined) archFiles.set(normalizePath(m.src), content);
     }
-    diagnostics.push(
-      ...archDiagnostics(collectArch(slides, (src) => archFiles.get(normalizePath(src)))),
-    );
+    const archSources = collectArch(slides, (src) => archFiles.get(normalizePath(src)));
+    diagnostics.push(...archDiagnostics(archSources));
     let customCss: string | undefined;
     if (deck.meta.css) {
       customCss = await this.assets.text(deck.meta.css);
@@ -214,6 +218,12 @@ export class Renderer {
     // Mermaid の図（#84）：計測用の iframe（テーマの CSS がある）で描く
     const diagram = await this.renderDiagrams(text, deck, page, diagnostics);
     if (diagram) options.diagram = diagram;
+    // 動く構成図（#107）：同じ iframe で ELK を使って配置する
+    const arch = await this.renderArchs(archSources, page);
+    if (arch) {
+      const mermaid = options.diagram;
+      options.diagram = (input) => (input.lang === 'arch' ? arch(input) : mermaid?.(input));
+    }
     check();
 
     // 自動分割：スライドを空にしたデッキの上で、原子の高さを測る（図と数式を描いた後の大きさで）
@@ -439,6 +449,57 @@ export class Renderer {
   }
 
   /** 計測のページ（テーマ・縦横比・カスタム CSS）。変わったときだけ送る */
+  /** 動く構成図を配置して SVG にする（#107）。構成（とページの CSS）が同じなら、前の結果を使う */
+  private async renderArchs(
+    sources: ArchSource[],
+    page: string,
+  ): Promise<DiagramRenderer | undefined> {
+    if (sources.length === 0) return undefined;
+    await this.setMeasurePage(page);
+    const css = hashString(page);
+    const items = sources.map((s) => ({ id: `mds-a-${hashString(s.code)}`, diagram: s.diagram }));
+    const keys = items.map((item) => hashString(`${css}\n${JSON.stringify(item)}`));
+    const missing = items.filter((_, i) => !this.archs.has(keys[i]!));
+    if (missing.length > 0) {
+      if (!this.elkLoaded) {
+        await this.measure.request({ type: 'script', name: 'elk', code: await loadElkScript() });
+        this.elkLoaded = true;
+      }
+      // 表示名の幅を正しく測れるよう、その文字のフォントを先に渡す
+      const labels = missing.flatMap((item) => [
+        ...item.diagram.nodes.map((n) => n.label),
+        ...item.diagram.groups.map((g) => g.label),
+        ...item.diagram.edges.map((e) => e.label ?? ''),
+      ]);
+      await this.sendFonts(
+        this.measure,
+        this.measureFonts,
+        facesFor(labels.join(' '), this.families),
+      );
+      const reply = await this.measure.request<{
+        id: number;
+        type: string;
+        results?: DiagramResult[];
+      }>({ type: 'archs', items: missing });
+      missing.forEach((item) => {
+        const result = reply.results?.[missing.indexOf(item)];
+        if (result) this.archs.set(keys[items.indexOf(item)]!, result);
+      });
+      this.diagramVersion++;
+    }
+    const byCode = new Map<string, DiagramResult>();
+    const bySrc = new Map<string, DiagramResult>();
+    sources.forEach((s, i) => {
+      const drawn = this.archs.get(keys[i]!);
+      if (!drawn) return;
+      const result = 'error' in drawn ? drawn : { ...drawn, scenarios: s.diagram.scenarios };
+      if (s.src !== undefined) bySrc.set(normalizePath(s.src), result);
+      else byCode.set(normalizeCode(s.code), result);
+    });
+    return (input) =>
+      'src' in input ? bySrc.get(normalizePath(input.src)) : byCode.get(normalizeCode(input.code));
+  }
+
   private async setMeasurePage(page: string): Promise<void> {
     if (this.measurePage === page) return;
     if (this.measurePage === undefined) {

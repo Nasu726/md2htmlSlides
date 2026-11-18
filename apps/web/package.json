@@ -29,6 +29,7 @@
     "@mds/runtime": "workspace:*",
     "@mds/themes": "workspace:*",
     "@preact/signals": "2.11.4",
+    "elkjs": "0.12.1",
     "katex": "0.19.1",
     "mermaid": "12.2.0",
     "preact": "10.29.8"

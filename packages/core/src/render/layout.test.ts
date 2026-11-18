@@ -96,3 +96,47 @@ describe('fixtures/05-overrides（利用者の指定）', () => {
     });
   });
 });
+
+describe('動く構成図の配置（#107、arch-diagram.md §5.4）', () => {
+  // 描いた結果の代わり：縦横の大きさと、シナリオ（ステップ3つ）
+  const scenario = {
+    name: '正常時',
+    line: 1,
+    steps: ['送る', '保存する', '返す'].map((title, i) => ({
+      title,
+      actions: [],
+      notes: [],
+      line: i + 2,
+    })),
+  };
+  const drawn = (width: number, height: number) => () => ({
+    svg: '<svg></svg>',
+    width,
+    height,
+    scenarios: [scenario],
+  });
+  const layoutOf = (md: string, width: number, height: number) => {
+    const deck = buildSlides(parseDeck(md));
+    return chooseLayout(deck.slides[0]!, deck.slideLevel, undefined, drawn(width, height));
+  };
+
+  it('横長の図（2.2:1 以上）は説明を下に（stack）、それ以外は図 3：説明 2 の左右（split。図は左）', () => {
+    expect(layoutOf('## A\n\n![](a.arch)\n', 1000, 250).layout).toBe('stack');
+    expect(layoutOf('## A\n\n![](a.arch)\n', 400, 400)).toEqual({
+      layout: 'split',
+      ratio: [3, 2],
+      mediaLeft: true,
+    });
+  });
+
+  it('captions= で、説明の置き方を指定できる。none で説明がなければ media', () => {
+    expect(layoutOf('## A\n\n![](a.arch){captions=side}\n', 1000, 250).layout).toBe('split');
+    expect(layoutOf('## A\n\n![](a.arch){captions=below}\n', 400, 400).layout).toBe('stack');
+    expect(layoutOf('## A\n\n![](a.arch){captions=none}\n', 400, 400).layout).toBe('media');
+    expect(layoutOf('## A\n\n![](a.arch){scenario=none}\n', 400, 400).layout).toBe('media');
+  });
+
+  it('コードブロック（```arch）でも同じ', () => {
+    expect(layoutOf('## A\n\n```arch\na\n```\n', 300, 500).layout).toBe('split');
+  });
+});

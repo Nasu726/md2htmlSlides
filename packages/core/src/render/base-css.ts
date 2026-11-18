@@ -239,6 +239,63 @@ body { margin: 0; background: #d1d5db; }
 .mds-media-frame:has(> .mds-diagram-error) { align-items: center; }
 .mds-media-frame > .mds-diagram-error { height: auto; }
 .mds-diagram > svg { display: block; width: 100%; height: 100%; max-width: none !important; }
+/*
+ * 動く構成図（#107、docs/arch-diagram.md §6.3）：色はテーマの変数で塗る（SVG には書かない）。
+ * 通常は accent、線は muted。グループは surface を地に混ぜた面
+ */
+.mds-arch-svg { overflow: visible; font-family: var(--mds-font-body); }
+.mds-arch-svg text { text-anchor: middle; dominant-baseline: central; }
+.mds-arch-svg .arch-group .shape,
+.mds-arch-svg .arch-group-label rect {
+  fill: color-mix(in srgb, var(--mds-surface) 75%, var(--mds-bg));
+}
+.mds-arch-svg .arch-group .shape { stroke: var(--mds-border); stroke-width: 1.5; stroke-dasharray: 6 4; }
+.mds-arch-svg .arch-group-label text { text-anchor: start; fill: var(--mds-muted); font-size: 16px; font-weight: 600; }
+.mds-arch-svg .arch-edge path { fill: none; stroke: var(--mds-muted); stroke-width: 2.5; }
+.mds-arch-svg .arch-edge .arch-head { fill: var(--mds-muted); stroke: none; }
+.mds-arch-svg .arch-edge-label rect { fill: var(--mds-bg); }
+.mds-arch-svg .arch-edge-label text { fill: var(--mds-muted); font-size: 15px; }
+.mds-arch-svg .arch-node .shape { fill: var(--mds-bg); stroke: var(--mds-accent); stroke-width: 2; }
+.mds-arch-svg .arch-node .rim, .mds-arch-svg .arch-node .icon-line { fill: none; stroke: var(--mds-accent); stroke-width: 2; }
+.mds-arch-svg .arch-node .icon, .mds-arch-svg .arch-node .dot { fill: var(--mds-accent); }
+.mds-arch-svg .arch-node.kind-external .shape { stroke-dasharray: 7 5; }
+.mds-arch-svg .arch-node text { fill: var(--mds-fg); font-size: 20px; font-weight: 500; }
+/* ステップの説明のリスト（§5.4）。図の横では縦に、図の下では横一列に並べる */
+.mds-body .mds-arch-captions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4em;
+  align-content: center;
+  counter-reset: mds-arch;
+  font-size: 0.8em;
+  line-height: 1.35;
+}
+.mds-body .mds-arch-captions.is-row { grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); flex: none; }
+.mds-body .mds-arch-captions li {
+  counter-increment: mds-arch;
+  display: flex;
+  gap: 0.55em;
+  align-items: center;
+  padding: 0.35em 0.6em;
+  border-left: 4px solid transparent;
+  border-radius: 0 var(--mds-radius) var(--mds-radius) 0;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+.mds-body .mds-arch-captions li::before {
+  content: counter(mds-arch);
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 1.7em;
+  height: 1.7em;
+  border-radius: 50%;
+  border: 2px solid var(--mds-accent);
+  color: var(--mds-accent);
+  font-size: 0.75em;
+  font-weight: 700;
+}
 .mds-diagram-error {
   width: 100%;
   display: flex;

@@ -107,6 +107,65 @@ test('書き出した HTML は、使う文字だけに絞ったフォントを�
   expect(family).toMatch(/^"MDS Inter", "MDS Noto Sans JP"/);
 });
 
+test('mds build：動く構成図を配置して SVG にし、fixtures/README のレイアウトで説明を置く（13-arch。#107）', async ({
+  page,
+}) => {
+  const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
+  const result = await build(join(fixtures, '13-arch.md'), { outDir: out });
+  expect(result.measureError).toBeUndefined();
+  const html = readFileSync(result.index, 'utf8');
+  // 書き出した HTML には SVG だけ（配置エンジンは入れない）
+  expect(html).not.toContain('elkjs');
+  await page.goto(pathToFileURL(result.index).href);
+  const slides = page.locator('.mds-deck > .mds-slide');
+  const info = await slides.evaluateAll((els) =>
+    els.map((el) => ({
+      title: el.querySelector('.mds-title')?.textContent ?? '',
+      layout: /layout-(\w+)/.exec(el.className)?.[1],
+      svgs: el.querySelectorAll('.mds-arch-svg').length,
+      nodes: el.querySelectorAll('.mds-arch-svg .arch-node').length,
+      captions: Array.from(el.querySelectorAll('.mds-arch-captions li'), (li) => li.textContent),
+    })),
+  );
+  expect(info.slice(0, 6).map((s) => [s.layout, s.svgs, s.nodes, s.captions.length])).toEqual([
+    ['stack', 1, 7, 4], // 横長なので説明は図の下
+    ['stack', 1, 7, 4],
+    ['stack', 1, 7, 4], // シナリオを省略：最初のシナリオ
+    ['media', 1, 7, 0], // 動きのない構成図
+    ['split', 1, 7, 4], // captions=side
+    ['split', 1, 4, 3], // 上から下で縦長
+  ]);
+  expect(info[1]!.captions).toEqual([
+    '注文を送る',
+    '決済サービスが応答しない',
+    '3回リトライして失敗する',
+    '失敗を通知する',
+  ]);
+  // ノードの重なりがない（どの図でも）
+  const overlaps = await page.locator('.mds-arch-svg').evaluateAll((svgs) =>
+    svgs.map((svg) => {
+      const boxes = Array.from(svg.querySelectorAll('.arch-node .shape'), (n) =>
+        (n as SVGGraphicsElement).getBBox(),
+      );
+      let count = 0;
+      for (let i = 0; i < boxes.length; i++)
+        for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i]!;
+          const b = boxes[j]!;
+          if (
+            a.x < b.x + b.width &&
+            b.x < a.x + a.width &&
+            a.y < b.y + b.height &&
+            b.y < a.y + a.height
+          )
+            count++;
+        }
+      return count;
+    }),
+  );
+  expect(overlaps.every((n) => n === 0)).toBe(true);
+});
+
 test('mds build：動く構成図の書き間違いを、行番号付きで警告する（13-arch。#106）', async () => {
   const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
   const result = await build(join(fixtures, '13-arch.md'), { outDir: out, measure: false });
@@ -128,8 +187,10 @@ test('mds build は Mermaid を SVG にし、構文エラーは枠と行番号�
   const result = await build(join(fixtures, '09-embeds.md'), { outDir: out });
   expect(result.measureError).toBeUndefined();
   const html = readFileSync(result.index, 'utf8');
-  // フローチャート・シーケンス図・文章と並べる・ファイル参照・とても大きな図
-  expect(html.match(/<div class="mds-diagram has-ratio"/g)).toHaveLength(5);
+  // フローチャート・シーケンス図・文章と並べる・ファイル参照・とても大きな図（Mermaid が5つ）と、
+  // 小さな動く構成図（#107）
+  expect(html.match(/<div class="mds-diagram has-ratio"/g)).toHaveLength(6);
+  expect(html.match(/<svg[^>]*class="mds-arch-svg"/g)).toHaveLength(1);
   expect(html.match(/<div class="mds-diagram-error"/g)).toHaveLength(1);
   // 書き出した HTML には Mermaid を含めない（SVG だけ）。配色はテーマ（clean）のアクセント
   expect(html).not.toContain('mermaid.initialize');

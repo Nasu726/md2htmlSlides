@@ -5,6 +5,7 @@ import {
   checkMediaFiles,
   collectArch,
   collectMedia,
+  hashString,
   isLocalPath,
   parseDeck,
   planSplit,
@@ -74,7 +75,8 @@ export async function renderFile(
     const file = resolve(assets.root, src);
     return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
   };
-  diagnostics.push(...archDiagnostics(collectArch(slides, readText)));
+  const archSources = collectArch(slides, readText);
+  diagnostics.push(...archDiagnostics(archSources));
 
   // css: で指定したファイルを、デッキの中だけに効かせて埋め込む
   let customCss: string | undefined;
@@ -157,6 +159,31 @@ export async function renderFile(
         renderOptions.diagram = (input) =>
           'src' in input ? bySrc.get(input.src) : byCode.get(normalizeCode(input.code));
       }
+    }
+  }
+
+  // 動く構成図（#107）：ELK で配置して SVG にしておく。説明のリストと再生のため、シナリオも渡す
+  if (measurer && archSources.length > 0) {
+    const results = await measurer.archs(
+      emptyPage(),
+      archSources.map((s) => ({ id: `mds-a-${hashString(s.code)}`, diagram: s.diagram })),
+    );
+    if (results) {
+      const byCode = new Map<string, DiagramResult>();
+      const bySrc = new Map<string, DiagramResult>();
+      archSources.forEach((s, i) => {
+        const drawn = results[i]!;
+        const result = 'error' in drawn ? drawn : { ...drawn, scenarios: s.diagram.scenarios };
+        if (s.src !== undefined) bySrc.set(s.src, result);
+        else byCode.set(normalizeCode(s.code), result);
+      });
+      const mermaid = renderOptions.diagram;
+      renderOptions.diagram = (input) =>
+        input.lang !== 'arch'
+          ? mermaid?.(input)
+          : 'src' in input
+            ? bySrc.get(input.src)
+            : byCode.get(normalizeCode(input.code));
     }
   }
 

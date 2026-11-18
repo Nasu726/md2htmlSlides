@@ -215,6 +215,25 @@ test('明朝体（academic の見出し）は、academic のときだけ読み�
   }
 });
 
+test('動く構成図：エディタのプレビューでも配置して描き、枚数は mds build と同じ（#107）', async ({
+  page,
+}) => {
+  const name = '13-arch.md';
+  const cli = await build(join(fixtures, name), {
+    outDir: mkdtempSync(join(tmpdir(), 'mds-web-arch-')),
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${origin}/?src=${encodeURIComponent(`${origin}/fixtures/${name}`)}`);
+  await expect(slideCount(page)).toHaveText(`${cli.slides} 枚`);
+  await expect(preview(page).locator('.mds-arch-svg')).toHaveCount(9);
+  await expect(preview(page).locator('.mds-arch-captions').first().locator('li')).toHaveText([
+    '注文を送る',
+    '在庫を確認して保存する',
+    '決済を依頼する',
+    '結果を返す',
+  ]);
+});
+
 test('書いている内容は下書きとして保存され、開き直すと戻る（#73）', async ({ page }) => {
   await page.goto(origin);
   await expect(slideCount(page)).toHaveText(/^\d+ 枚$/);
@@ -318,7 +337,8 @@ test('プレビューでも、コードの色分け・数式・Mermaid を書き
     .setInputFiles(['09-embeds.md', 'assets/flow.mmd'].map((name) => join(fixtures, name)));
   await expect(page.locator('.doc-name')).toHaveText('09-embeds.md');
   // フローチャート・シーケンス図・文章と並べる・ファイル参照・とても大きな図。構文エラーは枠
-  await expect(preview(page).locator('.mds-diagram.has-ratio')).toHaveCount(5, { timeout: 20_000 });
+  // Mermaid が5つと、小さな動く構成図（#107）
+  await expect(preview(page).locator('.mds-diagram.has-ratio')).toHaveCount(6, { timeout: 20_000 });
   await expect(preview(page).locator('.mds-diagram-error')).toHaveCount(1);
   await expect(preview(page).locator('.mds-slide .katex').first()).toBeVisible();
   await expect(preview(page).locator('pre code span[style]').first()).toBeVisible();

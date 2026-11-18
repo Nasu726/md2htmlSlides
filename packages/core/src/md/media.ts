@@ -1,3 +1,4 @@
+import type { ArchScenario } from '../arch/parse.js';
 import type { MarkdownIt, Renderer, StateCore, Token } from 'markdown-it';
 import { cssPosition, isPosition, type Attrs } from '../attrs.js';
 import { embedUrl, mediaKind, type MediaInfo, type MediaKind, type MediaProbe } from '../media.js';
@@ -30,8 +31,12 @@ export type CodeHighlighter = (code: string, lang: string) => string | undefined
 
 /** 図にするもの：コードブロック（```mermaid）の中身か、ファイル（`![](flow.mmd)`）のパス */
 export type DiagramInput = { lang: string; code: string } | { lang: string; src: string };
-/** 描いた図（SVG と、その縦横の大きさ）か、構文エラー */
-export type DiagramResult = { svg: string; width: number; height: number } | { error: string };
+/**
+ * 描いた図（SVG と、その縦横の大きさ）か、構文エラー。
+ * 動く構成図（#107）は、説明のリストと再生のために、読んだシナリオも持つ
+ */
+export type DiagramResult =
+  { svg: string; width: number; height: number; scenarios?: ArchScenario[] } | { error: string };
 /**
  * 図を描く関数（#71）。CLI が書き出しの前にヘッドレス Chromium で描いておき、ここでは結果を返すだけ。
  * 描けないとき（Chromium がないなど）は undefined を返す。
@@ -43,9 +48,10 @@ export function diagramHtml(
   esc: (s: string) => string,
   result: DiagramResult,
   label: string,
+  errorTitle = 'Mermaid の構文エラー',
 ): string {
   if ('error' in result) {
-    return `<div class="mds-diagram-error" role="note"><b>Mermaid の構文エラー</b><span>${esc(result.error)}</span></div>`;
+    return `<div class="mds-diagram-error" role="note"><b>${esc(errorTitle)}</b><span>${esc(result.error)}</span></div>`;
   }
   const ratio = result.width > 0 && result.height > 0 ? result.width / result.height : 1.6;
   return `<div class="mds-diagram has-ratio" style="--mds-ar:${ratio.toFixed(4)}" role="img" aria-label="${esc(label)}">${result.svg}</div>`;
@@ -169,7 +175,10 @@ function mediaElement(
 ): string {
   const flag = (name: string) => attrs?.values[name] !== undefined;
   if (kind === 'diagram' || kind === 'arch') {
-    if (diagram) return diagramHtml(esc, diagram, alt || src);
+    if (diagram) {
+      const title = kind === 'arch' ? '動く構成図を描けません' : undefined;
+      return diagramHtml(esc, diagram, alt || src, title);
+    }
     const label = alt || decodePath(src).split('/').pop() || src;
     return `<span class="mds-media-placeholder" role="img" aria-label="${esc(label)}">${esc(label)}</span>`;
   }
