@@ -260,6 +260,37 @@ body { margin: 0; background: #d1d5db; }
 .mds-arch-svg .arch-node .icon, .mds-arch-svg .arch-node .dot { fill: var(--mds-accent); }
 .mds-arch-svg .arch-node.kind-external .shape { stroke-dasharray: 7 5; }
 .mds-arch-svg .arch-node text { fill: var(--mds-fg); font-size: 20px; font-weight: 500; }
+/* 再生（#108）：今のステップのノードと線を強調し、ほかを薄くする。パケット・バッジ・番号の印 */
+.mds-arch-svg .arch-node, .mds-arch-svg .arch-edge { transition: opacity 0.3s ease; }
+.mds-arch-svg .is-dim { opacity: 0.3; }
+.mds-arch-svg .arch-node.is-active .shape { fill: color-mix(in srgb, var(--mds-accent) 12%, var(--mds-bg)); stroke-width: 3; }
+.mds-arch-svg .arch-edge.is-active path { stroke: var(--mds-accent); stroke-width: 3.5; }
+.mds-arch-svg .arch-edge.is-active .arch-head { fill: var(--mds-accent); }
+.mds-arch-svg .arch-node.is-flash .shape { fill: color-mix(in srgb, var(--mds-accent) 30%, var(--mds-bg)); }
+.mds-arch-svg .arch-temp { fill: none; stroke: #dc2626; stroke-width: 2.5; stroke-dasharray: 5 5; }
+.mds-arch-svg .arch-packet circle { fill: var(--mds-accent); stroke: var(--mds-bg); stroke-width: 3; }
+.mds-arch-svg .arch-packet.is-reply circle { fill: var(--mds-bg); stroke: var(--mds-accent); stroke-dasharray: 4 3; }
+.mds-arch-svg .arch-packet-label {
+  fill: var(--mds-fg);
+  font-size: 15px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--mds-bg);
+  stroke-width: 5px;
+}
+.mds-arch-svg .arch-bubble rect { fill: #0f172a; }
+.mds-arch-svg .arch-bubble text { text-anchor: start; dominant-baseline: auto; fill: #e2e8f0; font: 14px var(--mds-font-mono); }
+.mds-arch-svg .arch-badge rect { fill: #16a34a; }
+.mds-arch-svg .arch-badge.is-error rect { fill: #dc2626; }
+.mds-arch-svg .arch-badge text { fill: #ffffff; font-size: 13px; font-weight: 700; }
+.mds-arch-svg .arch-mark circle { fill: var(--mds-accent); stroke: var(--mds-bg); stroke-width: 2; }
+.mds-arch-svg .arch-mark text { fill: var(--mds-bg); font-size: 12px; font-weight: 700; }
+.mds-body .mds-arch-captions li.is-future { opacity: 0.5; }
+.mds-body .mds-arch-captions li.is-current {
+  border-left-color: var(--mds-accent);
+  background: color-mix(in srgb, var(--mds-accent) 10%, var(--mds-bg));
+  font-weight: 700;
+}
 /* ステップの説明のリスト（§5.4）。図の横では縦に、図の下では横一列に並べる */
 .mds-body .mds-arch-captions {
   list-style: none;

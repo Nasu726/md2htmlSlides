@@ -17,6 +17,14 @@ export const RUNTIME_SCRIPT = `(${startPlayer.toString()})(document);`;
 
 export { startPreview };
 
+/**
+ * 動く構成図の再生（#108）。書き出した HTML の、RUNTIME_SCRIPT より前に入れる
+ * （構成図がある資料のときだけ）
+ */
+export { startArch } from './arch-player.js';
+import { startArch } from './arch-player.js';
+export const ARCH_SCRIPT = `(${startArch.toString()})(document);`;
+
 /** `mds dev` のプレビュー（`/`）に入れるソース。画面に合わせる・S で発表を始める（#60） */
 export const PREVIEW_SCRIPT = `(${startPreview.toString()})(document);`;
 

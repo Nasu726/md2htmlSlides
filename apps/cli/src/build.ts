@@ -16,7 +16,7 @@ import {
   type RenderOptions,
   type SlideDeck,
 } from '@mds/core';
-import { RUNTIME_SCRIPT } from '@mds/runtime';
+import { ARCH_SCRIPT, RUNTIME_SCRIPT } from '@mds/runtime';
 import { SERIF_FAMILY, themeFonts } from '@mds/themes';
 import type { Browser } from 'playwright-core';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -199,8 +199,14 @@ export async function renderFile(
     }
   }
 
+  // 動く構成図の再生（#108）：構成図があり、発表用の runtime を入れるときだけ、その前に入れる
+  const scripts =
+    archSources.length > 0 && htmlOptions.scripts?.includes(RUNTIME_SCRIPT)
+      ? htmlOptions.scripts.flatMap((s) => (s === RUNTIME_SCRIPT ? [ARCH_SCRIPT, s] : [s]))
+      : htmlOptions.scripts;
   let html = renderDeckHtml(slides, {
     ...htmlOptions,
+    ...(scripts ? { scripts } : {}),
     ...renderOptions,
     ...(fonts === 'link' ? { fontCss: linkedFonts('/__mds/fonts') } : {}),
   });

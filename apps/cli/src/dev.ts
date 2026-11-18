@@ -1,5 +1,5 @@
 import type { Diagnostic } from '@mds/core';
-import { PREVIEW_SCRIPT, RUNTIME_SCRIPT } from '@mds/runtime';
+import { ARCH_SCRIPT, PREVIEW_SCRIPT, RUNTIME_SCRIPT } from '@mds/runtime';
 import { createReadStream, existsSync, statSync, watch, type FSWatcher } from 'node:fs';
 import { createServer, type ServerResponse } from 'node:http';
 import { basename, dirname, extname, resolve } from 'node:path';
@@ -107,7 +107,7 @@ export async function startDev(mdFile: string, options: DevOptions = {}): Promis
     preview = await renderFile(file, previewOptions, measurer);
     present = await renderFile(
       file,
-      { scripts: [EXIT_TO_PREVIEW, RUNTIME_SCRIPT, LIVE_RELOAD], fonts: 'link' },
+      { scripts: [EXIT_TO_PREVIEW, ARCH_SCRIPT, RUNTIME_SCRIPT, LIVE_RELOAD], fonts: 'link' },
       measurer,
     );
     version++;
