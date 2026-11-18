@@ -166,6 +166,115 @@ test('mds build：動く構成図を配置して SVG にし、fixtures/README �
   expect(overlaps.every((n) => n === 0)).toBe(true);
 });
 
+test('mds build：動く構成図のシナリオを再生する。進むとパケットが動き、戻ると動かずに前の状態（13-arch。#108）', async ({
+  page,
+}) => {
+  const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
+  const result = await build(join(fixtures, '13-arch.md'), { outDir: out });
+  expect(result.measureError).toBeUndefined();
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const url = pathToFileURL(result.index).href;
+  await page.goto(url);
+  // fixtures/README のステップ数
+  const steps = await page
+    .locator('.mds-deck > .mds-slide')
+    .evaluateAll((els) => els.slice(0, 7).map((el) => Number(el.dataset.steps ?? 0)));
+  expect(steps).toEqual([4, 4, 4, 0, 4, 3, 6]);
+
+  const slide = page.locator('.mds-slide.is-current');
+  const state = () =>
+    slide.evaluate((el) => ({
+      marks: el.querySelectorAll('.arch-mark').length,
+      badges: Array.from(
+        el.querySelectorAll('.arch-badge'),
+        (b) => `${b.textContent}${b.classList.contains('is-error') ? '!' : ''}`,
+      ).sort(),
+      active: Array.from(el.querySelectorAll('.arch-node.is-active'), (n) =>
+        n.getAttribute('data-node'),
+      ),
+      current: el.querySelector('.mds-arch-captions .is-current')?.textContent ?? null,
+      future: el.querySelectorAll('.mds-arch-captions .is-future').length,
+      packets: el.querySelectorAll('.arch-packet').length,
+    }));
+  const jump = async (hash: string) => {
+    await page.evaluate((h) => (location.hash = h), hash);
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe(hash);
+  };
+
+  // 正常時：最初は構成だけ（印・バッジ・強調なし、説明はすべて薄い）
+  expect(await state()).toEqual({
+    marks: 0,
+    badges: [],
+    active: [],
+    current: null,
+    future: 4,
+    packets: 0,
+  });
+  // → でパケットが区間ごとに動き、終わると番号の印が残る
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await state()).packets).toBe(1);
+  await expect.poll(async () => (await state()).marks, { timeout: 5000 }).toBe(2);
+  expect(await state()).toMatchObject({
+    active: ['user', 'web', 'api'],
+    current: '注文を送る',
+    future: 3,
+    packets: 0,
+  });
+  // 2：コードの吹き出しを付けて動き、DB に「保存済み」のバッジ
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => slide.locator('.arch-packet .arch-bubble').count()).toBe(1);
+  await expect.poll(async () => (await state()).badges).toEqual(['保存済み']);
+  // 戻る：アニメーションせずに、すぐ前のステップの状態になる
+  await page.keyboard.press('ArrowLeft');
+  expect(await state()).toMatchObject({ marks: 2, badges: [], packets: 0, current: '注文を送る' });
+
+  // 決済の障害：ステップ3で worker → pay が3回動き、2つの赤いバッジ
+  await jump('#/2/2');
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => slide.locator('.arch-packet-label').first().textContent()).toBe('×3');
+  await expect
+    .poll(async () => (await state()).badges, { timeout: 8000 })
+    .toEqual(['失敗!', '障害!']);
+  // 同じ線を2回通っても、番号の印は重ならない
+  const overlap = await slide.evaluate((el) => {
+    const boxes = Array.from(el.querySelectorAll('.arch-mark'), (m) => m.getBoundingClientRect());
+    return boxes.some((a, i) =>
+      boxes
+        .slice(i + 1)
+        .some((b) => Math.abs(a.x - b.x) < a.width * 0.75 && Math.abs(a.y - b.y) < a.height * 0.75),
+    );
+  });
+  expect(overlap).toBe(false);
+
+  // コードブロックのシナリオ：キャッシュのバッジが「なし」→「あり」に変わる
+  await jump('#/6/1');
+  expect((await state()).badges).toEqual(['なし']);
+  await jump('#/6/3');
+  expect((await state()).badges).toEqual(['あり']);
+
+  // 段階表示と組み合わせる：1 で図が出て（構成だけ）、2〜5 がシナリオの4ステップ、6 は最後の段落
+  await jump('#/7/1');
+  expect(await state()).toMatchObject({ marks: 0, badges: [], active: [] });
+  await jump('#/7/5');
+  expect((await state()).badges).toEqual(['失敗!', '障害!']);
+  await jump('#/7/6');
+  expect(await state()).toMatchObject({ badges: ['失敗!', '障害!'], packets: 0 });
+
+  // 書き間違い：構成にない経路 b -> a は、そのステップのあいだ点線で仮に描く
+  await jump('#/8/2');
+  await expect(slide.locator('.arch-temp')).toHaveCount(1);
+
+  // 発表者ビューの複製でも、バッジはノードの右上に付く（まだ描かれていない複製でも位置がずれない）
+  await jump('#/1/2');
+  const [presenter] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('p')]);
+  const near = await presenter.locator('.mds-pv-current .mds-slide').evaluate((el) => {
+    const badge = el.querySelector('.arch-badge')!.getBoundingClientRect();
+    const db = el.querySelector('.arch-node[data-node="db"]')!.getBoundingClientRect();
+    return Math.abs(badge.right - db.right) < 30 && Math.abs(badge.bottom - db.top) < 30;
+  });
+  expect(near).toBe(true);
+});
+
 test('mds build：動く構成図の書き間違いを、行番号付きで警告する（13-arch。#106）', async () => {
   const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
   const result = await build(join(fixtures, '13-arch.md'), { outDir: out, measure: false });

@@ -1,3 +1,4 @@
+import { archEmbedAttrs, selectArchScenario } from '../render/arch.js';
 import markdownIt, { type MarkdownIt, type StateCore, type Token } from 'markdown-it';
 import type { Attrs } from '../attrs.js';
 import { attrsPlugin, type BlockMeta } from './attrs.js';
@@ -170,7 +171,15 @@ function renderRules(instance: MarkdownIt): void {
       const inner = arch
         ? diagramHtml(instance.utils.escapeHtml, diagram, '動く構成図', '動く構成図を描けません')
         : diagramHtml(instance.utils.escapeHtml, diagram, 'Mermaid の図');
-      return `<div class="mds-media-group is-flex"><figure class="mds-media mds-media-${arch ? 'arch' : 'diagram'}"${stepAttr}><div class="mds-media-frame">${inner}</div></figure></div>\n`;
+      // 動く構成図（#108）：シナリオの再生のための属性
+      const embed =
+        arch && !('error' in diagram)
+          ? archEmbedAttrs(
+              selectArchScenario(diagram.scenarios, (token.meta as BlockMeta | null)?.attrs),
+              instance.utils.escapeHtml,
+            )
+          : '';
+      return `<div class="mds-media-group is-flex"><figure class="mds-media mds-media-${arch ? 'arch' : 'diagram'}"${stepAttr}${embed}><div class="mds-media-frame">${inner}</div></figure></div>\n`;
     }
     const highlight = (env as RenderEnv | undefined)?.highlight;
     const colored =

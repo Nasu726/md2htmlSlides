@@ -21,7 +21,7 @@ import {
   type SlideDeck,
 } from '@mds/core';
 import { collectMermaid, diagramDiagnostic, mathDiagnostics, normalizeCode } from '@mds/embeds';
-import { RUNTIME_SCRIPT } from '@mds/runtime';
+import { ARCH_SCRIPT, RUNTIME_SCRIPT } from '@mds/runtime';
 import { AssetStore, noAssets, normalizePath } from './assets.js';
 import {
   katexFaces,
@@ -543,7 +543,8 @@ location.hash = ${JSON.stringify(`#/${encodeURIComponent(slide)}`)};`;
     return renderDeckHtml(slides, {
       ...options,
       fontCss: await embeddedFontCss(faces),
-      scripts: [setup, RUNTIME_SCRIPT, hostScript('present')],
+      // 動く構成図の再生（#108）は、発表用の runtime より前に入れる
+      scripts: [setup, ARCH_SCRIPT, RUNTIME_SCRIPT, hostScript('present')],
     });
   }
 

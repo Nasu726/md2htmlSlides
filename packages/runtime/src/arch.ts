@@ -236,7 +236,7 @@ export async function renderArch(input: {
         const ty = n.kind === 'client' ? cy + 7 : n.kind === 'database' ? cy + 5 : cy;
         const tx = x + icon + (w - icon - (n.kind === 'queue' ? 24 : 0)) / 2;
         parts.push(
-          `<g class="arch-node kind-${esc(n.kind)}" data-node="${esc(n.id)}">${shape}${decor}<text x="${r1(tx)}" y="${r1(ty)}">${esc(n.label)}</text></g>`,
+          `<g class="arch-node kind-${esc(n.kind)}" data-node="${esc(n.id)}" data-box="${r1(x)} ${r1(y)} ${r1(w)} ${r1(h)}">${shape}${decor}<text x="${r1(tx)}" y="${r1(ty)}">${esc(n.label)}</text></g>`,
         );
       }
 
