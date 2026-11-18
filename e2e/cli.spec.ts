@@ -187,8 +187,9 @@ test('mds pdf：1スライド＝1ページ、--steps ではステップごとの
     out: join(out, 'steps.pdf'),
     steps: true,
   });
-  expect(steps.pages).toBe(36);
-  expect(pdfPages(steps.file)).toBe(36);
+  // コードの行ハイライト（3段 → 2ステップ。#105）を含めて 38 ページ
+  expect(steps.pages).toBe(38);
+  expect(pdfPages(steps.file)).toBe(38);
 });
 
 test('フロントマターの pdf: { steps: each } でも、ステップごとのページにする（#70）', async () => {

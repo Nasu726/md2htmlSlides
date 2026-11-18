@@ -1,5 +1,5 @@
 import { buildSlides, parseDeck, renderDeckHtml } from '@mds/core';
-import { RUNTIME_SCRIPT } from '@mds/runtime';
+import { RUNTIME_SCRIPT, preparePrint } from '@mds/runtime';
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -172,6 +172,41 @@ test('段階的表示：:::steps のリストは入れ子の項目を親と一�
     els.map((el) => getComputedStyle(el).visibility === 'visible'),
   );
   expect(visible).toEqual([true, false, false, false]);
+});
+
+test('コードの行ハイライト：最初は1行目、→ で 2-3 行目 → 5 行目。PDF のステップごとのページも同じ（#105）', async ({
+  page,
+}) => {
+  await open(page, '06-steps.md');
+  const id = await page
+    .locator('.mds-slide:has([data-embed="code-lines"])')
+    .getAttribute('data-id');
+  await page.evaluate((id) => (location.hash = `#/${encodeURIComponent(id!)}`), id);
+  const focused = () =>
+    page.locator('.mds-slide.is-current .mds-line:not(.is-dim)').allTextContents();
+  await expect.poll(focused).toEqual(['const a = 1;']);
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(focused).toEqual(['const b = 2;', 'const c = a + b;']);
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(focused).toEqual(['console.log(c);']);
+  // 戻ると前の段（動きなし）
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(focused).toEqual(['const b = 2;', 'const c = a + b;']);
+
+  // PDF のステップごとのページ：段ごとに1ページ（最後のページは最後の段）
+  await page.evaluate(preparePrint, { steps: 'each' });
+  const pages = await page
+    .locator(`.mds-slide[data-id="${id}"], .mds-slide:not([id]):has([data-embed="code-lines"])`)
+    .evaluateAll((slides) =>
+      slides.map((slide) =>
+        Array.from(slide.querySelectorAll('.mds-line:not(.is-dim)'), (l) => l.textContent),
+      ),
+    );
+  expect(pages).toEqual([
+    ['const a = 1;'],
+    ['const b = 2;', 'const c = a + b;'],
+    ['console.log(c);'],
+  ]);
 });
 
 test('発表者ビュー：P で開き、今と次のスライド・ノート・経過時間を出し、→ で両方が進む', async ({

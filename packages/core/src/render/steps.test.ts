@@ -35,6 +35,7 @@ describe('段階的表示のステップ数', () => {
       ':::row の中で . . .': 1,
       '問題と答え（画像）': 1,
       図にステップを付ける: 1,
+      'コードの行ハイライト（M4）': 2,
       '. . . の範囲は分割しない': 1,
       段階表示のないスライド: 0,
     });
@@ -64,5 +65,55 @@ describe('numberSteps', () => {
     expect(numberSteps(html).html).toBe(
       '<li data-step="3"></li><li data-step="2"></li><li data-step="1"></li><li data-step="1"></li>',
     );
+  });
+});
+
+describe('埋め込みの内部ステップ（#105）', () => {
+  const render = (md: string) =>
+    renderDeckHtml(buildSlides(parseDeck(md)), { fit: false }).match(
+      /<section [^>]*>[\s\S]*?<\/section>/g,
+    )!;
+
+  it('内部ステップは、その位置で続けて番号を取る', () => {
+    const html =
+      '<p data-mds-step="auto"></p><pre data-mds-substeps="3"></pre><p data-mds-step="auto"></p>';
+    expect(numberSteps(html)).toEqual({
+      html: '<p data-step="1"></p><pre data-substeps="2,3,4"></pre><p data-step="5"></p>',
+      steps: 5,
+    });
+  });
+
+  it('コードの行ハイライト {lines} は、最初の表示で1つ目の段、残りの段の数だけステップを取る', () => {
+    const [slide] = render(
+      '## コード\n\n```ts {lines="1|2-3|5"}\nconst a = 1;\nconst b = 2;\nconst c = a + b;\n\nconsole.log(c);\n```\n',
+    );
+    expect(slide).toContain('data-steps="2"');
+    expect(slide).toMatch(
+      /<pre data-embed="code-lines" data-lines="1\|2,3\|5" data-substeps="1,2"/,
+    );
+    // 書き出した状態は最後の段（5行目だけを強調）
+    expect(slide!.match(/class="mds-line( is-dim)?"/g)).toEqual([
+      'class="mds-line is-dim"',
+      'class="mds-line is-dim"',
+      'class="mds-line is-dim"',
+      'class="mds-line is-dim"',
+      'class="mds-line"',
+    ]);
+  });
+
+  it('. . . と組み合わせると、文書の順に番号が続く', () => {
+    const [slide] = render(
+      '## コード {layout=stack}\n\n最初の段落\n\n. . .\n\n```js {lines="1|2"}\na();\nb();\n```\n\n. . .\n\n最後の段落\n',
+    );
+    // 1：コードが出る（1行目を強調）、2：2行目、3：最後の段落
+    expect(slide).toContain('data-steps="3"');
+    expect(slide).toMatch(/data-substeps="2"/);
+    expect(slide!.match(/data-step="(\d)"/g)).toEqual(['data-step="1"', 'data-step="3"']);
+  });
+
+  it('行の指定が読めなければ、ふつうのコードのまま（ステップを取らない）', () => {
+    const [slide] = render('## コード\n\n```ts {lines="x|"}\na();\n```\n');
+    expect(slide).not.toContain('data-substeps');
+    expect(slide).not.toContain('data-steps');
   });
 });

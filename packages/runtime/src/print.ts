@@ -18,6 +18,20 @@ export async function preparePrint(options: { steps: 'final' | 'each' }): Promis
 
   // 1. ステップごとのページ。発表用の印（data-step-hidden）は外し、
   //    印刷用の印（data-step-print-hidden）で、そのページでまだ出ていない要素を隠す
+  // 埋め込みの内部ステップ（#105）：そのページのステップまでに来た段を表示する（既定は最後の段）
+  type EmbedRuntime = { show(el: HTMLElement, stage: number): void };
+  const embeds = (window as unknown as { mdsEmbeds?: Record<string, EmbedRuntime> }).mdsEmbeds;
+  const showEmbeds = (root: ParentNode, upTo: number) => {
+    for (const el of Array.from(root.querySelectorAll<HTMLElement>('[data-substeps]'))) {
+      const stage = (el.dataset.substeps ?? '')
+        .split(',')
+        .filter((n) => n !== '' && Number(n) <= upTo).length;
+      el.dataset.stage = String(stage);
+      embeds?.[el.dataset.embed ?? '']?.show(el, stage);
+    }
+  };
+  for (const slide of slides) showEmbeds(slide, Infinity);
+
   let pages = slides.length;
   if (options.steps === 'each') {
     for (const slide of slides) {
@@ -29,6 +43,7 @@ export async function preparePrint(options: { steps: 'final' | 'each' }): Promis
           el.removeAttribute('data-step-hidden');
           el.toggleAttribute('data-step-print-hidden', Number(el.dataset.step) > k);
         }
+        showEmbeds(page, k);
         if (page !== slide) {
           page.removeAttribute('id');
           slide.before(page);

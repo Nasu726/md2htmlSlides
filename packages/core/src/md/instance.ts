@@ -172,13 +172,23 @@ function renderRules(instance: MarkdownIt): void {
     const highlight = (env as RenderEnv | undefined)?.highlight;
     const colored =
       highlight && lang && !FIGURE_LANGS.has(lang) ? highlight(token.content, lang) : undefined;
-    const html = fence(
+    let html = fence(
       tokens,
       idx,
       colored === undefined ? options : { ...options, highlight: () => colored },
       env,
       renderer,
     );
+    // 行ハイライトの段（{lines="1|2-3|5"}。構文仕様 §5.4、#105）：行ごとに印を付ける。
+    // 最初の表示で1つ目の段を強調し、残りの段の数だけ内部ステップを取る（どの行かは runtime が決める）
+    const lines = (token.meta as BlockMeta | null)?.attrs?.values.lines;
+    const stages = typeof lines === 'string' ? parseLineStages(lines) : [];
+    if (stages.length > 0 && !FIGURE_LANGS.has(lang)) {
+      html = wrapCodeLines(html, stages.at(-1)!).replace(
+        /^<pre/,
+        `<pre data-embed="code-lines" data-lines="${stages.map((s) => s.join(',')).join('|')}" data-mds-substeps="${stages.length - 1}"`,
+      );
+    }
     if (step === undefined) return html;
     return html.replace(/^<pre/, `<pre${stepAttr}`);
   };
@@ -210,4 +220,43 @@ function renderRules(instance: MarkdownIt): void {
     `<div class="mds-c mds-c-${instance.utils.escapeHtml(tokens[idx]!.info)}">\n`;
   rules.mds_container_close = () => '</div>\n';
   rules.mds_directive = () => '';
+}
+
+/**
+ * 行ハイライトの段を読む（`"1|2-3|5"` → [[1], [2, 3], [5]]。`,` で区切って1つの段に複数書ける）。
+ * 読めない部分は捨てる。
+ */
+export function parseLineStages(spec: string): number[][] {
+  return spec
+    .split('|')
+    .map((stage) =>
+      stage.split(',').flatMap((part) => {
+        const m = /^\s*(\d+)\s*(?:-\s*(\d+)\s*)?$/.exec(part);
+        if (!m) return [];
+        const from = Number(m[1]);
+        const to = Math.max(from, Number(m[2] ?? m[1]));
+        return from > 0
+          ? Array.from({ length: Math.min(to - from + 1, 500) }, (_, i) => from + i)
+          : [];
+      }),
+    )
+    .filter((stage) => stage.length > 0);
+}
+
+/**
+ * コードの各行を `<span class="mds-line">` で囲む（色分けの span は行をまたがない）。
+ * 書き出した状態は最後の段（プレビュー・印刷と同じ）：その段の行のほかを薄くする
+ */
+function wrapCodeLines(html: string, last: number[]): string {
+  const focus = new Set(last);
+  return html.replace(
+    /(<code[^>]*>)([\s\S]*?)(<\/code>)/,
+    (_, open: string, body: string, close: string) => {
+      const lines = body.replace(/\n$/, '').split('\n');
+      const wrapped = lines.map(
+        (line, i) => `<span class="mds-line${focus.has(i + 1) ? '' : ' is-dim'}">${line}</span>`,
+      );
+      return `${open}${wrapped.join('\n')}\n${close}`;
+    },
+  );
 }
