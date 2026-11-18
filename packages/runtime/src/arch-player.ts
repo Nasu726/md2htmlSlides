@@ -44,13 +44,16 @@ export function startArch(doc: Document): void {
     svg.querySelector(`.arch-node[data-node="${sel(id)}"]`);
   const edgeOf = (svg: Element, a: string, b: string) =>
     svg.querySelector(`.arch-edge[data-from="${sel(a)}"][data-to="${sel(b)}"]`);
-  const boxOf = (node: Element) =>
-    (node.querySelector('.shape') as SVGGraphicsElement | null)?.getBBox() ?? {
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
-    };
+  /**
+   * ノードの枠（renderArch が data-box に書く）。getBBox は使わない：
+   * 発表者ビューの複製など、まだ描かれていない要素では 0 になるため
+   */
+  const boxOf = (node: Element) => {
+    const [x = 0, y = 0, width = 0, height = 0] = (node.getAttribute('data-box') ?? '')
+      .split(' ')
+      .map(Number);
+    return { x, y, width, height };
+  };
   const pointsOf = (edge: Element): Point[] => {
     const nums = (edge.querySelector('path')?.getAttribute('d') ?? '').match(/-?[\d.]+/g) ?? [];
     const pts: Point[] = [];
@@ -59,20 +62,39 @@ export function startArch(doc: Document): void {
     }
     return pts;
   };
-  /** 区間 a → b の経路。構成にあれば線に沿って（逆向きなら逆にたどる）、なければ中心を結ぶ */
-  const segment = (svg: Element, a: string, b: string) => {
+  /**
+   * 区間 a → b の経路。構成にあれば線に沿って、なければ中心を結ぶ（点線で仮に描く）。
+   * 逆にたどれるのは、応答（-->）か、向きのない線（--・<->）のとき（parseArch の判定と同じ）
+   */
+  const segment = (svg: Element, a: string, b: string, reply: boolean) => {
     const fwd = edgeOf(svg, a, b);
     if (fwd) return { pts: pointsOf(fwd), edge: fwd, temp: false };
     const back = edgeOf(svg, b, a);
-    if (back) return { pts: pointsOf(back).reverse(), edge: back, temp: false };
+    if (back && (reply || back.getAttribute('data-type') !== 'arrow')) {
+      return { pts: pointsOf(back).reverse(), edge: back, temp: false };
+    }
     const na = nodeOf(svg, a);
     const nb = nodeOf(svg, b);
     if (!na || !nb) return undefined;
-    const c = (n: Element) => {
-      const r = boxOf(n);
-      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    // 中心を結ぶ線を、それぞれの枠の外側から始めて終える
+    const ra = boxOf(na);
+    const rb = boxOf(nb);
+    const ca = { x: ra.x + ra.width / 2, y: ra.y + ra.height / 2 };
+    const cb = { x: rb.x + rb.width / 2, y: rb.y + rb.height / 2 };
+    const exit = (c: Point, r: typeof ra, dx: number, dy: number): Point => {
+      const t = Math.min(
+        dx ? r.width / 2 / Math.abs(dx) : Infinity,
+        dy ? r.height / 2 / Math.abs(dy) : Infinity,
+      );
+      return { x: c.x + dx * t, y: c.y + dy * t };
     };
-    return { pts: [c(na), c(nb)] as Point[], edge: undefined, temp: true };
+    const dx = cb.x - ca.x;
+    const dy = cb.y - ca.y;
+    return {
+      pts: [exit(ca, ra, dx, dy), exit(cb, rb, -dx, -dy)],
+      edge: undefined,
+      temp: true,
+    };
   };
   const pathOf = (pts: Point[]) => pts.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' ');
   /** 折れ線の始めから dist の位置と、その区間の向き（単位ベクトル） */
@@ -144,7 +166,7 @@ export function startArch(doc: Document): void {
       }
       a.m.forEach((id) => nodes.add(id));
       for (let i = 0; i + 1 < a.m.length; i++) {
-        const seg = segment(svg, a.m[i]!, a.m[i + 1]!);
+        const seg = segment(svg, a.m[i]!, a.m[i + 1]!, Boolean(a.r[i]));
         if (seg?.edge) edges.add(seg.edge);
       }
     }
@@ -186,7 +208,7 @@ export function startArch(doc: Document): void {
           continue;
         }
         for (let i = 0; i + 1 < a.m.length; i++) {
-          const seg = segment(svg, a.m[i]!, a.m[i + 1]!);
+          const seg = segment(svg, a.m[i]!, a.m[i + 1]!, Boolean(a.r[i]));
           if (!seg) continue;
           // 構成にない経路は、そのステップのあいだだけ点線で描く
           if (seg.temp && k === done - 1) {
@@ -222,7 +244,7 @@ export function startArch(doc: Document): void {
       if ('s' in a) continue;
       for (let rep = 0; rep < (a.x ?? 1); rep++) {
         for (let i = 0; i + 1 < a.m.length; i++) {
-          const seg = segment(svg, a.m[i]!, a.m[i + 1]!);
+          const seg = segment(svg, a.m[i]!, a.m[i + 1]!, Boolean(a.r[i]));
           if (!seg) continue;
           if (seg.temp) make('path', { class: 'arch-temp', d: pathOf(seg.pts) }, fx);
           const packet = make('g', { class: `arch-packet${a.r[i] ? ' is-reply' : ''}` }, fx);

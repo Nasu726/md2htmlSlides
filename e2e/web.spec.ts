@@ -232,6 +232,21 @@ test('動く構成図：エディタのプレビューでも配置して描き�
     '決済を依頼する',
     '結果を返す',
   ]);
+  // 発表でもシナリオを再生する（#108）：→ でパケットが動き、番号の印と説明の強調が残る
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+Home');
+  await page.getByRole('button', { name: '▶ 発表' }).click();
+  const show = page.frameLocator('.present-frame');
+  const current = show.locator('.mds-slide.is-current');
+  await expect(current.locator('.mds-title')).toHaveText('ファイル参照（正常時）');
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.className))
+    .toBe('present-frame');
+  await page.keyboard.press('ArrowRight');
+  await expect(current.locator('.arch-packet')).toHaveCount(1);
+  await expect(current.locator('.arch-mark')).toHaveCount(2);
+  await expect(current.locator('.mds-arch-captions .is-current')).toHaveText('注文を送る');
+  await page.keyboard.press('Escape');
 });
 
 test('書いている内容は下書きとして保存され、開き直すと戻る（#73）', async ({ page }) => {
