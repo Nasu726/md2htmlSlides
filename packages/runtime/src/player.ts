@@ -367,7 +367,9 @@ export function startPlayer(doc: Document): void {
   const setOverview = (on: boolean) => {
     overview = on;
     // 一覧ではすべてのステップを表示する
-    slides.forEach((slide, k) => showSteps(slide, on ? Infinity : k === index ? step : 0, false, on));
+    slides.forEach((slide, k) =>
+      showSteps(slide, on ? Infinity : k === index ? step : 0, false, on),
+    );
     deck.classList.toggle('is-presenting', !on);
     deck.classList.toggle('is-overview', on);
     doc.documentElement.classList.toggle('mds-presenting', !on);
