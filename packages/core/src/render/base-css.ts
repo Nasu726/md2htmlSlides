@@ -106,6 +106,10 @@ body { margin: 0; background: #d1d5db; }
   overflow: hidden;
 }
 .mds-body pre code { padding: 0; background: none; font-size: inherit; }
+/* コードの行ハイライト（{lines}。#105）：今の段の行のほかを薄くする（どの行かは runtime が決める） */
+.mds-line { transition: opacity 0.3s ease; }
+.mds-line.is-dim { opacity: 0.3; }
+[data-no-anim] .mds-line { transition: none; }
 /*
  * コードの色分け（#68）：Shiki の CSS 変数。コードの地はどのテーマでも暗いので、
  * 既定は暗い地に合う配色にし、テーマで変える。

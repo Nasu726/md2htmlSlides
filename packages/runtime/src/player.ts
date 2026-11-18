@@ -269,23 +269,60 @@ export function startPlayer(doc: Document): void {
     }
   };
 
+  /*
+   * 埋め込みの内部ステップ（#105、設計プラン §7.1）。`data-substeps="3,4,5"` の要素は、
+   * 今のステップまでに来た段の数（0〜）を、種類（data-embed）ごとの関数で表示する。
+   * 関数は window.mdsEmbeds に登録する（動く構成図は別のスクリプトが足す）。
+   * show は動きなしで、その段の状態にする（戻る・一覧・発表者ビュー・印刷）。play は進むときの動き。
+   */
+  type EmbedRuntime = {
+    show(el: HTMLElement, stage: number): void;
+    play?(el: HTMLElement, stage: number): void;
+  };
+  const host = win as unknown as { mdsEmbeds?: Record<string, EmbedRuntime> };
+  const embeds = (host.mdsEmbeds ??= {});
+  // コードの行ハイライト（{lines="1|2-3|5"}）：段 0 は1つ目の段。その段の行のほかを薄くする
+  embeds['code-lines'] ??= {
+    show(el, stage) {
+      const focus = new Set(((el.dataset.lines ?? '').split('|')[stage] ?? '').split(','));
+      Array.from(el.querySelectorAll('.mds-line')).forEach((line, i) =>
+        line.classList.toggle('is-dim', !focus.has(String(i + 1))),
+      );
+    },
+  };
+  const stageOf = (el: HTMLElement, upTo: number) =>
+    (el.dataset.substeps ?? '').split(',').filter((n) => n !== '' && Number(n) <= upTo).length;
+  const showEmbeds = (root: ParentNode, upTo: number, animate: boolean) => {
+    for (const el of Array.from(root.querySelectorAll<HTMLElement>('[data-substeps]'))) {
+      const embed = embeds[el.dataset.embed ?? ''];
+      const stage = stageOf(el, upTo);
+      const before = Number(el.dataset.stage ?? -1);
+      el.dataset.stage = String(stage);
+      if (animate && stage === before + 1 && embed?.play) embed.play(el, stage);
+      else embed?.show(el, stage);
+    }
+  };
+
   // 段階的表示：今のステップより後の要素を隠す（構文仕様 §5）
   const stepsOf = (k: number) => Number(slides[k]?.dataset.steps ?? 0);
-  const showSteps = (slide: HTMLElement, upTo: number) => {
+  const showSteps = (slide: HTMLElement, upTo: number, animate = false) => {
     for (const el of Array.from(slide.querySelectorAll<HTMLElement>('[data-step]'))) {
       el.toggleAttribute('data-step-hidden', Number(el.dataset.step) > upTo);
     }
+    showEmbeds(slide, upTo, animate);
   };
 
   const go = (target: number, targetStep = 0) => {
     const next = Math.max(0, Math.min(slides.length - 1, target));
+    const before = step;
     step = Math.max(0, Math.min(stepsOf(next), targetStep));
     const slide = slides[next]!;
     const entering = next !== index;
     // 別のスライドに移るときは、ステップの効果を止めて一瞬で切り替える
     // （隠す要素が表示されてから消えたり、表示する要素がスライドの表示に遅れて出たりするのを防ぐ）
     if (entering) slide.setAttribute('data-no-anim', '');
-    showSteps(slide, overview ? Infinity : step); // 同じスライドの中ではフェードで出す
+    // 同じスライドの中ではフェードで出す。1つ進めたときだけ、埋め込みの動きを見せる
+    showSteps(slide, overview ? Infinity : step, !entering && !overview && step === before + 1);
     if (entering) {
       const previous = slides[index];
       if (previous) playMedia(previous, false);
@@ -467,6 +504,7 @@ export function startPlayer(doc: Document): void {
     for (const el of Array.from(clone.querySelectorAll<HTMLElement>('[data-step]'))) {
       el.toggleAttribute('data-step-hidden', Number(el.dataset.step) > upTo);
     }
+    showEmbeds(clone, upTo, false);
     for (const video of Array.from(clone.querySelectorAll('video'))) {
       video.muted = true;
       video.autoplay = false;

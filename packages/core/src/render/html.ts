@@ -274,21 +274,32 @@ function markTopLevelItems(html: string): string {
 /**
  * ステップの番号を決める（構文仕様 §5.3）。スライドの中を文書順にたどり、自動の印には
  * 「それまでの最大の番号＋1」、明示の番号はそのまま使い、最後に欠けを詰めて 1・2・3… にする。
+ *
+ * 埋め込みの内部ステップ（`data-mds-substeps="N"`。コードの行ハイライト・動く構成図。#105）は、
+ * その位置で N 個の番号を続けて取り、`data-substeps="3,4,5"`（各段が始まるステップ）にする。
  */
 export function numberSteps(html: string): { html: string; steps: number } {
-  const marks: number[] = [];
+  const marks: number[][] = [];
   let max = 0;
-  for (const m of html.matchAll(/data-mds-step="([^"]*)"/g)) {
-    const explicit = Number.parseInt(m[1]!, 10);
-    const n = m[1] === 'auto' || !(explicit > 0) ? max + 1 : explicit;
-    marks.push(n);
+  for (const m of html.matchAll(/data-mds-(step|substeps)="([^"]*)"/g)) {
+    if (m[1] === 'substeps') {
+      const count = Math.max(0, Number.parseInt(m[2]!, 10) || 0);
+      marks.push(Array.from({ length: count }, () => ++max));
+      continue;
+    }
+    const explicit = Number.parseInt(m[2]!, 10);
+    const n = m[2] === 'auto' || !(explicit > 0) ? max + 1 : explicit;
+    marks.push([n]);
     max = Math.max(max, n);
   }
-  const order = [...new Set(marks)].sort((a, b) => a - b);
+  const order = [...new Set(marks.flat())].sort((a, b) => a - b);
   const rank = new Map(order.map((n, i) => [n, i + 1]));
   let i = 0;
   return {
-    html: html.replace(/data-mds-step="[^"]*"/g, () => `data-step="${rank.get(marks[i++]!)}"`),
+    html: html.replace(/data-mds-(step|substeps)="[^"]*"/g, (_, kind: string) => {
+      const nums = marks[i++]!.map((n) => rank.get(n));
+      return kind === 'substeps' ? `data-substeps="${nums.join(',')}"` : `data-step="${nums[0]}"`;
+    }),
     steps: order.length,
   };
 }
