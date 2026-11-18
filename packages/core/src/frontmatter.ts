@@ -35,6 +35,8 @@ export interface DeckMeta {
   css?: string;
   /** PDF の書き出し（構文仕様 §5.5）。steps: each ならステップごとのページにする */
   pdf?: { steps: 'final' | 'each' };
+  /** スライドの切り替え効果（#110）。スライドごとの {transition=…} が優先 */
+  transition?: 'none' | 'fade' | 'slide';
 }
 
 export const DEFAULT_META: Readonly<DeckMeta> = {

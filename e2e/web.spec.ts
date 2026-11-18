@@ -692,6 +692,14 @@ test('挿入メニュー（空の行で /）・構文ヒント・修正の候補
     .getByRole('button', { name: '背景' })
     .click();
   await expect(sheet.locator('h3', { hasText: '背景' })).toBeInViewport();
+  // 切り替え効果（#110）：スライドの {transition=fade} と、フロントマターの transition:
+  await sheet.getByRole('searchbox').fill('切り替え');
+  await expect(sheet.locator('h3')).toHaveText([
+    'スライドの区切りと構成',
+    '資料全体の設定（フロントマター）',
+  ]);
+  await expect(sheet).toContainText('{transition=fade}');
+  await expect(sheet).toContainText('transition:');
   await sheet.getByRole('searchbox').fill('ノート');
   await expect(sheet.locator('h3')).toHaveText(['発表者ノート']);
   await sheet.getByRole('button', { name: '挿入' }).first().click();

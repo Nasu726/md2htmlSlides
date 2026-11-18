@@ -88,7 +88,7 @@ export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): st
 ${BASE_CSS}${themeCss(meta.theme)}${custom}</style>
 </head>
 <body>
-<main class="mds-deck theme-${meta.theme}" style="${style.join(';')}"${options.debug ? ' data-debug=""' : ''}>
+<main class="mds-deck theme-${meta.theme}" style="${style.join(';')}"${meta.transition && meta.transition !== 'none' ? ` data-transition="${meta.transition}"` : ''}${options.debug ? ' data-debug=""' : ''}>
 ${body}
 </main>
 ${[...(options.fit === false ? [] : [FIT_SCRIPT]), ...(options.scripts ?? [])]
@@ -165,6 +165,10 @@ export function renderSlide(
     ...(slide.attrs?.id ? [`id="${esc(slide.attrs.id)}"`] : []),
     ...(numbered.steps > 0 ? [`data-steps="${numbered.steps}"`] : []),
     ...(slide.hidden ? ['data-hidden=""'] : []),
+    // 切り替え効果（#110）：このスライドに入るとき。資料全体の指定より優先
+    ...(typeof slide.attrs?.values.transition === 'string'
+      ? [`data-transition="${esc(slide.attrs.values.transition)}"`]
+      : []),
   ];
   return `<section ${attrs.join(' ')}>\n${parts.join('\n')}\n</section>`;
 }

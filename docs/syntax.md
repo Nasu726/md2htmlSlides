@@ -71,6 +71,7 @@ theme: clean
 | `split` | `auto` / `manual` | `auto` | `manual` では `---` と見出しでだけ区切る（あふれた分は縮小で収める） |
 | `titleSlide` | `auto` / `false` | `auto` | `::maketitle` が無いときに、先頭にタイトルスライドを自動で作るか（§2.2） |
 | `paginate` | 真偽値 | `true` | ページ番号を表示するか |
+| `transition` | `none` / `fade` / `slide` | `none` | スライドの切り替え効果。別のスライドに入るときだけ（同じスライドのステップでは付けない）。スライドごとの `{transition=…}` が優先（§3.3） |
 | `footer` | 文字列 | — | 全スライド共通のフッター |
 | `accent` | 色 | テーマ依存 | アクセントカラーだけを差し替える |
 | `css` | パス | — | カスタムCSS（上級者向け） |
@@ -78,7 +79,7 @@ theme: clean
 
 ### 1.2 後から追加する予定のキー
 
-`toc`（目次スライド）、`breadcrumb`（章名の表示）、`continuation`（続きスライドの見出し表示）、`fit`（あふれたときの方針）、`transition`、`fonts`、`colors`（配色一式）、`background`（全スライドの既定背景）、`math`、`mermaid`、`code`、`html`（生HTMLを許可するか）。
+`toc`（目次スライド）、`breadcrumb`（章名の表示）、`continuation`（続きスライドの見出し表示）、`fit`（あふれたときの方針）、`fonts`、`colors`（配色一式）、`background`（全スライドの既定背景）、`math`、`mermaid`、`code`、`html`（生HTMLを許可するか）。
 
 ---
 
@@ -217,6 +218,7 @@ logo: ./assets/logo.svg
 | `media` | `left` / `right` | `split` でメディアを置く側（既定は `right`） |
 | `align` | `top` / `center` | 縦方向の揃え |
 | `hidden` | — | 発表と書き出しから外す（エディタには表示する） |
+| `transition` | `none` / `fade` / `slide` | このスライドに入るときの切り替え効果。フロントマターの `transition` より優先 |
 | `.クラス名` | — | テーマやカスタムCSSのクラスを付ける |
 
 ### 3.4 要素に付けるキー
