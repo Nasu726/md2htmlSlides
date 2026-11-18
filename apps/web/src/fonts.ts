@@ -46,11 +46,16 @@ const facesOfPoint = (cp: number) => {
   return found;
 };
 
-/** この文字を描くのに要る分割ファイル */
-export function facesFor(text: string): WebFontFace[] {
+/**
+ * この文字を描くのに要る分割ファイル。families はテーマが使う書体（themeFonts。
+ * 明朝体は academic のときだけ読む。#93）
+ */
+export function facesFor(text: string, families: readonly string[]): WebFontFace[] {
   const indices = new Set<number>();
   for (const c of new Set(text + ASCII)) {
-    for (const i of facesOfPoint(c.codePointAt(0)!)) indices.add(i);
+    for (const i of facesOfPoint(c.codePointAt(0)!)) {
+      if (families.includes(FACES[i]!.family)) indices.add(i);
+    }
   }
   return [...indices]
     .sort((a, b) => a - b)

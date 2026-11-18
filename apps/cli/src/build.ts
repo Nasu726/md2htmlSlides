@@ -14,6 +14,7 @@ import {
   type SlideDeck,
 } from '@mds/core';
 import { RUNTIME_SCRIPT } from '@mds/runtime';
+import { SERIF_FAMILY, themeFonts } from '@mds/themes';
 import type { Browser } from 'playwright-core';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -174,7 +175,9 @@ export async function renderFile(
   // 書き出しでは、スライドに表示される文字だけに絞ったフォントを埋め込む（数式のフォントも同じ）
   let fontBytes: number | undefined;
   if (fonts === 'embed') {
-    const subset = await subsetFontCss(visibleText(html), codeText(html));
+    const subset = await subsetFontCss(visibleText(html), codeText(html), {
+      serif: themeFonts(slides.meta.theme).includes(SERIF_FAMILY),
+    });
     const mathSubset = math ? await subsetMathFontCss(math.used()) : { css: '', bytes: 0 };
     html = html.replace(
       '<style>',

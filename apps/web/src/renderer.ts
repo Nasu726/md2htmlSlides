@@ -27,6 +27,7 @@ import {
   loadMermaidScript,
   type MathKit,
 } from './embeds.js';
+import { themeFonts } from '@mds/themes';
 import { embeddedFontCss, facesFor, FontSender, visibleText, type WebFontFace } from './fonts.js';
 import { Frame, hostScript, scriptTag } from './frames.js';
 
@@ -88,6 +89,8 @@ export class Renderer {
   private previewHead: string | undefined;
   /** プレビューに送ったフォント（発表の画面にも同じものを入れる） */
   private previewFaces = new Map<string, WebFontFace>();
+  /** 今のテーマが使う書体 */
+  private families: readonly string[] = themeFonts('clean');
   /** スライドごとの HTML（中身をキーに使い回す）と、それが有効な条件（テーマ・素材・図） */
   private slideHtml = new Map<string, string>();
   private slideContext = '';
@@ -151,6 +154,8 @@ export class Renderer {
     };
     const deck = parseDeck(text);
     let slides = buildSlides(deck);
+    // テーマが使う書体（明朝体は academic のときだけ読む。#93）
+    this.families = themeFonts(deck.meta.theme);
 
     // 素材：縦横を先に読んでおく（描く前にレイアウトを決めるため）
     const media = collectMedia(deck).flatMap((m) => {
@@ -220,7 +225,7 @@ export class Renderer {
           missing.flatMap((j) => [j.skeleton, ...j.atoms, ...j.heads]).join(' '),
         );
         await this.sendFonts(this.measure, this.measureFonts, [
-          ...facesFor(chars),
+          ...facesFor(chars, this.families),
           ...(math ? katexFaces(math) : []),
         ]);
         const reply = await this.measure.request<{
@@ -304,7 +309,7 @@ export class Renderer {
       .filter(([key]) => !this.previewKeys.has(key));
     // フォントは、新しく描いたスライドの文字の分だけ足す（ほかのスライドの文字は送ってある）
     const faces = [
-      ...facesFor(visibleText(changed.map(([, part]) => part).join(' '))),
+      ...facesFor(visibleText(changed.map(([, part]) => part).join(' ')), this.families),
       ...(math ? katexFaces(math) : []),
     ];
     for (const face of faces) this.previewFaces.set(face.url, face);
@@ -385,7 +390,11 @@ export class Renderer {
         this.mermaidLoaded = true;
       }
       // 図の中の文字の幅を正しく測れるよう、その文字のフォントを先に渡す
-      await this.sendFonts(this.measure, this.measureFonts, facesFor(missing.join(' ')));
+      await this.sendFonts(
+        this.measure,
+        this.measureFonts,
+        facesFor(missing.join(' '), this.families),
+      );
       const reply = await this.measure.request<{
         id: number;
         type: string;

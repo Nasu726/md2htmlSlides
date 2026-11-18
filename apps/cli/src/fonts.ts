@@ -7,7 +7,7 @@
  * 文字の形と幅はどちらも同じなので、計測と書き出しの結果はずれない。
  */
 import { visibleText } from '@mds/embeds';
-import { BUNDLED_FONTS } from '@mds/themes';
+import { BUNDLED_FONTS, SERIF_FAMILY } from '@mds/themes';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
@@ -84,6 +84,7 @@ export function linkedFontCss(prefix: string): string {
 const SANS = 'MDS Inter';
 const CJK = 'MDS Noto Sans JP';
 const MONO = 'MDS JetBrains Mono';
+const SERIF = SERIF_FAMILY;
 
 /**
  * 使っている文字だけに絞った @font-face（data: URL で埋め込む）。
@@ -94,11 +95,15 @@ const MONO = 'MDS JetBrains Mono';
  * - JetBrains Mono：コードの文字のうち、範囲にあるもの（コードがなければ含めない）
  * - Noto Sans JP：上の2つで描けない文字
  *
+ * - Noto Serif JP：明朝体を使うテーマ（academic。#93）のときだけ。見出しのほか引用などにも使うので、
+ *   本文の文字をすべて入れる
+ *
  * Noto Sans JP の分割ファイルは範囲が重なっているので、1つの文字は1つのファイルにだけ入れる。
  */
 export async function subsetFontCss(
   text: string,
   code = '',
+  options: { serif?: boolean } = {},
 ): Promise<{ css: string; bytes: number }> {
   const ascii = Array.from({ length: 0x7f - 0x20 }, (_, i) => 0x20 + i);
   const points = (s: string) => Array.from(s, (c) => c.codePointAt(0)!).filter((cp) => cp >= 0x20);
@@ -118,6 +123,7 @@ export async function subsetFontCss(
       ]),
     ],
   ]);
+  if (options.serif) want.set(SERIF, new Set([...sans].filter((cp) => inFamily(SERIF, cp))));
   const rules: string[] = [];
   let bytes = 0;
   for (const face of faces) {

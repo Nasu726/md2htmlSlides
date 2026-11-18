@@ -58,17 +58,21 @@ function withTheme(source: string, theme: string): string {
   return `---\n${replaced}${source.slice(end)}`;
 }
 
-test('dark と bold でも、計測して分割すればあふれない（#66）', async () => {
+test('どのテーマでも、計測して分割すればあふれない（#66・#93）', async () => {
+  test.setTimeout(240_000);
   const root = mkdtempSync(join(tmpdir(), 'mds-theme-'));
   symlinkSync(join(fixtures, 'assets'), join(root, 'assets'));
-  for (const theme of ['dark', 'bold']) {
+  for (const theme of ['dark', 'bold', 'band', 'academic', 'pop']) {
     for (const name of ['01-plain-document', '04-layouts']) {
       const md = join(root, `${name}-${theme}.md`);
       writeFileSync(md, withTheme(readFileSync(join(fixtures, `${name}.md`), 'utf8'), theme));
       const result = await build(md, { outDir: join(root, `${name}-${theme}`) });
       const label = `${name}（${theme}）`;
       expect(result.measureError, label).toBeUndefined();
-      expect(readFileSync(result.index, 'utf8'), label).toContain(`theme-${theme}`);
+      const html = readFileSync(result.index, 'utf8');
+      expect(html, label).toContain(`theme-${theme}`);
+      // 明朝体は academic のときだけ埋め込む（#93）
+      expect(html.includes("font-family:'MDS Noto Serif JP'"), label).toBe(theme === 'academic');
       expect(
         result.diagnostics.filter((d) => d.code === 'slide/overflow'),
         label,

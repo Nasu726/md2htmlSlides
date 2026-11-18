@@ -7,7 +7,7 @@ import {
   type Measurement,
 } from '@mds/core';
 import { renderMermaid } from '@mds/runtime';
-import { BUNDLED_FONTS } from '@mds/themes';
+import { isThemeId, themeFonts } from '@mds/themes';
 import type { Browser, Page } from 'playwright-core';
 import { readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -78,7 +78,7 @@ export class ChromiumMeasurer {
           .flatMap((job) => [job.skeleton, ...job.atoms, ...job.heads])
           .join(' ')
           .replace(/<[^>]*>/g, ' ');
-        const families = JSON.stringify(BUNDLED_FONTS.map((font) => font.family));
+        const families = JSON.stringify(fontFamiliesOf(pageHtml));
         await page.evaluate(
           `Promise.all(${families}.map((family) =>
             document.fonts.load('16px "' + family + '"', ${JSON.stringify(text)}).catch(() => [])))`,
@@ -125,7 +125,7 @@ export class ChromiumMeasurer {
       }
       // 図の中の文字の幅を正しく測れるよう、使う文字の分のフォントを先に読み込む
       if (pageHtml.includes(FONT_HOST)) {
-        const families = JSON.stringify(BUNDLED_FONTS.map((font) => font.family));
+        const families = JSON.stringify(fontFamiliesOf(pageHtml));
         await page.evaluate(
           `Promise.all(${families}.map((family) =>
             document.fonts.load('16px "' + family + '"', ${JSON.stringify(missing.join(' '))}).catch(() => [])))`,
@@ -238,3 +238,9 @@ const MIME: Record<string, string> = {
   avif: 'image/avif',
   svg: 'image/svg+xml',
 };
+
+/** ページのテーマが使う書体（明朝体は academic だけ。#93） */
+function fontFamiliesOf(pageHtml: string): string[] {
+  const theme = /class="mds-deck theme-([\w-]+)/.exec(pageHtml)?.[1] ?? 'clean';
+  return themeFonts(isThemeId(theme) ? theme : 'clean');
+}

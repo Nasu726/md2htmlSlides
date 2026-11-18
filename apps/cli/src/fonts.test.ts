@@ -3,12 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { fontFileFor, fontFiles, linkedFontCss, subsetFontCss, visibleText } from './fonts.js';
 
 describe('同梱するフォント（#67）', () => {
-  it('3つの書体の分割ファイルを、パッケージの CSS から読む', () => {
+  it('4つの書体の分割ファイルを、パッケージの CSS から読む', () => {
     const files = fontFiles();
     const count = (family: string) => files.filter((f) => f.family === family).length;
     expect(count('MDS Noto Sans JP')).toBeGreaterThan(100);
     expect(count('MDS Inter')).toBeGreaterThan(0);
     expect(count('MDS JetBrains Mono')).toBeGreaterThan(0);
+    expect(count('MDS Noto Serif JP')).toBeGreaterThan(100); // academic の見出し（#93）
     for (const file of files) expect(existsSync(file.file), file.path).toBe(true);
     expect(fontFileFor(files[0]!.path)).toBe(files[0]!.file);
     expect(fontFileFor('@fontsource-variable/inter/../../etc/passwd')).toBeUndefined();
@@ -30,6 +31,14 @@ describe('同梱するフォント（#67）', () => {
     expect(css).toContain('U+898b'); // 見
     expect(bytes).toBeGreaterThan(1000);
     expect(bytes).toBeLessThan(80 * 1024);
+  });
+
+  it('明朝体は、使うテーマ（academic）のときだけ埋め込む（#93）', async () => {
+    const plain = await subsetFontCss('見出しの太さ');
+    expect(plain.css).not.toContain("font-family:'MDS Noto Serif JP'");
+    const serif = await subsetFontCss('見出しの太さ', '', { serif: true });
+    expect(serif.css).toContain("font-family:'MDS Noto Serif JP'");
+    expect(serif.bytes).toBeGreaterThan(plain.bytes);
   });
 
   it('HTML から表示される文字を取り出す（スクリプト・スタイル・タグは除く）', () => {

@@ -16,12 +16,19 @@ export const BUNDLED_FONTS = [
   { family: 'MDS Inter', package: '@fontsource-variable/inter' },
   { family: 'MDS Noto Sans JP', package: '@fontsource-variable/noto-sans-jp' },
   { family: 'MDS JetBrains Mono', package: '@fontsource-variable/jetbrains-mono' },
+  // 明朝体（academic テーマの見出し。#93）。欧文も同じ書体で描く
+  { family: 'MDS Noto Serif JP', package: '@fontsource-variable/noto-serif-jp' },
 ] as const satisfies readonly BundledFont[];
+
+/** 明朝体の書体の名前。使うテーマでだけ読み込む（themeUsesSerif） */
+export const SERIF_FAMILY = 'MDS Noto Serif JP';
 
 /** 同梱したフォントが読み込めなかったときに使う、OS のフォント */
 const SANS_FALLBACK = `'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Meiryo', 'IPAPGothic', 'IPAexGothic', sans-serif`;
 
 /** 本文・見出し：欧文は Inter、日本語は Noto Sans JP */
 export const FONT_SANS = `'MDS Inter', 'MDS Noto Sans JP', ${SANS_FALLBACK}`;
+/** 見出し（明朝体）：Noto Serif JP。読み込めなければ OS の明朝体 */
+export const FONT_SERIF = `'MDS Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', 'YuMincho', 'IPAexMincho', 'IPAMincho', serif`;
 /** コード：JetBrains Mono。日本語は Noto Sans JP */
 export const FONT_MONO = `'MDS JetBrains Mono', 'MDS Noto Sans JP', ui-monospace, 'IPAGothic', monospace`;
