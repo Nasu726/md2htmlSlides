@@ -602,7 +602,24 @@ test('挿入メニュー（空の行で /）・構文ヒント・修正の候補
   await page.keyboard.press('Control+/');
   const sheet = page.getByRole('complementary', { name: '早見表' });
   await expect(sheet).toBeVisible();
+  // 役割ごとの分類の見出しの下にまとまる（#99）
+  await expect(sheet.locator('h3')).toHaveText([
+    'スライドの区切りと構成',
+    '並べ方',
+    '段階表示',
+    '画像・動画',
+    '背景',
+    '図・数式・コード',
+    '発表者ノート',
+    '資料全体の設定（フロントマター）',
+  ]);
+  await sheet
+    .getByRole('navigation', { name: '分類' })
+    .getByRole('button', { name: '背景' })
+    .click();
+  await expect(sheet.locator('h3', { hasText: '背景' })).toBeInViewport();
   await sheet.getByRole('searchbox').fill('ノート');
+  await expect(sheet.locator('h3')).toHaveText(['発表者ノート']);
   await sheet.getByRole('button', { name: '挿入' }).first().click();
   await expect(lineWith(page, ':::notes')).toHaveCount(1);
 });

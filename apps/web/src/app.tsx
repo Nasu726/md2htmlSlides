@@ -9,7 +9,8 @@ import {
   urlSource,
   type AssetSource,
 } from './assets.js';
-import { cheatSheet, insertSnippet, type CheatItem } from './assist.js';
+import { insertSnippet } from './assist.js';
+import { cheatGroups, cheatSheet, type CheatItem } from './cheatsheet.js';
 import { createEditor, type Editor } from './editor.js';
 import {
   fixBreak,
@@ -576,24 +577,42 @@ export function App() {
                 value={cheatQuery.value}
                 onInput={(event) => (cheatQuery.value = event.currentTarget.value)}
               />
-              <ul>
-                {CHEAT_ITEMS.filter((item) => {
-                  const q = cheatQuery.value.trim();
-                  return (
-                    !q || item.label.includes(q) || item.code.includes(q) || item.group.includes(q)
-                  );
-                }).map((item, i) => (
-                  <li key={i}>
-                    <div>
-                      <b>{item.label}</b>
-                      <code>{item.code}</code>
-                    </div>
-                    <button type="button" onClick={() => insertCheat(item)}>
-                      挿入
-                    </button>
-                  </li>
+              <nav class="cheat-nav" aria-label="分類">
+                {cheatGroups(CHEAT_ITEMS, cheatQuery.value).map(({ group, short }) => (
+                  <button
+                    key={group}
+                    type="button"
+                    title={group}
+                    onClick={() =>
+                      document
+                        .querySelector(`.cheat-groups section[aria-label="${group}"]`)
+                        ?.scrollIntoView({ block: 'start' })
+                    }
+                  >
+                    {short}
+                  </button>
                 ))}
-              </ul>
+              </nav>
+              <div class="cheat-groups">
+                {cheatGroups(CHEAT_ITEMS, cheatQuery.value).map(({ group, items }) => (
+                  <section key={group} aria-label={group}>
+                    <h3>{group}</h3>
+                    <ul>
+                      {items.map((item) => (
+                        <li key={item.code}>
+                          <div>
+                            <b>{item.label}</b>
+                            <code>{item.code}</code>
+                          </div>
+                          <button type="button" onClick={() => insertCheat(item)}>
+                            挿入
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
               <p class="muted">項目を選ぶと、カーソルの位置に入れる</p>
             </aside>
           )}
