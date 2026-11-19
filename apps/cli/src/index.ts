@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { relative } from 'node:path';
 import { parseArgs } from 'node:util';
 import { build, buildSingle, formatDiagnostic, sizeText } from './build.js';
+import { check, checkExitCode } from './check.js';
 import { startDev } from './dev.js';
 import { pdf } from './pdf.js';
 
@@ -15,6 +16,7 @@ export {
   type BuildResult,
   type SingleResult,
 } from './build.js';
+export { check, checkExitCode, type CheckOptions, type CheckResult } from './check.js';
 export { ChromiumMeasurer } from './measurer.js';
 export { createAssets, type Assets } from './assets.js';
 export { startDev, type DevServer } from './dev.js';
@@ -40,6 +42,11 @@ export const HELP = `mdhs — Markdown から HTML スライドを作る
         --steps                    段階的表示をステップごとのページにする（pdf: { steps: each } と同じ）
   mdhs dev <file.md> [-p <port>]    プレビューを開き、保存するたびに反映する（既定のポートは 3000）
         --host <host>              待ち受けるアドレス（既定は 127.0.0.1）
+  mdhs check <file.md>             書き出さずに確かめ、警告とスライドのあふれを一覧にする。
+                                   終了コードは、エラーがあれば 1（警告だけなら 0）
+        --strict                   警告があっても終了コードを 1 にする
+        --json                     結果を JSON で出す
+        --no-measure               Chromium を使わず、構文の警告だけを確かめる（速い）
   mdhs --version                    バージョンを表示する
   mdhs --help                       このヘルプを表示する
 `;
@@ -70,7 +77,7 @@ export function run(argv: readonly string[]): RunResult {
 /** コマンドを実行して、終了コードを返す。dev はサーバーを止めるまで戻らない。 */
 export async function main(argv: readonly string[], io: Io = defaultIo): Promise<number> {
   const [command, ...rest] = argv;
-  if (command !== 'build' && command !== 'dev' && command !== 'pdf') {
+  if (command !== 'build' && command !== 'dev' && command !== 'pdf' && command !== 'check') {
     const result = run(argv);
     io.out(result.stdout);
     io.err(result.stderr);
@@ -92,6 +99,26 @@ export async function main(argv: readonly string[], io: Io = defaultIo): Promise
   if (!existsSync(file)) {
     io.err(`mdhs ${command}: ファイルが見つかりません: ${file}\n`);
     return 1;
+  }
+
+  if (command === 'check') {
+    const started = performance.now();
+    const result = await check(file, { measure: !args.values['no-measure'] });
+    const code = checkExitCode(result.counts, args.values.strict === true);
+    if (args.values.json) {
+      io.out(`${JSON.stringify({ file, ...result, exitCode: code }, null, 2)}\n`);
+      return code;
+    }
+    for (const diagnostic of result.diagnostics) io.out(`${formatDiagnostic(file, diagnostic)}\n`);
+    if (result.measureError) io.err(`注意: ${result.measureError}。あふれは確かめていません\n`);
+    const seconds = ((performance.now() - started) / 1000).toFixed(1);
+    const { error, warning, info } = result.counts;
+    const found =
+      result.diagnostics.length === 0
+        ? '問題なし'
+        : `エラー ${error}・警告 ${warning}・情報 ${info}`;
+    io.out(`${code === 0 ? '✓' : '✗'} ${file}（${result.slides} 枚、${found}、${seconds} 秒）\n`);
+    return code;
   }
 
   if (command === 'build' && args.values.single) {
@@ -196,6 +223,8 @@ function parseCommand(args: string[]) {
       steps: { type: 'boolean' },
       port: { type: 'string', short: 'p' },
       host: { type: 'string' },
+      strict: { type: 'boolean' },
+      json: { type: 'boolean' },
     },
   });
 }
