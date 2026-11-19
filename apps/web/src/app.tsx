@@ -103,6 +103,13 @@ let changedAt: number | undefined;
 /** 打鍵からプレビューに反映されるまでの時間（ミリ秒。設計プラン §11.1。e2e と計測で読む） */
 const latencies: number[] = [];
 (window as unknown as { mdsLatencies: number[] }).mdsLatencies = latencies;
+/** 描き終わるのを待っている処理（書き出し。#121） */
+let idleWaiters: Array<() => void> = [];
+/** 描いている途中・待っている描画があれば、すべて終わるまで待つ */
+function whenRendered(): Promise<void> {
+  if (!rendering && !pending) return Promise.resolve();
+  return new Promise((resolve) => idleWaiters.push(resolve));
+}
 function scheduleRender(): void {
   if (rendering) {
     pending = true;
@@ -135,6 +142,10 @@ function scheduleRender(): void {
         if (pending) {
           pending = false;
           scheduleRender();
+        } else {
+          const waiters = idleWaiters;
+          idleWaiters = [];
+          for (const resolve of waiters) resolve();
         }
       });
   });
@@ -335,6 +346,41 @@ async function save(): Promise<void> {
   dirty.value = false;
 }
 
+// ---- 単一 HTML の書き出し（#121）：CLI の mds build --single と同じ HTML を1つダウンロードする ----
+async function exportHtml(): Promise<void> {
+  await whenRendered();
+  const out = await renderer.exportHtml();
+  if (!out) return;
+  const name =
+    doc.value.name
+      .split('/')
+      .pop()!
+      .replace(/\.(md|markdown|txt)$/i, '') + '.html';
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([out.html], { type: 'text/html' }));
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  const bytes = new Blob([out.html]).size;
+  const size =
+    bytes < 1024 * 1024
+      ? `${Math.max(1, Math.round(bytes / 1024))} KB`
+      : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  const notes = [
+    ...(out.omitted.length > 0
+      ? [
+          `10 MB を超える動画は埋め込まず、ポスター（なければ枠）にしました：${out.omitted.join('、')}。`,
+        ]
+      : []),
+    ...(out.missing.length > 0
+      ? [`読めなかった素材は、パスのまま残しました：${out.missing.join('、')}。`]
+      : []),
+  ];
+  notice.value = {
+    text: `「${name}」を書き出しました（${size}、素材 ${out.embedded} 個を埋め込み）。${notes.join('')}`,
+  };
+}
+
 // ---- 発表：エディタの上に全画面で出し、Esc でプレビューの同じスライドに戻る ----
 let presenting = false;
 async function present(slide?: string): Promise<void> {
@@ -500,6 +546,13 @@ export function App() {
         </span>
         <button type="button" onClick={() => void save()} title="Ctrl+S">
           {doc.value.kind === 'folder' ? '保存' : 'ダウンロード'}
+        </button>
+        <button
+          type="button"
+          onClick={() => void exportHtml()}
+          title="素材を埋め込んだ HTML を1つ書き出す（ネットワークなしで開いて発表できる）"
+        >
+          HTML を書き出す
         </button>
         <span class="spacer" />
         <button

@@ -7,6 +7,7 @@ import {
   collectMedia,
   hashString,
   isLocalPath,
+  mediaMime,
   parseDeck,
   planSplit,
   renderDeckHtml,
@@ -78,6 +79,30 @@ export interface RenderResult {
  *
  * 計測の結果は、ページの CSS と原子の HTML のハッシュで覚えておき、変わった節だけを測り直す。
  */
+/** 単一 HTML に埋め込む動画の上限（CLI の --video-limit の既定と同じ） */
+const VIDEO_LIMIT = 10 * 1024 * 1024;
+
+export interface ExportedHtml {
+  html: string;
+  /** 埋め込んだ素材の数 */
+  embedded: number;
+  /** 読めなかった素材（パスのまま残した） */
+  missing: string[];
+  /** 大きすぎて埋め込まなかった動画 */
+  omitted: string[];
+}
+
+/** Blob を data: URL にする（種類がわからなければ、拡張子から決める） */
+function dataUrl(blob: Blob, type: string | undefined): Promise<string> {
+  const typed = blob.type || !type ? blob : new Blob([blob], { type });
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(typed);
+  });
+}
+
 export class Renderer {
   private measure: Frame;
   private preview: Frame;
@@ -546,6 +571,47 @@ location.hash = ${JSON.stringify(`#/${encodeURIComponent(slide)}`)};`;
       // 動く構成図の再生（#108）は、発表用の runtime より前に入れる
       scripts: [setup, ARCH_SCRIPT, RUNTIME_SCRIPT, hostScript('present')],
     });
+  }
+
+  /**
+   * 単一 HTML（#121）：発表の画面と同じ HTML から、エディタとのやりとりを除き、
+   * 素材を data: URL で埋め込む（CLI の `mds build --single` と同じ。#120）。
+   * 10 MB を超える動画は埋め込まず、ポスター（なければ枠）にする
+   */
+  async exportHtml(): Promise<ExportedHtml | undefined> {
+    if (!this.last) return undefined;
+    const { slides, options, faces } = this.last;
+    const omitted = new Set<string>();
+    const rendered = renderDeckHtml(slides, {
+      ...options,
+      includeHidden: false,
+      fontCss: await embeddedFontCss(faces),
+      omitVideo: (src) => {
+        const big = (this.assets.size(src) ?? 0) > VIDEO_LIMIT;
+        if (big) omitted.add(src);
+        return big;
+      },
+      scripts: [ARCH_SCRIPT, RUNTIME_SCRIPT],
+    });
+    // 素材の印を data: URL にする（使っている素材だけ）。読めなかった素材は、パスのまま残す
+    const marks = /data:text\/plain,mds-asset=([A-Za-z0-9%._~-]+)/g;
+    const keys = new Set(Array.from(rendered.matchAll(marks), (m) => m[1]!));
+    const urls = new Map<string, string>();
+    const missing: string[] = [];
+    let embedded = 0;
+    for (const key of keys) {
+      const blob = this.assets.blobOf(key);
+      const path = decodeURIComponent(key);
+      if (!blob) {
+        missing.push(path);
+        urls.set(key, encodeURI(path));
+        continue;
+      }
+      urls.set(key, await dataUrl(blob, mediaMime(path)));
+      embedded++;
+    }
+    const html = rendered.replace(marks, (_, key: string) => urls.get(key)!);
+    return { html, embedded, missing, omitted: [...omitted] };
   }
 
   /** 発表の iframe に、素材を渡す */
