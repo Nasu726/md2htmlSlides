@@ -13,7 +13,7 @@
 ## 報告
 
 - 作者への報告は、スクリーンショット・表・図を中心に短く書く。文章だけの報告はしない。
-- 見た目に関わる変更では、Playwright（Chromium）でスクリーンショットを撮り、PR とチャットの報告の両方に載せる。PR 用の画像は `docs/screenshots/<issue番号>/` にコミットする。
+- 見た目に関わる変更では、Playwright（Chromium）でスクリーンショットを撮り、PR とチャットの報告の両方に載せる。PR 用の画像は `docs/screenshots/<issue番号>/` にコミットし、PR の本文ではコミットの SHA を使った URL（`raw.githubusercontent.com/<owner>/<repo>/<SHA>/…`）で参照する（ブランチの名前の URL は、マージ後にブランチを消すと表示されなくなる）。
 - 検証（`spike`）の結果は、表やグラフにして issue に書く。
 
 ## 参照する文書

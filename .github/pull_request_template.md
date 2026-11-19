@@ -12,7 +12,9 @@ Closes #
 
 <!--
 見た目に関わる変更では必須。変更前と変更後を並べる。
-画像は docs/screenshots/<issue番号>/ にコミットして参照する。
+画像は docs/screenshots/<issue番号>/ にコミットし、コミットの SHA を使った URL で参照する
+（https://raw.githubusercontent.com/<owner>/<repo>/<SHA>/docs/screenshots/…）。
+ブランチの名前の URL は、マージ後にブランチを消すと表示されなくなる。
 見た目に関わらない変更なら「なし」と書く。
 -->
 
