@@ -61,6 +61,17 @@ function leftBand(css: string): string {
   return rule?.[1] ?? '';
 }
 
+describe('pop の章扉（#142）', () => {
+  it('一面に塗るのはそのままに、彩度を落としたピンク（#f45e7f）に白い文字と薄い影', () => {
+    const css = themeCss('pop');
+    expect(css).toMatch(/\.layout-section:not\([^)]*\) \{[^}]*#f45e7f;/);
+    expect(css).not.toMatch(/\.layout-section:not\([^)]*\) \{[^}]*#ff4d6d;/);
+    expect(css).toMatch(
+      /\.layout-section:not\([^)]*\) :is\(\.mds-title, \.mds-body\) \{[^}]*text-shadow/,
+    );
+  });
+});
+
 describe('読みやすさ（#131）', () => {
   it('明るいアクセントの bold・pop は、小さな文字のアクセントを少し暗くする（ほかのテーマはアクセントのまま）', () => {
     for (const id of THEMES) {
