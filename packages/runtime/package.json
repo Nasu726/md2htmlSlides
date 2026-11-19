@@ -2,6 +2,7 @@
   "name": "@mds/runtime",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "description": "発表用のプレイヤー（ページ送り・段階表示・発表者ビュー）",
   "type": "module",
   "exports": {

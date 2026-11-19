@@ -168,3 +168,7 @@ mds pdf deck.md                # deck.pdf（--steps でステップごとのペ�
 | `e2e/` | ブラウザでのテスト |
 | `fixtures/` | テスト用の資料 |
 | `spikes/` | 設計を決めるための検証（試作のスクリプトと結果） |
+
+## ライセンス
+
+[MIT License](LICENSE)。書き出した HTML とエディタに同梱しているフォント（SIL Open Font License 1.1）とライブラリのライセンスは、[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) にまとめた。

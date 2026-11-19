@@ -139,6 +139,28 @@ describe('renderDeckHtml', () => {
   });
 });
 
+describe('同梱するフォントと KaTeX の表記（#133）', () => {
+  const deck = buildSlides(parseDeck('## A\n\n本文\n'));
+
+  it('フォントや KaTeX の CSS を入れるときは、その前に著作権とライセンスの表記を入れる', () => {
+    const html = renderDeckHtml(deck, {
+      fit: false,
+      fontCss: '@font-face{font-family:"MDS Inter"}',
+      libraryCss: '.katex{}',
+    });
+    expect(html).toMatch(
+      /\/\* フォント：Inter（Copyright 2016 The Inter Project Authors）.*SIL Open Font License 1\.1.*\*\/\n@font-face/,
+    );
+    expect(html).toMatch(/\/\* KaTeX の CSS とフォント：MIT License.*\*\/\n\.katex/);
+  });
+
+  it('入れないときは、表記も入れない', () => {
+    const html = renderDeckHtml(deck, { fit: false });
+    expect(html).not.toContain('Open Font License');
+    expect(html).not.toContain('KaTeX の CSS');
+  });
+});
+
 describe('formatDate', () => {
   it('言語に合わせて整形し、日付でない文字列はそのまま返す', async () => {
     const { formatDate } = await import('./title.js');

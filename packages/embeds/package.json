@@ -2,6 +2,7 @@
   "name": "@mds/embeds",
   "version": "0.0.0",
   "private": true,
+  "license": "MIT",
   "description": "コードの色分け・数式・図（Shiki・KaTeX・Mermaid）。CLI と Web エディタで同じものを使う",
   "type": "module",
   "exports": {
