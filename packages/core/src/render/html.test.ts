@@ -137,6 +137,30 @@ describe('renderDeckHtml', () => {
     expect(html).not.toContain('<sup>');
     expect(html.match(/A大学/g)).toHaveLength(1);
   });
+
+  it('タイトルスライド：ロゴの置き場所を logo= で選ぶ。既定は文字の上、bottom は日付の下、角はスライドの角（#138）', () => {
+    const md = (attrs: string) =>
+      `---\ntitle: 発表\nlogo: ./logo.svg\ndate: 2026-12-05\n---\n::maketitle${attrs}`;
+    const top = render(md(''));
+    expect(top).toContain('class="mds-slide layout-title variant-center logo-top"');
+    expect(top).toMatch(/<div class="mds-titleblock">\n<img class="mds-logo"/);
+    const bottom = render(md('{logo=bottom}'));
+    expect(sections(bottom)[0]).toContain('logo-bottom');
+    expect(bottom).toMatch(/<p class="mds-date">[^<]*<\/p>\n<img class="mds-logo"/);
+    // 角：文字のかたまりの外（スライドの直下）に置く
+    const corner = render(md('{logo=top-right}'));
+    expect(sections(corner)[0]).toContain('logo-top-right');
+    expect(corner).toMatch(/<img class="mds-logo"[^>]*>\n<div class="mds-titleblock">/);
+    // ロゴがなければ、置き場所のクラスも付けない
+    expect(sections(render('---\ntitle: 発表\n---\n::maketitle{logo=bottom}'))[0]).not.toContain(
+      'logo-',
+    );
+  });
+
+  it('タイトルスライド：logo= の値の書き間違いは警告する（#138）', () => {
+    const deck = parseDeck('---\ntitle: 発表\nlogo: ./logo.svg\n---\n::maketitle{logo=middle}');
+    expect(deck.diagnostics.map((d) => d.code)).toContain('attrs/invalid-value');
+  });
 });
 
 describe('同梱するフォントと KaTeX の表記（#133）', () => {

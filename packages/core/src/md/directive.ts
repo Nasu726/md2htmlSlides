@@ -2,6 +2,7 @@ import type { MarkdownIt, StateBlock } from 'markdown-it';
 import { parseAttrs, type Attrs } from '../attrs.js';
 import { DIRECTIVE_NAMES } from '../syntax/elements.js';
 import { fileLine, type ParseEnv } from './env.js';
+import { reportInvalidValues } from './attrs.js';
 
 export type DirectiveMeta = {
   name: string;
@@ -34,8 +35,10 @@ function directive(state: StateBlock, startLine: number, _endLine: number, silen
   let attrs: Attrs | undefined;
   if (m[2]) {
     const result = parseAttrs(m[2]);
-    if (result.ok) attrs = result.attrs;
-    else
+    if (result.ok) {
+      attrs = result.attrs;
+      reportInvalidValues(result.invalid, env, fileLine(env, startLine));
+    } else
       env.diagnostics.push({
         severity: 'warning',
         code: 'attrs/unknown-key',

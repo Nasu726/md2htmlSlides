@@ -590,7 +590,34 @@ body { margin: 0; background: #d1d5db; }
   letter-spacing: 0.06em;
   color: var(--mds-accent-text, var(--mds-accent));
 }
-.mds-logo { height: calc(44px * var(--mds-fit, 1)); width: auto; align-self: inherit; }
+/*
+ * ロゴ（#138）：縦横比を保って、幅 260・高さ 110 の枠の内側に収める（横長・正方形・縦長のどれでも見える大きさ）。
+ * 置き場所は ::maketitle{logo=…}：top（既定。文字の上）・bottom（日付の下）・スライドの角。
+ * 角はスライドの端から余白の 1.5 倍だけ内側。左右の半分が背景のときは、文字の側の角に置く
+ */
+.mds-logo {
+  width: auto;
+  height: auto;
+  max-width: calc(260px * var(--mds-fit, 1));
+  max-height: calc(110px * var(--mds-fit, 1));
+  align-self: inherit;
+}
+.layout-title {
+  --mds-logo-x: calc(var(--mds-pad-x) * 1.5);
+  --mds-logo-y: calc(var(--mds-pad-y) * 1.5);
+  --mds-logo-left: 0px;
+  --mds-logo-right: 0px;
+  --mds-logo-bottom: 0px;
+}
+.layout-title.has-bg-left { --mds-logo-left: calc(var(--mds-w) / 2); }
+.layout-title.has-bg-right { --mds-logo-right: calc(var(--mds-w) / 2); }
+/* .mds-slide > :not(.mds-bg, .mds-footer) の position: relative より強くする */
+.mds-slide.layout-title > .mds-logo { position: absolute; z-index: 1; }
+.logo-top-left > .mds-logo { top: var(--mds-logo-y); left: calc(var(--mds-logo-left) + var(--mds-logo-x)); }
+.logo-top-right > .mds-logo { top: var(--mds-logo-y); right: calc(var(--mds-logo-right) + var(--mds-logo-x)); }
+.logo-bottom-left > .mds-logo { bottom: calc(var(--mds-logo-bottom) + var(--mds-logo-y)); left: calc(var(--mds-logo-left) + var(--mds-logo-x)); }
+.logo-bottom-right > .mds-logo { bottom: calc(var(--mds-logo-bottom) + var(--mds-logo-y)); right: calc(var(--mds-logo-right) + var(--mds-logo-x)); }
+.logo-bottom .mds-titleblock > .mds-logo { margin-top: 0.6em; }
 .mds-authors { display: flex; flex-wrap: wrap; gap: 0 1.2em; margin-top: 0.8em !important; }
 .mds-affiliations {
   display: flex;

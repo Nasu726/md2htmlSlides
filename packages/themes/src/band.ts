@@ -113,6 +113,9 @@ ${selector} .layout-section:not([class*='has-bg-']) {
   padding-left: calc(var(--mds-w) * 0.28 + 64px);
 }
 ${selector} .layout-title:not([class*='has-bg-']) .mds-titleblock { align-items: flex-start; text-align: left; }
+/* ロゴを角に置くとき（#138）：左の縦の帯と、下の帯に重ならないようにする */
+${selector} .layout-title { --mds-logo-bottom: var(--mds-band-foot); }
+${selector} .layout-title:not([class*='has-bg-']) { --mds-logo-left: calc(var(--mds-w) * 0.28); }
 ${selector} .layout-section:not([class*='has-bg-']) .mds-title::before { background: var(--mds-band); }
 `;
 }

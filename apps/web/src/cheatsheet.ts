@@ -142,6 +142,7 @@ export const CHEAT_SECTIONS: ReadonlyArray<{
       { directive: 'maketitle' },
       { container: 'maketitle' },
       { attr: 'variant' },
+      { attr: 'logo', sample: 'logo=bottom-right' },
       { snippet: '1枚にまとめる' },
       { container: 'keep' },
       { attr: 'keep' },

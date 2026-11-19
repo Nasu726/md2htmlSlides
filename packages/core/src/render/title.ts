@@ -1,6 +1,7 @@
 import type { Block } from '../ir.js';
 import { md } from '../md/instance.js';
 import type { Slide, SlideDeck } from '../slides.js';
+import type { LogoPlace } from '../syntax/elements.js';
 import type { RenderEnv } from '../md/media.js';
 import { findBackground, isBackgroundBlock, renderBackground } from './background.js';
 import { renderNotes } from './html.js';
@@ -43,6 +44,9 @@ export function renderTitleSlide(
 ): string {
   const { meta } = deck;
   const variant = slide.attrs?.values.variant === 'left' ? 'left' : 'center';
+  // ロゴの置き場所（#138）。値はパーサが LOGO_PLACES で確かめている
+  const place = (slide.attrs?.values.logo as LogoPlace | undefined) ?? 'top';
+  const corner = place !== 'top' && place !== 'bottom';
 
   // 背景にする画像（`{bg}`・`{bg=left}`・`{bg=right}`）と、それ以外の補足
   const background = findBackground(slide.blocks);
@@ -52,7 +56,8 @@ export function renderTitleSlide(
   const title = slide.titleOverride?.title ?? meta.title ?? '';
   const subtitle = slide.titleOverride?.subtitle ?? meta.subtitle;
   const parts: string[] = [];
-  if (meta.logo) parts.push(`<img class="mds-logo" src="${esc(assetUrl(meta.logo))}" alt="">`);
+  const logo = meta.logo ? `<img class="mds-logo" src="${esc(assetUrl(meta.logo))}" alt="">` : '';
+  if (logo && place === 'top') parts.push(logo);
   if (meta.event) parts.push(`<p class="mds-event">${esc(meta.event)}</p>`);
   parts.push(
     `<h1 class="mds-title">${phraseBreaks(slide.titleOverride ? md.renderInline(title, env) : esc(title), meta.lang)}</h1>`,
@@ -63,6 +68,7 @@ export function renderTitleSlide(
   }
   parts.push(...renderAuthors(deck));
   if (meta.date) parts.push(`<p class="mds-date">${esc(formatDate(meta.date, meta.lang))}</p>`);
+  if (logo && place === 'bottom') parts.push(logo);
   if (extra.length > 0) parts.push(`<div class="mds-title-extra">\n${renderBlocks(extra)}</div>`);
 
   const bg = background ? renderBackground(background, env) : undefined;
@@ -70,12 +76,13 @@ export function renderTitleSlide(
     'mds-slide',
     'layout-title',
     `variant-${variant}`,
+    ...(logo ? [`logo-${place}`] : []),
     ...(bg?.classes ?? []),
     ...(slide.attrs?.classes ?? []),
   ];
   const bgHtml = bg?.html ?? '';
   return `<section class="${classes.map(esc).join(' ')}" data-id="${esc(slide.id)}" data-kind="title" data-src="${slide.src.start}-${slide.src.end}"${slide.hidden ? ' data-hidden=""' : ''}>
-${bgHtml}<div class="mds-titleblock">
+${bgHtml}${logo && corner ? `${logo}\n` : ''}<div class="mds-titleblock">
 ${parts.join('\n')}
 </div>
 ${renderNotes(slide, deck.slideLevel, env)}</section>`;
