@@ -56,7 +56,18 @@ export function renderBackground(
 ): { html: string; classes: string[] } {
   const { media, position } = bg;
   const values = media.attrs?.values ?? {};
-  const url = env.assetUrl ? env.assetUrl(media.src) : media.src;
+  // 単一 HTML に埋め込まない動画（#120）：ポスターがあれば画像として、なければ暗い面を敷く
+  const isVideo = mediaKind(media.src) === 'video';
+  let decoded = media.src;
+  try {
+    decoded = decodeURI(media.src);
+  } catch {
+    // そのまま使う
+  }
+  const omitted = isVideo && Boolean(env.omitVideo?.(decoded));
+  const poster = omitted && typeof values.poster === 'string' ? values.poster : undefined;
+  const src = poster ?? media.src;
+  const url = env.assetUrl ? env.assetUrl(src) : src;
   const blur = typeof values.blur === 'string' ? Number(values.blur) : 0;
   // fill=blur は「帯をぼかした画像で埋めて、全体を収める」なので、fit=contain になる
   const fillBlur = values.fill === 'blur' && values.fit !== 'cover';
@@ -86,17 +97,21 @@ export function renderBackground(
 
   const filter = blur > 0 ? `filter:blur(${blur}px);transform:scale(1.04);` : '';
   const cssUrl = url.replace(/["'()\\\s]/g, (c) => encodeURIComponent(c));
-  const video = mediaKind(media.src) === 'video';
+  const video = isVideo && !omitted;
   const place = pos ? (video ? `object-position:${pos};` : `background-position:${pos};`) : '';
-  const layer = video
-    ? `<video class="mds-bg-media" src="${esc(url)}" style="${filter}${place}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`
-    : `<div class="mds-bg-media" style="background-image:url('${esc(cssUrl)}');${filter}${place}"></div>`;
-  // 帯を埋める、ぼかした同じ画像・動画（全面を覆うように拡大して、後ろに置く）
-  const fill = !fillBlur
-    ? ''
+  const blank = omitted && !poster;
+  const layer = blank
+    ? `<div class="mds-bg-media" style="background:#1e293b"></div>`
     : video
-      ? `<video class="mds-bg-fill" src="${esc(url)}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`
-      : `<div class="mds-bg-fill" style="background-image:url('${esc(cssUrl)}')"></div>`;
+      ? `<video class="mds-bg-media" src="${esc(url)}" style="${filter}${place}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`
+      : `<div class="mds-bg-media" style="background-image:url('${esc(cssUrl)}');${filter}${place}"></div>`;
+  // 帯を埋める、ぼかした同じ画像・動画（全面を覆うように拡大して、後ろに置く）
+  const fill =
+    !fillBlur || blank
+      ? ''
+      : video
+        ? `<video class="mds-bg-fill" src="${esc(url)}" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>`
+        : `<div class="mds-bg-fill" style="background-image:url('${esc(cssUrl)}')"></div>`;
   const overlay =
     dim !== undefined && dim > 0 ? `<div class="mds-bg-dim" style="opacity:${dim}"></div>` : '';
   const classes = [

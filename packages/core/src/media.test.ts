@@ -130,6 +130,31 @@ describe('本文中の画像・動画の描画', () => {
     expect(render('## A\n\n![d](d.webm)')).toContain('<video src="d.webm" controls ');
   });
 
+  it('単一 HTML に埋め込まない動画（#120）は、ポスター（なければ枠）に、背景はポスターか暗い面にする', () => {
+    const omit = (markdown: string) => {
+      const html = renderDeckHtml(buildSlides(parseDeck(markdown)), {
+        fit: false,
+        omitVideo: (src) => src === 'big.mp4',
+      });
+      return html.slice(html.indexOf('<main'));
+    };
+    const poster = omit('## A\n\n![デモ](big.mp4){controls poster=p.jpg}');
+    expect(poster).not.toContain('<video');
+    expect(poster).toContain('<img class="mds-video-poster" src="p.jpg" alt="デモ">');
+    expect(omit('## A\n\n![デモ](big.mp4)')).toContain(
+      '<span class="mds-media-placeholder" role="img" aria-label="▶ デモ">▶ デモ</span>',
+    );
+    // 上限より小さい動画は、そのまま
+    expect(omit('## A\n\n![s](small.mp4)')).toContain('<video src="small.mp4"');
+    // 背景の動画
+    const bg = omit('## A\n\n![](big.mp4){bg}\n\n本文');
+    expect(bg).not.toContain('<video');
+    expect(bg).toContain('<div class="mds-bg-media" style="background:#1e293b"></div>');
+    expect(omit('## A\n\n![](big.mp4){bg poster=p.jpg}\n\n本文')).toContain(
+      `style="background-image:url('p.jpg');"`,
+    );
+  });
+
   it('YouTube は埋め込みプレイヤーにする', () => {
     const html = render('## A\n\n![紹介](https://youtu.be/dQw4w9WgXcQ){autoplay muted}');
     expect(html).toContain('mds-media-embed');

@@ -42,6 +42,8 @@ export interface RenderOptions {
   scripts?: string[];
   /** 画像・動画・ロゴのパスを、書き出し先での URL に置き換える関数 */
   assetUrl?: (src: string) => string;
+  /** 単一 HTML（#120）に埋め込まない動画なら true。ポスター（なければ枠）に置き換える */
+  omitVideo?: (src: string) => boolean;
   /** 同梱するフォントの @font-face（docs/design.md §6）。デッキの外にも効くように、先頭に置く */
   fontCss?: string;
   /** コードの色分け（#68）。色は span の CSS 変数（--mds-code-token-…）で、テーマが決める */
@@ -70,6 +72,7 @@ export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): st
     lang: meta.lang,
     ...(options.probe ? { probe: options.probe } : {}),
     ...(options.assetUrl ? { assetUrl: options.assetUrl } : {}),
+    ...(options.omitVideo ? { omitVideo: options.omitVideo } : {}),
     ...(options.highlight ? { highlight: options.highlight } : {}),
     ...(options.diagram ? { diagram: options.diagram } : {}),
     ...(options.math ? { math: options.math } : {}),
