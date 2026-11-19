@@ -644,6 +644,8 @@ body { margin: 0; background: #d1d5db; }
 .mds-slide.bg-tone-dark {
   --mds-fg: #ffffff;
   --mds-muted: rgb(255 255 255 / 0.82);
+  /* 小さな文字のアクセント（章の名前・statement の見出しなど）も、画像の上では白にする（#131） */
+  --mds-accent-text: #ffffff;
   --mds-surface: rgb(255 255 255 / 0.14);
   color: var(--mds-fg);
 }
@@ -651,6 +653,7 @@ body { margin: 0; background: #d1d5db; }
 .mds-slide.bg-tone-light {
   --mds-fg: #0f172a;
   --mds-muted: #334155;
+  --mds-accent-text: var(--mds-fg);
   --mds-surface: rgb(255 255 255 / 0.55);
   color: var(--mds-fg);
 }

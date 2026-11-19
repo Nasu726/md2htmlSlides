@@ -45,6 +45,17 @@ describe('buildSlides', () => {
     expect(summary('## A\n\n本文\n\n---\n\n---\n\n2枚目')).toEqual(['content:A:1', 'content:A+:1']);
   });
 
+  it('中身のない見出し（## だけ）は「見出しが空」と警告し、本文もなければスライドを作らない（#131）', () => {
+    const deck = slidesOf('## A\n\n本文\n\n## 空の節\n\n##\n');
+    expect(deck.slides.map((s) => s.heading?.text)).toEqual(['A', '空の節']);
+    expect(deck.diagnostics.map((d) => [d.code, d.line])).toEqual([['heading/empty', 7]]);
+    // 本文があれば、見出しのないスライドとして残す
+    expect(summary('## A\n\n本文\n\n##\n\n空の見出しの本文')).toEqual([
+      'content:A:1',
+      'content::1',
+    ]);
+  });
+
   it('*** と ___ は区切らない', () => {
     expect(summary('## A\n\n上\n\n***\n\n下')).toEqual(['content:A:3']);
   });

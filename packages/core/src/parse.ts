@@ -92,6 +92,15 @@ export function parseDeck(source: string): Deck {
           line: src.end,
         });
       }
+      if (heading.text.trim() === '') {
+        // 中身のない見出し（`##` だけ）：本文もなければ、スライドを作らない（slides.ts。#131）
+        diagnostics.push({
+          severity: 'warning',
+          code: 'heading/empty',
+          message: '見出しが空です。見出しの文字を書くか、行を消してください',
+          line: src.start,
+        });
+      }
       while (stack[stack.length - 1]!.level >= heading.level) stack.pop();
       const attrs = (token.meta as BlockMeta | null)?.attrs;
       const section: MutableSection = {
