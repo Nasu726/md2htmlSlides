@@ -1,6 +1,6 @@
 ---
 title: Markdownで作るスライド
-subtitle: PowerPointにうんざりしたので
+subtitle: PowerPointをやめました
 author: 山田 太郎
 affiliation: ○○大学
 date: today
