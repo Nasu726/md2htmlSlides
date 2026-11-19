@@ -370,6 +370,9 @@ async function addOverflow(
   }
 }
 
+/** 動画の上限（MB）をバイトにする。負の数（-1）は無制限、0 は動画を埋め込まない（#124） */
+const videoLimitBytes = (mb: number) => (mb < 0 ? Infinity : mb * 1024 * 1024);
+
 export interface SingleOptions {
   /** 書き出す HTML のパス */
   out: string;
@@ -377,7 +380,7 @@ export interface SingleOptions {
   measure?: boolean;
   /** 使っている文字だけに絞ったフォントを埋め込む（既定は埋め込む） */
   fonts?: boolean;
-  /** これより大きい動画（MB）は埋め込まない（既定は 10） */
+  /** これより大きい動画（MB）は埋め込まない（既定は 10。0 は動画を埋め込まない、-1 は無制限） */
   videoLimit?: number;
 }
 
@@ -405,7 +408,7 @@ export async function buildSingle(mdFile: string, options: SingleOptions): Promi
       {
         scripts: [RUNTIME_SCRIPT],
         ...(options.fonts === false ? {} : { fonts: 'embed' as const }),
-        embed: { videoLimit: (options.videoLimit ?? 10) * 1024 * 1024 },
+        embed: { videoLimit: videoLimitBytes(options.videoLimit ?? 10) },
       },
       measurer,
     );
