@@ -1,5 +1,5 @@
 slideLevel: 2
-slides: 19
+slides: 18
   1. [content] ## 空行のない ---  L15  #空行のない----
   2. [content] ## この行の直後に空行なしで --- を書くと、この行は見出しになる  L17-L20  #この行の直後に空行なしで-----を書くとこの行は見出しになる
        paragraph
@@ -34,4 +34,3 @@ slides: 19
  17. [content] ## タスクリストと打ち消し線  L117-L121  #タスクリストと打ち消し線
        list
  18. [content] ## 空の節  L123  #空の節
- 19. [content] ##   L125  #section

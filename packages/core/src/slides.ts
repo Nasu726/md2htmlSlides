@@ -190,6 +190,12 @@ class Builder {
   constructor(private readonly slideLevel: number) {}
 
   visit(section: SectionNode, chapter: string | undefined): void {
+    // 中身のない見出し（`##` だけ）で、本文も子の節もない：スライドを作らない（警告は parse.ts。#131）
+    const empty =
+      section.heading?.text.trim() === '' &&
+      section.children.length === 0 &&
+      section.blocks.every((b) => b.kind === 'comment');
+    if (empty) return;
     const heading = toSlideHeading(section);
     if (section.level < this.slideLevel) {
       // 章扉：見出しと、章の導入文（直下のブロック）

@@ -40,7 +40,7 @@ body { margin: 0; background: #d1d5db; }
   font-size: var(--mds-fs-small);
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: var(--mds-accent);
+  color: var(--mds-accent-text, var(--mds-accent));
 }
 
 .mds-title {
@@ -85,7 +85,7 @@ body { margin: 0; background: #d1d5db; }
 .mds-body li > p { margin: 0; }
 .mds-body li > ul, .mds-body li > ol { margin-top: 0.25em; font-size: 0.92em; }
 .mds-body li::marker { color: var(--mds-accent); }
-.mds-body a { color: var(--mds-accent); }
+.mds-body a { color: var(--mds-accent-text, var(--mds-accent)); }
 .mds-body code {
   font-family: var(--mds-font-mono);
   font-size: 0.88em;
@@ -229,7 +229,8 @@ body { margin: 0; background: #d1d5db; }
   border: 2px dashed var(--mds-border);
   border-radius: var(--mds-radius);
   background: var(--mds-surface);
-  color: var(--mds-muted);
+  /* 薄い地の上でも読めるように、本文の色に少し寄せる（#131） */
+  color: color-mix(in srgb, var(--mds-muted) 80%, var(--mds-fg));
   font-size: 0.7em;
 }
 .is-rigid .mds-media-placeholder { aspect-ratio: 16 / 9; }
@@ -349,7 +350,7 @@ body { margin: 0; background: #d1d5db; }
   height: 1.7em;
   border-radius: 50%;
   border: 2px solid var(--mds-accent);
-  color: var(--mds-accent);
+  color: var(--mds-accent-text, var(--mds-accent));
   font-size: 0.75em;
   font-weight: 700;
 }
@@ -457,7 +458,7 @@ body { margin: 0; background: #d1d5db; }
 .layout-statement { justify-content: center; }
 .layout-statement > .mds-title {
   font-size: var(--mds-fs-small);
-  color: var(--mds-accent);
+  color: var(--mds-accent-text, var(--mds-accent));
   letter-spacing: 0.04em;
 }
 .layout-statement > .mds-title::after { display: none; }
@@ -543,7 +544,7 @@ body { margin: 0; background: #d1d5db; }
   background: var(--mds-surface);
 }
 .mds-card > * { margin: 0; }
-.mds-card h3, .mds-card h4 { color: var(--mds-accent); }
+.mds-card h3, .mds-card h4 { color: var(--mds-accent-text, var(--mds-accent)); }
 
 /* 短い項目が多いリストは2段組 */
 .mds-list-cols > ul, .mds-list-cols > ol { display: block; columns: 2; column-gap: 2.5em; }
@@ -561,16 +562,19 @@ body { margin: 0; background: #d1d5db; }
   [data-step], .mds-step-group > * { transition: none; }
 }
 
-/* タイトルスライド（構文仕様 §2.2） */
+/*
+ * タイトルスライド（構文仕様 §2.2）。収まらないときは、fitSlides が --mds-fit で文字とロゴを縮める（#131）
+ */
 .layout-title { justify-content: center; }
 .mds-titleblock {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.45em;
+  font-size: calc(1em * var(--mds-fit, 1));
 }
 .mds-titleblock > * { margin: 0; }
-.layout-title .mds-title { font-size: var(--mds-fs-title); line-height: 1.2; }
+.layout-title .mds-title { font-size: calc(var(--mds-fs-title) * var(--mds-fit, 1)); line-height: 1.2; }
 .mds-subtitle { font-size: 1.15em; color: var(--mds-muted); text-wrap: balance; word-break: auto-phrase; }
 /*
  * 日本語の見出しは、core が BudouX で文節の切れ目に <wbr> を入れているので、そこでだけ改行する
@@ -581,12 +585,12 @@ body { margin: 0; background: #d1d5db; }
   overflow-wrap: anywhere;
 }
 .mds-event {
-  font-size: var(--mds-fs-small);
+  font-size: calc(var(--mds-fs-small) * var(--mds-fit, 1));
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: var(--mds-accent);
+  color: var(--mds-accent-text, var(--mds-accent));
 }
-.mds-logo { height: 44px; width: auto; align-self: inherit; }
+.mds-logo { height: calc(44px * var(--mds-fit, 1)); width: auto; align-self: inherit; }
 .mds-authors { display: flex; flex-wrap: wrap; gap: 0 1.2em; margin-top: 0.8em !important; }
 .mds-affiliations {
   display: flex;
@@ -636,11 +640,13 @@ body { margin: 0; background: #d1d5db; }
 .has-bg-left .mds-titleblock { margin-left: calc(var(--mds-w) / 2 - var(--mds-pad-x) + 48px); }
 .has-bg-right .mds-titleblock { margin-right: calc(var(--mds-w) / 2 - var(--mds-pad-x) + 48px); }
 /* 半分が背景のときは幅が半分になるので、タイトルを少し小さくする */
-.layout-title.has-bg-left .mds-title, .layout-title.has-bg-right .mds-title { font-size: calc(var(--mds-fs-title) * 0.78); }
+.layout-title.has-bg-left .mds-title, .layout-title.has-bg-right .mds-title { font-size: calc(var(--mds-fs-title) * 0.78 * var(--mds-fit, 1)); }
 /* 全面の背景の上の文字：暗い背景には明るい文字、明るい背景には暗い文字（明るさは CLI が測る） */
 .mds-slide.bg-tone-dark {
   --mds-fg: #ffffff;
   --mds-muted: rgb(255 255 255 / 0.82);
+  /* 小さな文字のアクセント（章の名前・statement の見出しなど）も、画像の上では白にする（#131） */
+  --mds-accent-text: #ffffff;
   --mds-surface: rgb(255 255 255 / 0.14);
   color: var(--mds-fg);
 }
@@ -648,6 +654,7 @@ body { margin: 0; background: #d1d5db; }
 .mds-slide.bg-tone-light {
   --mds-fg: #0f172a;
   --mds-muted: #334155;
+  --mds-accent-text: var(--mds-fg);
   --mds-surface: rgb(255 255 255 / 0.55);
   color: var(--mds-fg);
 }

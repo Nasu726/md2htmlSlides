@@ -61,6 +61,17 @@ function leftBand(css: string): string {
   return rule?.[1] ?? '';
 }
 
+describe('読みやすさ（#131）', () => {
+  it('明るいアクセントの bold・pop は、小さな文字のアクセントを少し暗くする（ほかのテーマはアクセントのまま）', () => {
+    for (const id of THEMES) {
+      const has = themeCss(id).includes(
+        '--mds-accent-text: color-mix(in srgb, var(--mds-accent) 78%, #000);',
+      );
+      expect(has, id).toBe(id === 'bold' || id === 'pop');
+    }
+  });
+});
+
 describe('band・academic・pop（#93）', () => {
   it('band の帯の色は accent に合わせて変わる', () => {
     const css = themeCss('band');

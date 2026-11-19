@@ -8,6 +8,7 @@ diagnostics
   L36 warning container/unknown: 未知のコンテナ「colums」。中身は普通に表示します
   L42 warning container/unclosed: 「:::row」を閉じる「:::」がありません。45行目の見出しの直前で閉じたものとして扱います
   L47 warning directive/unknown: 未定義の指示「::toc」。文字のまま表示します
+  L125 warning heading/empty: 見出しが空です。見出しの文字を書くか、行を消してください
 sections
   (先頭)  L8-L125
     - comment  L9-L13

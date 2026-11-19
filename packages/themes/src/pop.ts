@@ -12,6 +12,8 @@ export const POP_TOKENS = `
   --mds-fg: #2b2d42;
   --mds-muted: #676b85;
   --mds-accent: #ff4d6d;
+  /* 小さな文字に使うアクセントの色（明るいピンクのままだと地の色で 3.1:1 なので、少し暗くする。#131） */
+  --mds-accent-text: color-mix(in srgb, var(--mds-accent) 78%, #000);
   --mds-surface: #ffffff;
   --mds-border: #2b2d42;
   --mds-code-bg: #2b2d42;
@@ -133,7 +135,7 @@ ${selector} .mds-event {
   width: fit-content;
   padding: 0.25em 0.9em;
   border-radius: 999px;
-  background: var(--mds-accent);
+  background: var(--mds-accent-text);
   color: #ffffff;
 }
 `;

@@ -31,7 +31,7 @@ export const ACADEMIC_TOKENS = `
   --mds-code-token-keyword: #a2223a;
   --mds-code-token-string: #0b5a3a;
   --mds-code-token-string-expression: #0b5a3a;
-  --mds-code-token-comment: #6e7781;
+  --mds-code-token-comment: #636b75;
   --mds-code-token-function: #5b3cc4;
   --mds-code-token-constant: #0550ae;
   --mds-code-token-parameter: #8a4600;

@@ -27,8 +27,10 @@ export const BOLD_TOKENS = `
   --mds-pad-x: 80px;
   --mds-pad-y: 56px;
   --mds-radius: 4px;
-  /* 色面の色。accent: で変えると一緒に変わる（色面の中では --mds-accent を別の色にするため分ける） */
+  /* 見出しの下の線・強調の色。accent: で変えると一緒に変わる */
   --mds-strong: var(--mds-accent);
+  /* 小さな文字に使うアクセントの色（明るいオレンジのままだと白地で 3.3:1 なので、少し暗くする。#131） */
+  --mds-accent-text: color-mix(in srgb, var(--mds-accent) 78%, #000);
   /* コードの色分け（#68）：黒い地に、はっきりした色。キーワードはアクセントに近いオレンジ */
   --mds-code-token-keyword: #ff8a50;
   --mds-code-token-string: #fde047;
