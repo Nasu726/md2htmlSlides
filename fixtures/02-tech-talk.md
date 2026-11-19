@@ -4,7 +4,7 @@ subtitle: モノレポのキャッシュ設計を見直す
 author: 山田 太郎
 affiliation: 株式会社サンプル 開発基盤チーム
 date: 2026-11-20
-event: Frontend LT Night #42
+event: "Frontend LT Night #42"
 logo: ./assets/logo.svg
 theme: dark
 footer: "#frontend_lt"

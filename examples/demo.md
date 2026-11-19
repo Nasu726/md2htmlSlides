@@ -1,10 +1,10 @@
 ---
 title: Markdownで作るスライド
-subtitle: PowerPointにうんざりしたので
+subtitle: PowerPointをやめました
 author: 山田 太郎
 affiliation: ○○大学
 date: today
-event: 社内勉強会 #12
+event: "社内勉強会 #12"
 theme: clean
 footer: 構文仕様 v0.1 サンプル
 ---

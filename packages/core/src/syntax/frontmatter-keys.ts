@@ -30,7 +30,7 @@ export interface FrontmatterKey {
   docAnchor: string;
 }
 
-const MVP = 'syntax.md#11-最初に用意するキーmvp';
+const KEY_LIST = 'syntax.md#11-キーの一覧';
 
 export const FRONTMATTER_KEYS: readonly FrontmatterKey[] = [
   {
@@ -38,64 +38,70 @@ export const FRONTMATTER_KEYS: readonly FrontmatterKey[] = [
     summary: 'タイトルスライドとブラウザのタイトルに使う',
     value: { type: 'string' },
     titleInfo: true,
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
-  { name: 'subtitle', summary: '副題', value: { type: 'string' }, titleInfo: true, docAnchor: MVP },
+  {
+    name: 'subtitle',
+    summary: '副題',
+    value: { type: 'string' },
+    titleInfo: true,
+    docAnchor: KEY_LIST,
+  },
   {
     name: 'author',
     summary: '著者。所属が違う場合は { name, affiliation } の配列で書く',
     value: { type: 'authors' },
     titleInfo: true,
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
   {
     name: 'affiliation',
     summary: '全員に共通の所属',
     value: { type: 'string' },
     titleInfo: true,
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
   {
     name: 'date',
     summary: '日付。today は発表日に置き換わる。日付以外の文字列はそのまま表示する',
     value: { type: 'date' },
     titleInfo: true,
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
   {
     name: 'event',
     summary: '発表の場（勉強会名・学会名など）',
     value: { type: 'string' },
     titleInfo: true,
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
   {
     name: 'logo',
     summary: 'タイトルスライドに表示するロゴ',
     value: { type: 'path' },
     titleInfo: true,
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
   {
     name: 'theme',
     summary: 'テーマ',
     value: { type: 'enum', values: THEMES },
     default: 'clean',
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
   {
     name: 'aspect',
     summary: '縦横比（1280×720 / 960×720 / 1280×800）',
     value: { type: 'enum', values: ['16:9', '4:3', '16:10'] },
     default: '16:9',
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
   {
     name: 'lang',
     summary: '言語。改行規則とフォントの選択に使う',
     value: { type: 'string' },
     default: 'ja',
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
   {
     name: 'slideLevel',
@@ -109,7 +115,7 @@ export const FRONTMATTER_KEYS: readonly FrontmatterKey[] = [
     summary: 'auto は自動で分割、manual は --- と見出しでだけ区切る',
     value: { type: 'enum', values: ['auto', 'manual'] },
     default: 'auto',
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
   {
     name: 'titleSlide',
@@ -123,28 +129,33 @@ export const FRONTMATTER_KEYS: readonly FrontmatterKey[] = [
     summary: 'ページ番号を表示するか',
     value: { type: 'boolean' },
     default: true,
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
   {
     name: 'transition',
     summary: 'スライドの切り替え効果（none / fade / slide）',
     value: { type: 'enum', values: ['none', 'fade', 'slide'] },
     default: 'none',
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
   {
     name: 'footer',
     summary: '全スライド共通のフッター',
     value: { type: 'string' },
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
   {
     name: 'accent',
     summary: 'アクセントカラーだけを差し替える',
     value: { type: 'color' },
-    docAnchor: MVP,
+    docAnchor: KEY_LIST,
   },
-  { name: 'css', summary: 'カスタムCSS（上級者向け）', value: { type: 'path' }, docAnchor: MVP },
+  {
+    name: 'css',
+    summary: 'カスタムCSS（上級者向け）',
+    value: { type: 'path' },
+    docAnchor: KEY_LIST,
+  },
   {
     name: 'pdf',
     summary: 'PDF の書き出し（steps: each でステップごとのページにする）',

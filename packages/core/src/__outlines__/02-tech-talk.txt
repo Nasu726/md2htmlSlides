@@ -4,7 +4,7 @@ meta
   authors: 山田 太郎（株式会社サンプル 開発基盤チーム）
   affiliation: 株式会社サンプル 開発基盤チーム
   date: 2026-11-20
-  event: Frontend LT Night
+  event: Frontend LT Night #42
   logo: ./assets/logo.svg
   footer: #frontend_lt
   theme=dark aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=auto paginate=true
