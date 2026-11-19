@@ -14,6 +14,11 @@ export type RenderEnv = {
   probe?: MediaProbe;
   /** 書き出し先での URL に置き換える関数（素材をコピーする CLI が使う） */
   assetUrl?: (src: string) => string;
+  /**
+   * 単一 HTML（#120）に埋め込まない動画（大きすぎる動画）なら true。
+   * 動画の代わりにポスター（なければ枠）を出す。背景の動画も同じ
+   */
+  omitVideo?: (src: string) => boolean;
   /** デッキの言語（見出しの文節改行に使う） */
   lang?: string;
   /**
@@ -131,14 +136,16 @@ export function renderMedia(
       : undefined;
   const width = widthOf(token);
   const url = (path: string) => (env?.assetUrl ? env.assetUrl(path) : path);
+  // 単一 HTML に埋め込まない動画（#120）
+  const omitted = kind === 'video' && Boolean(env?.omitVideo?.(decodePath(src)));
 
   if (!meta?.figure) {
     // 文中の画像：縦横比で伸縮しない。属性のクラスと ID、幅だけを付ける
-    const element = mediaElement(esc, kind, src, alt, attrs, info, false, url, diagram);
+    const element = mediaElement(esc, kind, src, alt, attrs, info, false, url, diagram, omitted);
     const extra = classAndId(esc, attrs) + (width ? ` style="width:${esc(width)}"` : '');
     return element.replace(/^<(\w+)/, (_, tag: string) => `<${tag}${extra}`);
   }
-  const element = mediaElement(esc, kind, src, alt, attrs, info, true, url, diagram);
+  const element = mediaElement(esc, kind, src, alt, attrs, info, true, url, diagram, omitted);
 
   const title = token.attrGet('title');
   const caption =
@@ -178,6 +185,8 @@ function mediaElement(
   url: (path: string) => string,
   /** 図のファイル（.mmd）を描いた結果 */
   diagram?: DiagramResult,
+  /** 単一 HTML に埋め込まない動画（#120）：ポスター（なければ枠）を出す */
+  omitted = false,
 ): string {
   const flag = (name: string) => attrs?.values[name] !== undefined;
   if (kind === 'diagram' || kind === 'arch') {
@@ -225,6 +234,14 @@ function mediaElement(
     (known ? ` class="has-ratio"` : '') +
     (styles.length > 0 ? ` style="${esc(styles.join(';'))}"` : '') +
     (known ? ` width="${known.width}" height="${known.height}"` : '');
+  if (kind === 'video' && omitted) {
+    const poster = attrs?.values.poster;
+    if (typeof poster === 'string') {
+      return `<img class="mds-video-poster${known ? ' has-ratio' : ''}" src="${esc(url(poster))}" alt="${esc(alt)}"${ratio.replace(' class="has-ratio"', '')}>`;
+    }
+    const label = `▶ ${alt || decodePath(src).split('/').pop() || src}`;
+    return `<span class="mds-media-placeholder" role="img" aria-label="${esc(label)}">${esc(label)}</span>`;
+  }
   if (kind === 'video') {
     const parts = [`src="${esc(url(src))}"`];
     // 再生の方法を何も指定しなければ、操作ボタンを出す（再生できなくならないように）

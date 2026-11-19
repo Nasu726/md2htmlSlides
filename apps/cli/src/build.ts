@@ -20,7 +20,7 @@ import { ARCH_SCRIPT, RUNTIME_SCRIPT } from '@mds/runtime';
 import { SERIF_FAMILY, themeFonts } from '@mds/themes';
 import type { Browser } from 'playwright-core';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createAssets, registerDeckAssets, type Assets } from './assets.js';
 import { FONT_HOST, codeText, linkedFontCss, subsetFontCss, visibleText } from './fonts.js';
@@ -61,10 +61,17 @@ export interface Rendered {
  */
 export async function renderFile(
   mdFile: string,
-  options: Pick<RenderOptions, 'scripts' | 'debug' | 'includeHidden'> & { fonts?: FontMode } = {},
+  options: Pick<RenderOptions, 'scripts' | 'debug' | 'includeHidden'> & {
+    fonts?: FontMode;
+    /**
+     * 単一 HTML（#120）：素材を data: URL で埋め込む。videoLimit（バイト）より大きい動画は
+     * 埋め込まず、ポスター（なければ枠）にして警告する。計測は今までどおりの URL で行う
+     */
+    embed?: { videoLimit: number };
+  } = {},
   measurer?: ChromiumMeasurer,
 ): Promise<Rendered> {
-  const { fonts, ...htmlOptions } = options;
+  const { fonts, embed, ...htmlOptions } = options;
   const source = readFileSync(mdFile, 'utf8');
   const deck = parseDeck(source);
   let slides = buildSlides(deck);
@@ -204,11 +211,15 @@ export async function renderFile(
     archSources.length > 0 && htmlOptions.scripts?.includes(RUNTIME_SCRIPT)
       ? htmlOptions.scripts.flatMap((s) => (s === RUNTIME_SCRIPT ? [ARCH_SCRIPT, s] : [s]))
       : htmlOptions.scripts;
+  // 単一 HTML（#120）：素材を data: URL にし、大きすぎる動画はポスター（なければ枠）にする
+  const omitVideo = (src: string) => (assets.bytes(src) ?? 0) > (embed?.videoLimit ?? Infinity);
+  if (embed) diagnostics.push(...omittedVideos(deck, assets, embed.videoLimit));
   let html = renderDeckHtml(slides, {
     ...htmlOptions,
     ...(scripts ? { scripts } : {}),
     ...renderOptions,
     ...(fonts === 'link' ? { fontCss: linkedFonts('/__mds/fonts') } : {}),
+    ...(embed ? { assetUrl: (src: string) => assets.dataUrl(src), omitVideo } : {}),
   });
   // 書き出しでは、スライドに表示される文字だけに絞ったフォントを埋め込む（数式のフォントも同じ）
   let fontBytes: number | undefined;
@@ -233,6 +244,37 @@ export async function renderFile(
     ...(fontBytes !== undefined ? { fontBytes } : {}),
     ...(cssFile ? { cssFile } : {}),
   };
+}
+
+/** 大きさの表示（1 MB 未満は KB） */
+export const sizeText = (bytes: number) =>
+  bytes < 1024 * 1024
+    ? `${Math.max(1, Math.round(bytes / 1024))} KB`
+    : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+
+/** 単一 HTML に埋め込まない（大きすぎる）動画の警告 */
+function omittedVideos(deck: Deck, assets: Assets, limit: number): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  for (const media of collectMedia(deck)) {
+    if (media.kind !== 'video' || !isLocalPath(media.src)) continue;
+    const src = decodeSrc(media.src);
+    const size = assets.bytes(src);
+    if (size === undefined || size <= limit) continue;
+    const poster = media.attrs?.values.poster;
+    const instead =
+      typeof poster === 'string'
+        ? 'ポスターの画像を表示します'
+        : media.attrs?.values.bg !== undefined
+          ? '背景は暗い面にします（poster= で代わりの画像を指定できます）'
+          : '枠だけを表示します（poster= で代わりの画像を指定できます）';
+    out.push({
+      severity: 'warning',
+      code: 'export/video-omitted',
+      message: `動画が大きいので（${sizeText(size)}。上限 ${sizeText(limit)}）、単一 HTML には埋め込みません：${src}。${instead}`,
+      line: media.line,
+    });
+  }
+  return out;
 }
 
 function decodeSrc(src: string): string {
@@ -297,15 +339,85 @@ export async function build(mdFile: string, options: BuildOptions): Promise<Buil
       diagnostics: rendered.diagnostics,
       ...(rendered.fontBytes !== undefined ? { fontBytes: rendered.fontBytes } : {}),
     };
-    if (measurer) {
-      const browser = await measurer.browser();
-      if (browser) {
-        result.diagnostics = [...result.diagnostics, ...(await checkOverflow(index, browser))];
-        result.diagnostics.sort((a, b) => a.line - b.line);
-      } else {
-        result.measureError = measurer.error ?? 'Chromium を起動できませんでした';
-      }
-    }
+    if (measurer) await addOverflow(result, measurer, index);
+    return result;
+  } finally {
+    await measurer?.close();
+  }
+}
+
+/** 書き出した HTML を開いて、収まらないスライドの警告を足す（開けなければ理由を残す） */
+async function addOverflow(
+  result: { diagnostics: Diagnostic[]; measureError?: string },
+  measurer: ChromiumMeasurer,
+  file: string,
+): Promise<void> {
+  const browser = await measurer.browser();
+  if (browser) {
+    result.diagnostics = [...result.diagnostics, ...(await checkOverflow(file, browser))];
+    result.diagnostics.sort((a, b) => a.line - b.line);
+  } else {
+    result.measureError = measurer.error ?? 'Chromium を起動できませんでした';
+  }
+}
+
+export interface SingleOptions {
+  /** 書き出す HTML のパス */
+  out: string;
+  /** ヘッドレス Chromium で計測して自動で分割し、収まらないスライドを調べる（既定は行う） */
+  measure?: boolean;
+  /** 使っている文字だけに絞ったフォントを埋め込む（既定は埋め込む） */
+  fonts?: boolean;
+  /** これより大きい動画（MB）は埋め込まない（既定は 10） */
+  videoLimit?: number;
+}
+
+export interface SingleResult {
+  /** 書き出した HTML の絶対パス */
+  file: string;
+  slides: number;
+  /** HTML の大きさ（バイト） */
+  bytes: number;
+  /** 埋め込んだ素材（大きい順。パスは資料のフォルダから） */
+  embedded: Array<{ src: string; bytes: number }>;
+  diagnostics: Diagnostic[];
+  measureError?: string;
+}
+
+/**
+ * 素材を埋め込んだ HTML を1つだけ書き出す（#120、docs/design.md §10）。
+ * ネットワークなしで開いて発表できる（YouTube・Vimeo を除く）。
+ */
+export async function buildSingle(mdFile: string, options: SingleOptions): Promise<SingleResult> {
+  const measurer = options.measure === false ? undefined : new ChromiumMeasurer();
+  try {
+    const rendered = await renderFile(
+      mdFile,
+      {
+        scripts: [RUNTIME_SCRIPT],
+        ...(options.fonts === false ? {} : { fonts: 'embed' as const }),
+        embed: { videoLimit: (options.videoLimit ?? 10) * 1024 * 1024 },
+      },
+      measurer,
+    );
+    const file = resolve(options.out);
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, rendered.html);
+    const root = rendered.assets.root;
+    const result: SingleResult = {
+      file,
+      slides: rendered.slides.slides.filter((slide) => !slide.hidden).length,
+      bytes: Buffer.byteLength(rendered.html),
+      embedded: rendered.assets
+        .embedded()
+        .sort((a, b) => b[1] - a[1])
+        .map(([path, bytes]) => ({
+          src: relative(root, path).startsWith('..') ? path : relative(root, path),
+          bytes,
+        })),
+      diagnostics: rendered.diagnostics,
+    };
+    if (measurer) await addOverflow(result, measurer, file);
     return result;
   } finally {
     await measurer?.close();

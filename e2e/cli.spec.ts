@@ -1,7 +1,14 @@
-import { build, pdf, startDev, type DevServer } from '@mds/cli';
+import { build, buildSingle, pdf, startDev, type DevServer } from '@mds/cli';
 import { preparePrint } from '@mds/runtime';
 import { expect, test } from '@playwright/test';
-import { cpSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -315,6 +322,81 @@ test('動く構成図のカメラ：文字が 14px より小さい図だけ、�
   const wide = await camera();
   expect(wide).toMatchObject({ zoomed: false, full: true });
   expect(wide.label).toBeGreaterThanOrEqual(14);
+});
+
+test('mds build --single：素材のない別のフォルダで、ネットワークなしで開いて発表できる（02・09・13。#120）', async ({
+  browser,
+}) => {
+  const dir = mkdtempSync(join(tmpdir(), 'mds-single-'));
+  // ネットワークを遮断する（file: と data: だけ。YouTube などは数える）
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 720 },
+    reducedMotion: 'reduce',
+  });
+  const blocked: string[] = [];
+  await context.route('**/*', (route) => {
+    const url = route.request().url();
+    if (/^(file|data|blob):/.test(url)) return route.continue();
+    blocked.push(url);
+    return route.abort();
+  });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(String(error)));
+  const open = async (name: string) => {
+    const result = await buildSingle(join(fixtures, `${name}.md`), {
+      out: join(dir, `${name}.html`),
+    });
+    expect(result.measureError).toBeUndefined();
+    // 書き出し先のフォルダには HTML だけ
+    expect(readdirSync(dir).filter((f) => !f.endsWith('.html'))).toEqual([]);
+    await page.goto(pathToFileURL(result.file).href);
+    await page.evaluate(() => document.fonts.ready);
+    return result;
+  };
+  const families = () =>
+    page.evaluate(() => [
+      ...new Set([...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family)),
+    ]);
+
+  // 02-tech-talk：画像・背景・ロゴ・同梱のフォント。枚数はフォルダの書き出しと同じ
+  const talk = await open('02-tech-talk');
+  const folder = await build(join(fixtures, '02-tech-talk.md'), {
+    outDir: mkdtempSync(join(tmpdir(), 'mds-folder-')),
+  });
+  expect(talk.slides).toBe(folder.slides);
+  expect(talk.embedded.map((e) => e.src).sort()).toEqual([
+    'assets/bg-dark.jpg',
+    'assets/cover.jpg',
+    'assets/logo.svg',
+    'assets/square.png',
+  ]);
+  const images = await page.locator('img').evaluateAll((imgs) =>
+    imgs.map((img) => ({
+      data: (img as HTMLImageElement).src.startsWith('data:'),
+      loaded: (img as HTMLImageElement).naturalWidth > 0,
+    })),
+  );
+  expect(images.length).toBeGreaterThan(0);
+  expect(images.every((i) => i.data && i.loaded)).toBe(true);
+  expect(await families()).toEqual(
+    expect.arrayContaining(['MDS Inter', 'MDS Noto Sans JP', 'MDS JetBrains Mono']),
+  );
+
+  // 09-embeds：数式（KaTeX のフォント）と Mermaid の図
+  await open('09-embeds');
+  expect(await page.locator('.katex').count()).toBeGreaterThan(0);
+  expect(await families()).toEqual(expect.arrayContaining(['KaTeX_Main']));
+  expect(await page.locator('.mds-diagram svg').count()).toBe(6);
+
+  // 13-arch：動く構成図を再生できる
+  await open('13-arch');
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.mds-slide.is-current .arch-mark')).toHaveCount(2);
+
+  expect(errors).toEqual([]);
+  expect(blocked).toEqual([]);
+  await context.close();
 });
 
 test('動く構成図の PDF：既定はまとめの1枚（すべての番号・最後のバッジ・強調なし）、--steps はステップごと（13-arch。#109）', async ({

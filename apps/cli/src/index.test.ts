@@ -75,6 +75,63 @@ describe('mds build', () => {
     expect(html).toContain('function startPlayer(doc)');
   });
 
+  it('--single：素材を data: URL で埋め込んだ HTML を1つだけ書き出す。大きすぎる動画は埋め込まずに警告する（#120）', async () => {
+    const root = project({
+      'deck/slides.md': [
+        '---\ntitle: T\nlogo: ./img/a.png\n---',
+        '## A\n\n![図](./img/a.png)\n\n## B\n\n![外](../shared/b.png)',
+        '## C\n\n![動画](./v.mp4){poster=./img/a.png}',
+      ].join('\n\n'),
+      'deck/img/a.png': png,
+      'deck/v.mp4': Buffer.alloc(2048),
+      'shared/b.png': png,
+    });
+    const out = join(root, 'out/slides.html');
+    const { io, sink } = capture();
+    const code = await main(
+      [
+        'build',
+        join(root, 'deck/slides.md'),
+        '--single',
+        '--video-limit',
+        '0.001',
+        '--no-measure',
+        '-o',
+        out,
+      ],
+      sink,
+    );
+    expect(code).toBe(0);
+    expect(io.stdout).toMatch(/✓ .*slides\.html（4 枚、\d+ KB、素材 2 個を埋め込み/);
+    // 動画（2 KB）は上限（1 KB）を超えるので、ポスターにして警告する
+    expect(io.stderr).toContain('[export/video-omitted]');
+    expect(io.stderr).toContain('ポスターの画像を表示します');
+    const html = readFileSync(out, 'utf8');
+    const dataPng = `data:image/png;base64,${png.toString('base64')}`;
+    expect(html).toContain(`<img src="${dataPng}" alt="図"`);
+    expect(html).toContain(`<img src="${dataPng}" alt="外"`);
+    expect(html).toContain(`<img class="mds-logo" src="${dataPng}"`);
+    expect(html).not.toContain('<video');
+    expect(html).not.toMatch(/src="(img|_external)\//);
+    // 書き出すのは HTML の1つだけ
+    expect(existsSync(join(root, 'out/img'))).toBe(false);
+    expect(existsSync(join(root, 'out/_external'))).toBe(false);
+  });
+
+  it('--single：-o がなければ資料と同じ名前の .html。--video-limit の値を確かめる（#120）', async () => {
+    const root = project({ 'talk.md': '## A\n\n本文\n' });
+    const a = capture();
+    expect(await main(['build', join(root, 'talk.md'), '--single', '--no-measure'], a.sink)).toBe(
+      0,
+    );
+    expect(existsSync(join(root, 'talk.html'))).toBe(true);
+    const b = capture();
+    expect(
+      await main(['build', join(root, 'talk.md'), '--single', '--video-limit', 'big'], b.sink),
+    ).toBe(1);
+    expect(b.io.stderr).toContain('--video-limit の値が正しくありません');
+  });
+
   it('見つからない素材と CSS を、行番号付きで警告する', async () => {
     const root = project({
       'slides.md': '---\ntitle: T\ncss: ./style.css\n---\n\n## A\n\n![なし](./none.png)\n',
