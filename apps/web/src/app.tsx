@@ -693,6 +693,15 @@ export function App() {
                 : '下書き'}
           ・自動で下書きを保存
         </span>
+        <a
+          class="muted"
+          href="https://github.com/Nasu726/md2htmlSlides/blob/main/THIRD_PARTY_NOTICES.md"
+          target="_blank"
+          rel="noopener"
+          data-testid="about"
+        >
+          このアプリについて・ライセンス
+        </a>
       </footer>
       {showWarnings.value && warnings.length > 0 && (
         <div class="warnings" role="dialog" aria-label="警告">

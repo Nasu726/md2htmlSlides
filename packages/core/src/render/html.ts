@@ -53,13 +53,24 @@ export interface RenderOptions {
   /** 数式を描く関数（#72）。`$…$`・`$$…$$`・```math を HTML にする */
   math?: MathRenderer;
   /**
-   * 描いた結果に使うライブラリの CSS（KaTeX の CSS など。#72）。
+   * 描いた結果に使うライブラリの CSS（今は KaTeX の CSS だけ。#72）。KaTeX の表記を前に付ける（#133）。
    * テーマで上書きできるよう、基本の CSS とテーマの前に置く
    */
   libraryCss?: string;
 }
 
 const esc = (text: string) => md.utils.escapeHtml(text);
+
+/**
+ * 書き出した HTML に同梱するフォントと KaTeX の表記（THIRD_PARTY_NOTICES.md。#133）。
+ * OFL-1.1 は、フォントを配るときに著作権の表示とライセンスを添えることを求める
+ */
+const FONT_NOTICE =
+  '/* フォント：Inter（Copyright 2016 The Inter Project Authors）、Noto Sans JP・Noto Serif JP（Copyright Google Inc.）、' +
+  'JetBrains Mono（Copyright 2020 The JetBrains Mono Project Authors）。SIL Open Font License 1.1' +
+  '（https://openfontlicense.org/）。名前を「MDS …」に変え、使う文字だけに絞っている */';
+const KATEX_NOTICE =
+  '/* KaTeX の CSS とフォント：MIT License、Copyright (c) 2013-2020 Khan Academy and other contributors */';
 
 /** スライドのデッキを、1つの HTML 文書にする。 */
 export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): string {
@@ -87,7 +98,7 @@ export function renderDeckHtml(deck: SlideDeck, options: RenderOptions = {}): st
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(meta.title ?? slides[0]?.heading?.text ?? 'Slides')}</title>
-<style>${options.fontCss ? `${options.fontCss}\n` : ''}${options.libraryCss ? `${options.libraryCss}\n` : ''}@page { size: ${width}px ${height}px; margin: 0; }
+<style>${options.fontCss ? `${FONT_NOTICE}\n${options.fontCss}\n` : ''}${options.libraryCss ? `${KATEX_NOTICE}\n${options.libraryCss}\n` : ''}@page { size: ${width}px ${height}px; margin: 0; }
 ${BASE_CSS}${themeCss(meta.theme)}${custom}</style>
 </head>
 <body>

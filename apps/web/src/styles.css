@@ -213,6 +213,9 @@ button.primary {
   color: var(--warn);
   border-color: var(--warn);
 }
+.status a {
+  color: inherit;
+}
 .muted {
   color: var(--muted);
 }
