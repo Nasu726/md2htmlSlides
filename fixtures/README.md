@@ -210,7 +210,7 @@
 - `lang: en`、bold テーマ、4:3（960×720）。`aspect` は引用符があってもなくても受け付ける。
 - 各 H1 は子の見出しを持たず、直後に本文が続くので、`slideLevel` は 1 になる。
 - `titleSlide: false` なので、`title` があってもタイトルスライドは作らない。
-- 「Manual split」は `split: manual` なので分割せず、縮小して1枚にする。60% でも収まらなければ警告。bold テーマの文字の大きさでは 60% でも収まらないので、`mds build` で警告が出る（警告の確認にも使う）。
+- 「Manual split」は `split: manual` なので分割せず、縮小して1枚にする。60% でも収まらなければ警告。bold テーマの文字の大きさでは 60% でも収まらないので、`mdhs build` で警告が出る（警告の確認にも使う）。
 - 「Explicit break」は `---` で2枚になり、2枚目は見出しを引き継ぐ。
 - アクセントカラーは `#e11d48`。「Accent color」には custom.css の `.highlight` が効く。
 - custom.css の `body { background: magenta; }` は、スライドの外（エディタの画面）に効かない。

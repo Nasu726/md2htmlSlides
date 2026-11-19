@@ -1,12 +1,12 @@
 {
-  "name": "@mds/cli",
-  "version": "0.0.0",
+  "name": "@mdhs/cli",
+  "version": "1.0.0",
   "private": true,
   "license": "MIT",
-  "description": "コマンドライン（mds build / mds dev）",
+  "description": "コマンドライン（mdhs build / mdhs dev）",
   "type": "module",
   "bin": {
-    "mds": "./dist/bin.js"
+    "mdhs": "./dist/bin.js"
   },
   "exports": {
     ".": {
@@ -19,10 +19,10 @@
     "@fontsource-variable/jetbrains-mono": "5.3.0",
     "@fontsource-variable/noto-sans-jp": "5.3.1",
     "@fontsource-variable/noto-serif-jp": "5.3.1",
-    "@mds/core": "workspace:*",
-    "@mds/embeds": "workspace:*",
-    "@mds/runtime": "workspace:*",
-    "@mds/themes": "workspace:*",
+    "@mdhs/core": "workspace:*",
+    "@mdhs/embeds": "workspace:*",
+    "@mdhs/runtime": "workspace:*",
+    "@mdhs/themes": "workspace:*",
     "elkjs": "0.12.1",
     "katex": "0.19.1",
     "mermaid": "12.2.0",

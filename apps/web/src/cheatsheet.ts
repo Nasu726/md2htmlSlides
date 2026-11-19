@@ -6,7 +6,7 @@ import {
   LAYOUTS,
   LAYOUT_SUMMARIES,
   type AttrKey,
-} from '@mds/core';
+} from '@mdhs/core';
 
 /**
  * 早見表（#75）と挿入メニューの項目。早見表は、役割（何をしたいか）ごとに分けて並べる（#99）。

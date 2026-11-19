@@ -1,12 +1,12 @@
 /**
- * PDF の書き出し（`mds pdf`、設計プラン §10、#70）。
+ * PDF の書き出し（`mdhs pdf`、設計プラン §10、#70）。
  *
  * S5（#69）の結果に従い、書き出した HTML をヘッドレス Chromium で開いて `page.pdf()` で PDF にする。
  * 1スライド＝1ページ（ページの大きさはスライドと同じ）、文字は選択・検索できる。
  * 段階的表示は最終状態。`--steps`（フロントマター `pdf: { steps: each }`）ならステップごとのページ。
  */
-import { parseDeck, type Diagnostic } from '@mds/core';
-import { preparePrint } from '@mds/runtime';
+import { parseDeck, type Diagnostic } from '@mdhs/core';
+import { preparePrint } from '@mdhs/runtime';
 import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

@@ -1,13 +1,13 @@
 /**
  * 同梱するフォント（docs/design.md §6、#67）。
  *
- * - `mds dev` と計測：fontsource の分割ファイル一式を unicode-range で読み込む（ブラウザが必要な分だけ読む）
- * - `mds build`：スライドで使っている文字だけに絞り、HTML に埋め込む（file:// でも読み込める）
+ * - `mdhs dev` と計測：fontsource の分割ファイル一式を unicode-range で読み込む（ブラウザが必要な分だけ読む）
+ * - `mdhs build`：スライドで使っている文字だけに絞り、HTML に埋め込む（file:// でも読み込める）
  *
  * 文字の形と幅はどちらも同じなので、計測と書き出しの結果はずれない。
  */
-import { visibleText } from '@mds/embeds';
-import { BUNDLED_FONTS, SERIF_FAMILY } from '@mds/themes';
+import { visibleText } from '@mdhs/embeds';
+import { BUNDLED_FONTS, SERIF_FAMILY } from '@mdhs/themes';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';

@@ -1,4 +1,4 @@
-import { parseDeck } from '@mds/core';
+import { parseDeck } from '@mdhs/core';
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {

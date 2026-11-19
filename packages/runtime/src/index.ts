@@ -18,10 +18,10 @@ export const RUNTIME_SCRIPT = `(${startPlayer.toString()})(document);`;
  */
 export const ARCH_SCRIPT = `(${startArch.toString()})(document);`;
 
-/** `mds dev` のプレビュー（`/`）に入れるソース。画面に合わせる・S で発表を始める（#60） */
+/** `mdhs dev` のプレビュー（`/`）に入れるソース。画面に合わせる・S で発表を始める（#60） */
 export const PREVIEW_SCRIPT = `(${startPreview.toString()})(document);`;
 
-/** PDF にする前の準備（#70）。CLI の `mds pdf` が page.evaluate で呼ぶ */
+/** PDF にする前の準備（#70）。CLI の `mdhs pdf` が page.evaluate で呼ぶ */
 export { preparePrint } from './print.js';
 
 /** Mermaid の図を描く（#71）。CLI が page.evaluate で呼ぶ */

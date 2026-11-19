@@ -1,6 +1,6 @@
 {
-  "name": "@mds/themes",
-  "version": "0.0.0",
+  "name": "@mdhs/themes",
+  "version": "1.0.0",
   "private": true,
   "license": "MIT",
   "description": "テーマ（clean / dark / bold）",

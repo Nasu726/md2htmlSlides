@@ -1,5 +1,5 @@
-import { codeHighlighter, codeLanguages } from '@mds/cli';
-import { buildSlides, parseDeck, renderDeckHtml } from '@mds/core';
+import { codeHighlighter, codeLanguages } from '@mdhs/cli';
+import { buildSlides, parseDeck, renderDeckHtml } from '@mdhs/core';
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 

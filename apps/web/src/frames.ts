@@ -1,5 +1,5 @@
-import { FIT_MARGIN, fitSlides, measureJobs } from '@mds/core';
-import { renderArch, renderMermaid } from '@mds/runtime';
+import { FIT_MARGIN, fitSlides, measureJobs } from '@mdhs/core';
+import { renderArch, renderMermaid } from '@mdhs/runtime';
 import { frameHost, type FrameMode } from './frame-host.js';
 
 /** iframe の中で frameHost を動かすスクリプト */

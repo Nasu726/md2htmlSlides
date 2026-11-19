@@ -1,5 +1,6 @@
 {
   "name": "md2htmlslides",
+  "version": "1.0.0",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -8,7 +9,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsc -b && pnpm --filter @mds/web build",
+    "build": "tsc -b && pnpm --filter @mdhs/web build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
@@ -17,9 +18,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@mds/cli": "workspace:*",
-    "@mds/core": "workspace:*",
-    "@mds/runtime": "workspace:*",
+    "@mdhs/cli": "workspace:*",
+    "@mdhs/core": "workspace:*",
+    "@mdhs/runtime": "workspace:*",
     "@playwright/test": "1.63.0",
     "@types/node": "^22.20.5",
     "budoux": "0.10.4",

@@ -1,5 +1,5 @@
-import { build, buildSingle, pdf, startDev, type DevServer } from '@mds/cli';
-import { preparePrint } from '@mds/runtime';
+import { build, buildSingle, pdf, startDev, type DevServer } from '@mdhs/cli';
+import { preparePrint } from '@mdhs/runtime';
 import { expect, test } from '@playwright/test';
 import {
   cpSync,
@@ -15,7 +15,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const fixtures = fileURLToPath(new URL('../fixtures/', import.meta.url));
 
-test('mds build で書き出した HTML を file:// で開くと、素材付きで発表できる', async ({ page }) => {
+test('mdhs build で書き出した HTML を file:// で開くと、素材付きで発表できる', async ({ page }) => {
   const out = test.info().outputPath('dist');
   const result = await build(join(fixtures, '02-tech-talk.md'), { outDir: out, measure: false });
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -34,7 +34,7 @@ test('mds build で書き出した HTML を file:// で開くと、素材付き�
   expect(await page.evaluate(() => location.hash)).toBe('#/2');
 });
 
-test('mds build は計測して自動で分割し、fixtures の目安の枚数に収める', async () => {
+test('mdhs build は計測して自動で分割し、fixtures の目安の枚数に収める', async () => {
   const cases: Array<[string, number, number]> = [
     ['01-plain-document', 12, 17],
     ['03-long-lecture', 30, 40],
@@ -115,7 +115,7 @@ test('書き出した HTML は、使う文字だけに絞ったフォントを�
   expect(family).toMatch(/^"MDS Inter", "MDS Noto Sans JP"/);
 });
 
-test('mds build：動く構成図を配置して SVG にし、fixtures/README のレイアウトで説明を置く（13-arch。#107）', async ({
+test('mdhs build：動く構成図を配置して SVG にし、fixtures/README のレイアウトで説明を置く（13-arch。#107）', async ({
   page,
 }) => {
   const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
@@ -174,7 +174,7 @@ test('mds build：動く構成図を配置して SVG にし、fixtures/README �
   expect(overlaps.every((n) => n === 0)).toBe(true);
 });
 
-test('mds build：動く構成図のシナリオを再生する。進むとパケットが動き、戻ると動かずに前の状態（13-arch。#108）', async ({
+test('mdhs build：動く構成図のシナリオを再生する。進むとパケットが動き、戻ると動かずに前の状態（13-arch。#108）', async ({
   page,
 }) => {
   const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
@@ -324,7 +324,7 @@ test('動く構成図のカメラ：文字が 14px より小さい図だけ、�
   expect(wide.label).toBeGreaterThanOrEqual(14);
 });
 
-test('mds build --single：素材のない別のフォルダで、ネットワークなしで開いて発表できる（02・09・13。#120）', async ({
+test('mdhs build --single：素材のない別のフォルダで、ネットワークなしで開いて発表できる（02・09・13。#120）', async ({
   browser,
 }) => {
   const dir = mkdtempSync(join(tmpdir(), 'mds-single-'));
@@ -433,7 +433,7 @@ test('動く構成図の PDF：既定はまとめの1枚（すべての番号・
   ]);
 });
 
-test('mds build：動く構成図の書き間違いを、行番号付きで警告する（13-arch。#106）', async () => {
+test('mdhs build：動く構成図の書き間違いを、行番号付きで警告する（13-arch。#106）', async () => {
   const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
   const result = await build(join(fixtures, '13-arch.md'), { outDir: out, measure: false });
   const lines = readFileSync(join(fixtures, '13-arch.md'), 'utf8').split('\n');
@@ -449,7 +449,7 @@ test('mds build：動く構成図の書き間違いを、行番号付きで警�
   expect(result.diagnostics.filter((d) => d.code === 'media/not-found')).toEqual([]);
 });
 
-test('mds build は Mermaid を SVG にし、構文エラーは枠と行番号付きの警告にする（#71）', async () => {
+test('mdhs build は Mermaid を SVG にし、構文エラーは枠と行番号付きの警告にする（#71）', async () => {
   const out = mkdtempSync(join(tmpdir(), 'mds-mermaid-'));
   const result = await build(join(fixtures, '09-embeds.md'), { outDir: out });
   expect(result.measureError).toBeUndefined();
@@ -466,7 +466,7 @@ test('mds build は Mermaid を SVG にし、構文エラーは枠と行番号�
   expect(errors.map((d) => d.line)).toEqual([50]);
 });
 
-test('mds build は数式を KaTeX で描き、使った書体と文字だけのフォントを埋め込む（#72）', async ({
+test('mdhs build は数式を KaTeX で描き、使った書体と文字だけのフォントを埋め込む（#72）', async ({
   page,
 }) => {
   const dir = mkdtempSync(join(tmpdir(), 'mds-math-'));
@@ -519,7 +519,7 @@ test('mds build は数式を KaTeX で描き、使った書体と文字だけの
 const pdfPages = (file: string) =>
   (readFileSync(file, 'latin1').match(/\/Type\s*\/Page(?![a-zA-Z])/g) ?? []).length;
 
-test('mds pdf：1スライド＝1ページ、--steps ではステップごとのページにする（#70）', async () => {
+test('mdhs pdf：1スライド＝1ページ、--steps ではステップごとのページにする（#70）', async () => {
   const out = mkdtempSync(join(tmpdir(), 'mds-pdf-'));
   const final = await pdf(join(fixtures, '06-steps.md'), { out: join(out, 'final.pdf') });
   expect(final.error).toBeUndefined();
@@ -546,7 +546,7 @@ test('フロントマターの pdf: { steps: each } でも、ステップごと�
   expect([pdfPages(final.file), pdfPages(each.file)]).toEqual([1, 3]);
 });
 
-test.describe('mds dev', () => {
+test.describe('mdhs dev', () => {
   let server: DevServer | undefined;
   test.afterEach(async () => {
     await server?.close();

@@ -1,4 +1,4 @@
-import type { Diagnostic } from '@mds/core';
+import type { Diagnostic } from '@mdhs/core';
 import { lintGutter, setDiagnostics, type Diagnostic as LintDiagnostic } from '@codemirror/lint';
 import { RangeSet, StateEffect, StateField, type Extension } from '@codemirror/state';
 import { Decoration, EditorView, gutter, GutterMarker, type DecorationSet } from '@codemirror/view';

@@ -1,9 +1,9 @@
 /**
- * 数式（#72、設計プラン §7.4）の CSS とフォント（CLI）。描くのは @mds/embeds の mathEngine。
+ * 数式（#72、設計プラン §7.4）の CSS とフォント（CLI）。描くのは @mdhs/embeds の mathEngine。
  *
  * - KaTeX の CSS とフォントは、数式があるときだけ入れる
- *   - `mds dev` と計測：フォント一式を `/__mds/fonts/katex/…` から読み込む
- *   - `mds build`：数式で使った書体だけを、使った文字だけに絞って HTML に埋め込む
+ *   - `mdhs dev` と計測：フォント一式を `/__mds/fonts/katex/…` から読み込む
+ *   - `mdhs build`：数式で使った書体だけを、使った文字だけに絞って HTML に埋め込む
  */
 import {
   parseKatexCss,
@@ -11,13 +11,13 @@ import {
   type KatexCss,
   type KatexFace,
   type MathUsage,
-} from '@mds/embeds';
+} from '@mdhs/embeds';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import subsetFont from 'subset-font';
 
-export { mathDiagnostics, mathEngine, type MathEngine, type MathUsage } from '@mds/embeds';
+export { mathDiagnostics, mathEngine, type MathEngine, type MathUsage } from '@mdhs/embeds';
 
 const require = createRequire(import.meta.url);
 

@@ -1,4 +1,4 @@
-import type { MeasureJob, Measurement } from '@mds/core';
+import type { MeasureJob, Measurement } from '@mdhs/core';
 
 /** iframe の役目：計測・プレビュー・発表 */
 export type FrameMode = 'measure' | 'preview' | 'present';
@@ -311,7 +311,7 @@ body { margin: 0; }
       if (!slide) return;
       send({ type: 'jump', index: slidesOf().indexOf(slide) });
     });
-    // S で、見えているスライドから発表を始める（mds dev のプレビューと同じ。#60）
+    // S で、見えているスライドから発表を始める（mdhs dev のプレビューと同じ。#60）
     doc.addEventListener('keydown', (event) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       if (event.key === 's' || event.key === 'S') {

@@ -1,4 +1,4 @@
-import { THEMES } from '@mds/themes';
+import { THEMES } from '@mdhs/themes';
 
 /**
  * 構文の定義（docs/design.md §9.3）のうち、フロントマターのキー。

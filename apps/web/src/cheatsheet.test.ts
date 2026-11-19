@@ -1,4 +1,4 @@
-import { ATTRIBUTE_KEYS, CONTAINERS, DIRECTIVES, FRONTMATTER_KEYS, LAYOUTS } from '@mds/core';
+import { ATTRIBUTE_KEYS, CONTAINERS, DIRECTIVES, FRONTMATTER_KEYS, LAYOUTS } from '@mdhs/core';
 import { describe, expect, it } from 'vitest';
 import { CHEAT_SECTIONS, SNIPPETS, cheatGroups, cheatSheet } from './cheatsheet.js';
 

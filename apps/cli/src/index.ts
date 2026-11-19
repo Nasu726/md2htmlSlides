@@ -1,4 +1,4 @@
-import { VERSION } from '@mds/core';
+import { VERSION } from '@mdhs/core';
 import { existsSync } from 'node:fs';
 import { relative } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -18,7 +18,7 @@ export {
 export { ChromiumMeasurer } from './measurer.js';
 export { createAssets, type Assets } from './assets.js';
 export { startDev, type DevServer } from './dev.js';
-export { codeHighlighter, codeLanguages } from '@mds/embeds/highlight';
+export { codeHighlighter, codeLanguages } from '@mdhs/embeds/highlight';
 export { pdf, type PdfOptions, type PdfResult } from './pdf.js';
 
 export interface RunResult {
@@ -27,21 +27,21 @@ export interface RunResult {
   stderr: string;
 }
 
-export const HELP = `mds — Markdown から HTML スライドを作る
+export const HELP = `mdhs — Markdown から HTML スライドを作る
 
 使い方:
-  mds build <file.md> [-o <dir>]   静的な HTML を書き出す（既定の書き出し先は dist/）
+  mdhs build <file.md> [-o <dir>]   静的な HTML を書き出す（既定の書き出し先は dist/）
         --no-measure               ヘッドレス Chromium での計測（自動分割と確認）を省く
         --single                   素材を埋め込んだ HTML を1つだけ書き出す（-o はファイル。
                                    既定は資料と同じ名前の .html）
         --video-limit <MB>         --single で、これより大きい動画は埋め込まない（既定は 10。
                                    0 は動画を埋め込まずポスターだけ、-1 は無制限）
-  mds pdf <file.md> [-o <file.pdf>]  PDF を書き出す（1スライド＝1ページ。既定は資料と同じ名前の .pdf）
+  mdhs pdf <file.md> [-o <file.pdf>]  PDF を書き出す（1スライド＝1ページ。既定は資料と同じ名前の .pdf）
         --steps                    段階的表示をステップごとのページにする（pdf: { steps: each } と同じ）
-  mds dev <file.md> [-p <port>]    プレビューを開き、保存するたびに反映する（既定のポートは 3000）
+  mdhs dev <file.md> [-p <port>]    プレビューを開き、保存するたびに反映する（既定のポートは 3000）
         --host <host>              待ち受けるアドレス（既定は 127.0.0.1）
-  mds --version                    バージョンを表示する
-  mds --help                       このヘルプを表示する
+  mdhs --version                    バージョンを表示する
+  mdhs --help                       このヘルプを表示する
 `;
 
 /** 入出力の口（テストで差し替える）。 */
@@ -81,16 +81,16 @@ export async function main(argv: readonly string[], io: Io = defaultIo): Promise
   try {
     args = parseCommand(rest);
   } catch (error) {
-    io.err(`mds ${command}: ${(error as Error).message}\n\n${HELP}`);
+    io.err(`mdhs ${command}: ${(error as Error).message}\n\n${HELP}`);
     return 1;
   }
   const file = args.positionals[0];
   if (!file) {
-    io.err(`mds ${command}: Markdown のファイルを指定してください\n\n${HELP}`);
+    io.err(`mdhs ${command}: Markdown のファイルを指定してください\n\n${HELP}`);
     return 1;
   }
   if (!existsSync(file)) {
-    io.err(`mds ${command}: ファイルが見つかりません: ${file}\n`);
+    io.err(`mdhs ${command}: ファイルが見つかりません: ${file}\n`);
     return 1;
   }
 
@@ -100,7 +100,7 @@ export async function main(argv: readonly string[], io: Io = defaultIo): Promise
     const videoLimit = limit === undefined ? undefined : Number(limit);
     if (videoLimit !== undefined && !(videoLimit >= 0 || videoLimit === -1)) {
       io.err(
-        `mds build: --video-limit の値が正しくありません: ${limit}（0 以上の MB、または -1 で無制限）\n`,
+        `mdhs build: --video-limit の値が正しくありません: ${limit}（0 以上の MB、または -1 で無制限）\n`,
       );
       return 1;
     }
@@ -148,7 +148,7 @@ export async function main(argv: readonly string[], io: Io = defaultIo): Promise
     });
     for (const diagnostic of result.diagnostics) io.err(`${formatDiagnostic(file, diagnostic)}\n`);
     if (result.error) {
-      io.err(`mds pdf: ${result.error}\n`);
+      io.err(`mdhs pdf: ${result.error}\n`);
       return 1;
     }
     const seconds = ((performance.now() - started) / 1000).toFixed(1);
@@ -159,7 +159,7 @@ export async function main(argv: readonly string[], io: Io = defaultIo): Promise
 
   const port = args.values.port === undefined ? 3000 : Number(args.values.port);
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
-    io.err(`mds dev: ポートの番号が正しくありません: ${args.values.port}\n`);
+    io.err(`mdhs dev: ポートの番号が正しくありません: ${args.values.port}\n`);
     return 1;
   }
   const server = await startDev(file, {

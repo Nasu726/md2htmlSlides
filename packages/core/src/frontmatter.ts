@@ -1,4 +1,4 @@
-import type { ThemeId } from '@mds/themes';
+import type { ThemeId } from '@mdhs/themes';
 import { LineCounter, isMap, isScalar, parseDocument } from 'yaml';
 import type { Diagnostic } from './diagnostics.js';
 import { closest } from './suggest.js';

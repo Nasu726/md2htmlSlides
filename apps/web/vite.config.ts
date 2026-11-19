@@ -17,7 +17,7 @@ import { defineConfig, type Plugin } from 'vite';
 const require = createRequire(import.meta.url);
 const src = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
-/** テーマが使う書体（@mds/themes の BUNDLED_FONTS と同じ） */
+/** テーマが使う書体（@mdhs/themes の BUNDLED_FONTS と同じ） */
 const FONT_PACKAGES = [
   { family: 'MDS Inter', package: '@fontsource-variable/inter' },
   { family: 'MDS Noto Sans JP', package: '@fontsource-variable/noto-sans-jp' },
@@ -167,11 +167,11 @@ export default defineConfig({
   resolve: {
     // ビルドせずに、各パッケージのソースを直接読む（tsc の出力を待たずに済む）
     alias: {
-      '@mds/core': src('../../packages/core/src/index.ts'),
-      '@mds/embeds/highlight': src('../../packages/embeds/src/highlight.ts'),
-      '@mds/embeds': src('../../packages/embeds/src/index.ts'),
-      '@mds/runtime': src('../../packages/runtime/src/index.ts'),
-      '@mds/themes': src('../../packages/themes/src/index.ts'),
+      '@mdhs/core': src('../../packages/core/src/index.ts'),
+      '@mdhs/embeds/highlight': src('../../packages/embeds/src/highlight.ts'),
+      '@mdhs/embeds': src('../../packages/embeds/src/index.ts'),
+      '@mdhs/runtime': src('../../packages/runtime/src/index.ts'),
+      '@mdhs/themes': src('../../packages/themes/src/index.ts'),
     },
   },
   build: {

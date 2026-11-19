@@ -4,7 +4,7 @@ import { closest } from '../suggest.js';
  * 動く構成図のパーサ（docs/arch-diagram.md §3・§4・§8、#106）。
  *
  * 行単位で読み、インデント（半角スペース2つ）で入れ子を読む。すべての要素に行番号（1 から。
- * 構成図のソースの中の行）を持たせ、書き間違いは警告にする。配置と描画は @mds/embeds が行う。
+ * 構成図のソースの中の行）を持たせ、書き間違いは警告にする。配置と描画は @mdhs/embeds が行う。
  */
 
 export const ARCH_NODE_KINDS = [

@@ -20,9 +20,9 @@ import {
   type RenderEnv,
   type RenderOptions,
   type SlideDeck,
-} from '@mds/core';
-import { collectMermaid, diagramDiagnostic, mathDiagnostics, normalizeCode } from '@mds/embeds';
-import { ARCH_SCRIPT, RUNTIME_SCRIPT } from '@mds/runtime';
+} from '@mdhs/core';
+import { collectMermaid, diagramDiagnostic, mathDiagnostics, normalizeCode } from '@mdhs/embeds';
+import { ARCH_SCRIPT, RUNTIME_SCRIPT } from '@mdhs/runtime';
 import { AssetStore, noAssets, normalizePath } from './assets.js';
 import {
   katexFaces,
@@ -32,7 +32,7 @@ import {
   loadMermaidScript,
   type MathKit,
 } from './embeds.js';
-import { themeFonts } from '@mds/themes';
+import { themeFonts } from '@mdhs/themes';
 import { embeddedFontCss, facesFor, FontSender, visibleText, type WebFontFace } from './fonts.js';
 import { Frame, hostScript, scriptTag } from './frames.js';
 
@@ -575,7 +575,7 @@ location.hash = ${JSON.stringify(`#/${encodeURIComponent(slide)}`)};`;
 
   /**
    * 単一 HTML（#121）：発表の画面と同じ HTML から、エディタとのやりとりを除き、
-   * 素材を data: URL で埋め込む（CLI の `mds build --single` と同じ。#120）。
+   * 素材を data: URL で埋め込む（CLI の `mdhs build --single` と同じ。#120）。
    * 10 MB を超える動画は埋め込まず、ポスター（なければ枠）にする
    */
   async exportHtml(): Promise<ExportedHtml | undefined> {

@@ -6,7 +6,7 @@ import {
   mediaSize,
   type Deck,
   type MediaInfo,
-} from '@mds/core';
+} from '@mdhs/core';
 import { createHash } from 'node:crypto';
 import { closeSync, existsSync, openSync, readFileSync, readSync, statSync } from 'node:fs';
 import { basename, dirname, isAbsolute, relative, resolve, sep } from 'node:path';

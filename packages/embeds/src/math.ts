@@ -4,7 +4,7 @@
  * KaTeX 本体は、数式があるときだけ読み込む（mathEngine の中で import する）。
  * KaTeX の CSS とフォントのファイルの読み方は環境で違うので、ここでは CSS の文字を受け取って分けるだけにする。
  */
-import type { Deck, Diagnostic, MathRenderer, MathResult } from '@mds/core';
+import type { Deck, Diagnostic, MathRenderer, MathResult } from '@mdhs/core';
 import { visibleText } from './text.js';
 
 type Katex = typeof import('katex').default;

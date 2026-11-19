@@ -1,6 +1,6 @@
 export type Severity = 'error' | 'warning' | 'info';
 
-/** エディタの警告・CLI の `mds check` に出す指摘。 */
+/** エディタの警告・CLI の `mdhs check` に出す指摘。 */
 export interface Diagnostic {
   severity: Severity;
   /** 機械で扱うための識別子（例：'frontmatter/unknown-key'） */

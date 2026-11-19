@@ -1,4 +1,4 @@
-import { VERSION } from '@mds/core';
+import { VERSION } from '@mdhs/core';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -27,7 +27,7 @@ function capture() {
   };
 }
 
-describe('mds', () => {
+describe('mdhs', () => {
   it('--version でバージョンを表示する', () => {
     expect(run(['--version'])).toEqual({ code: 0, stdout: `${VERSION}\n`, stderr: '' });
   });
@@ -53,7 +53,7 @@ describe('mds', () => {
   });
 });
 
-describe('mds build', () => {
+describe('mdhs build', () => {
   it('HTML と runtime と素材を書き出し、フォルダの外の素材は _external に置く', async () => {
     const root = project({
       'deck/slides.md': '## A\n\n![図](./img/a.png)\n\n## B\n\n![外](../shared/b.png)\n',
@@ -211,7 +211,7 @@ describe('mds build', () => {
 
 // サーバーの動きだけを確かめる（Chromium での計測と自動分割は e2e で確かめる。
 // 単体テストでブラウザを起動すると、環境によって起動だけで時間切れになるため）
-describe('mds dev', () => {
+describe('mdhs dev', () => {
   let server: DevServer | undefined;
   afterEach(async () => {
     await server?.close();

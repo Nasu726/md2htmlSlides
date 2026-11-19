@@ -1,4 +1,4 @@
-import type { Diagnostic } from '@mds/core';
+import type { Diagnostic } from '@mdhs/core';
 import { signal } from '@preact/signals';
 import { useEffect, useRef } from 'preact/hooks';
 import {
@@ -346,7 +346,7 @@ async function save(): Promise<void> {
   dirty.value = false;
 }
 
-// ---- 単一 HTML の書き出し（#121）：CLI の mds build --single と同じ HTML を1つダウンロードする ----
+// ---- 単一 HTML の書き出し（#121）：CLI の mdhs build --single と同じ HTML を1つダウンロードする ----
 async function exportHtml(): Promise<void> {
   await whenRendered();
   const out = await renderer.exportHtml();

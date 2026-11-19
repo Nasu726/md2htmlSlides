@@ -1,6 +1,6 @@
 {
-  "name": "@mds/core",
-  "version": "0.0.0",
+  "name": "@mdhs/core",
+  "version": "1.0.0",
   "private": true,
   "license": "MIT",
   "description": "Markdown からスライドを作る中核（パース・分割・レイアウト・描画）",
@@ -12,7 +12,7 @@
     }
   },
   "dependencies": {
-    "@mds/themes": "workspace:*",
+    "@mdhs/themes": "workspace:*",
     "budoux": "0.10.4",
     "markdown-it": "^15.0.3",
     "yaml": "^2.9.1"
