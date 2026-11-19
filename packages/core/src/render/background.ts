@@ -8,7 +8,7 @@ import { cssPosition, isPosition } from '../attrs.js';
 import type { Block, MediaRef } from '../ir.js';
 import { md } from '../md/instance.js';
 import type { RenderEnv } from '../md/media.js';
-import { mediaKind } from '../media.js';
+import { decodePath, mediaKind } from '../media.js';
 
 export type BackgroundPosition = 'full' | 'left' | 'right';
 
@@ -58,12 +58,7 @@ export function renderBackground(
   const values = media.attrs?.values ?? {};
   // 単一 HTML に埋め込まない動画（#120）：ポスターがあれば画像として、なければ暗い面を敷く
   const isVideo = mediaKind(media.src) === 'video';
-  let decoded = media.src;
-  try {
-    decoded = decodeURI(media.src);
-  } catch {
-    // そのまま使う
-  }
+  const decoded = decodePath(media.src);
   const omitted = isVideo && Boolean(env.omitVideo?.(decoded));
   const poster = omitted && typeof values.poster === 'string' ? values.poster : undefined;
   const src = poster ?? media.src;
@@ -77,12 +72,7 @@ export function renderBackground(
     typeof values.pos === 'string' && isPosition(values.pos) ? cssPosition(values.pos) : '';
 
   // 明るさ（0〜1）。CLI がブラウザで測って probe で渡す
-  let path = media.src;
-  try {
-    path = decodeURI(media.src);
-  } catch {
-    // そのまま使う
-  }
+  const path = decodePath(media.src);
   const luminance = env.probe?.(path)?.luminance;
   let dim = typeof values.dim === 'string' ? Number(values.dim) : undefined;
   let tone: 'dark' | 'light' | undefined;

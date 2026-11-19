@@ -5,6 +5,7 @@
 import type { Attrs } from '../attrs.js';
 import type { ArchScenario } from '../arch/parse.js';
 import type { Block } from '../ir.js';
+import { decodePath } from '../media.js';
 import type { DiagramRenderer } from '../md/media.js';
 
 export type ArchCaptions = 'auto' | 'side' | 'below' | 'none';
@@ -16,14 +17,6 @@ export interface ArchUse {
   scenario?: ArchScenario;
   captions: ArchCaptions;
 }
-
-const decode = (src: string) => {
-  try {
-    return decodeURI(src);
-  } catch {
-    return src;
-  }
-};
 
 /** ブロックの中の動く構成図（```arch か、`.arch` だけの段落）。描けなければ undefined */
 export function archUse(block: Block, diagram: DiagramRenderer | undefined): ArchUse | undefined {
@@ -39,7 +32,7 @@ export function archUse(block: Block, diagram: DiagramRenderer | undefined): Arc
     );
     if (!media) return undefined;
     attrs = media.attrs;
-    result = diagram?.({ lang: 'arch', src: decode(media.src) });
+    result = diagram?.({ lang: 'arch', src: decodePath(media.src) });
   }
   if (!result || 'error' in result) return undefined;
   const scenario = selectArchScenario(result.scenarios, attrs);

@@ -2,7 +2,14 @@ import type { ArchScenario } from '../arch/parse.js';
 import { archEmbedAttrs, selectArchScenario } from '../render/arch.js';
 import type { MarkdownIt, Renderer, StateCore, Token } from 'markdown-it';
 import { cssPosition, isPosition, type Attrs } from '../attrs.js';
-import { embedUrl, mediaKind, type MediaInfo, type MediaKind, type MediaProbe } from '../media.js';
+import {
+  decodePath,
+  embedUrl,
+  mediaKind,
+  type MediaInfo,
+  type MediaKind,
+  type MediaProbe,
+} from '../media.js';
 import type { MathRenderer } from './math.js';
 
 /**
@@ -262,15 +269,6 @@ function classAndId(esc: (s: string) => string, attrs: Attrs | undefined): strin
     (attrs.classes.length > 0 ? ` class="${attrs.classes.map(esc).join(' ')}"` : '') +
     (attrs.id ? ` id="${esc(attrs.id)}"` : '')
   );
-}
-
-/** markdown-it が符号化したパスを、ファイルを探せる形に戻す。 */
-export function decodePath(src: string): string {
-  try {
-    return decodeURI(src);
-  } catch {
-    return src;
-  }
 }
 
 /** メディアの並びの段落は、画像だけを描く（改行や空白は描かない）。 */

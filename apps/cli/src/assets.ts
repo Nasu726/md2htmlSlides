@@ -1,5 +1,6 @@
 import {
   collectMedia,
+  decodePath,
   isLocalPath,
   mediaMime,
   mediaSize,
@@ -46,14 +47,6 @@ function readHead(path: string, size: number): Uint8Array {
   }
 }
 
-function decode(src: string): string {
-  try {
-    return decodeURI(src);
-  } catch {
-    return src;
-  }
-}
-
 /** URL に使えるように、パスの区切りを / にして符号化する。 */
 function toUrl(path: string): string {
   return encodeURI(path.split(sep).join('/')).replace(/[?#]/g, encodeURIComponent);
@@ -66,7 +59,7 @@ export function createAssets(mdFile: string): Assets {
   const inlined = new Map<string, { url: string; bytes: number }>();
 
   const absolute = (src: string) => {
-    const path = decode(src).split(/[?#]/)[0]!;
+    const path = decodePath(src).split(/[?#]/)[0]!;
     return isAbsolute(path) ? path : resolve(root, path);
   };
   const bytesOf = (src: string) => {
@@ -101,7 +94,7 @@ export function createAssets(mdFile: string): Assets {
       return out;
     },
     file(url) {
-      const path = decode(url.replace(/^\/+/, '').split(/[?#]/)[0]!);
+      const path = decodePath(url.replace(/^\/+/, '').split(/[?#]/)[0]!);
       const known = byUrl.get(toUrl(path));
       if (known) return known;
       const inside = resolve(root, path);
