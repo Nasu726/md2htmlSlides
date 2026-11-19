@@ -22,4 +22,9 @@ describe('core', () => {
       expect((JSON.parse(json) as { version: string }).version, dir || 'root').toBe(VERSION);
     }
   });
+
+  it('README に書いたバージョンも同じ（タグとリリースは作らない。#152）', () => {
+    const readme = readFileSync(new URL('../../../README.md', import.meta.url), 'utf8');
+    expect(readme).toContain(`バージョン：${VERSION}（`);
+  });
 });
