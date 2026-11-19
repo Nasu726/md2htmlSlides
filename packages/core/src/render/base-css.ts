@@ -229,7 +229,8 @@ body { margin: 0; background: #d1d5db; }
   border: 2px dashed var(--mds-border);
   border-radius: var(--mds-radius);
   background: var(--mds-surface);
-  color: var(--mds-muted);
+  /* 薄い地の上でも読めるように、本文の色に少し寄せる（#131） */
+  color: color-mix(in srgb, var(--mds-muted) 80%, var(--mds-fg));
   font-size: 0.7em;
 }
 .is-rigid .mds-media-placeholder { aspect-ratio: 16 / 9; }

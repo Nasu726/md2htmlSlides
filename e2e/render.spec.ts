@@ -92,7 +92,8 @@ test('bold・pop の章の名前とイベント名は、地とのコントラス
   page,
 }) => {
   for (const theme of ['bold', 'pop']) {
-    const markdown = `---\ntitle: T\nevent: 勉強会\ntheme: ${theme}\n---\n\n# 章\n\n## 節\n\n本文\n`;
+    // H1 が1つだけだと資料のタイトルとみなすので章を2つ、本文が短いと statement になるのでリストにする
+    const markdown = `---\ntitle: T\nevent: 勉強会\ntheme: ${theme}\n---\n\n# 章1\n\n## 節1\n\n- 項目 A\n- 項目 B\n- 項目 C\n\n# 章2\n\n## 節2\n\n- 項目 D\n- 項目 E\n- 項目 F\n`;
     await page.setContent(renderDeckHtml(buildSlides(parseDeck(markdown))));
     const ratios = await page.evaluate(() => {
       const rgb = (c: string) => {
