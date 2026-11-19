@@ -1,5 +1,5 @@
 import { archCaptionsHtml, archNotesHtml, archUse } from './arch.js';
-import { themeCss } from '@mds/themes';
+import { themeCss } from '@mdhs/themes';
 import type { Attrs } from '../attrs.js';
 import type { Block } from '../ir.js';
 import { md } from '../md/instance.js';

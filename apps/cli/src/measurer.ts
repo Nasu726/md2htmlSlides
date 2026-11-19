@@ -5,9 +5,9 @@ import {
   type DiagramResult,
   type MeasureJob,
   type Measurement,
-} from '@mds/core';
-import { renderArch, renderMermaid, type ArchRenderInput } from '@mds/runtime';
-import { isThemeId, themeFonts } from '@mds/themes';
+} from '@mdhs/core';
+import { renderArch, renderMermaid, type ArchRenderInput } from '@mdhs/runtime';
+import { isThemeId, themeFonts } from '@mdhs/themes';
 import type { Browser, Page } from 'playwright-core';
 import { readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -20,7 +20,7 @@ const require = createRequire(import.meta.url);
 /**
  * ヘッドレス Chromium で、自動分割のための高さを測る（docs/design.md §4、S1）。
  * ブラウザは1つを使い回し、結果はスライドの中身のハッシュでキャッシュする
- * （mds dev では、編集した節だけを測り直す）。
+ * （mdhs dev では、編集した節だけを測り直す）。
  */
 export class ChromiumMeasurer {
   private browserPromise: Promise<Browser | undefined> | undefined;

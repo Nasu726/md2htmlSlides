@@ -1,5 +1,5 @@
-import type { Diagnostic } from '@mds/core';
-import { ARCH_SCRIPT, PREVIEW_SCRIPT, RUNTIME_SCRIPT } from '@mds/runtime';
+import type { Diagnostic } from '@mdhs/core';
+import { ARCH_SCRIPT, PREVIEW_SCRIPT, RUNTIME_SCRIPT } from '@mdhs/runtime';
 import { createReadStream, existsSync, statSync, watch, type FSWatcher } from 'node:fs';
 import { createServer, type ServerResponse } from 'node:http';
 import { basename, dirname, extname, resolve } from 'node:path';

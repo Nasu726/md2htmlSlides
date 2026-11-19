@@ -11,13 +11,13 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.15.0)
-      '@mds/cli':
+      '@mdhs/cli':
         specifier: workspace:*
         version: link:apps/cli
-      '@mds/core':
+      '@mdhs/core':
         specifier: workspace:*
         version: link:packages/core
-      '@mds/runtime':
+      '@mdhs/runtime':
         specifier: workspace:*
         version: link:packages/runtime
       '@playwright/test':
@@ -59,16 +59,16 @@ importers:
       '@fontsource-variable/noto-serif-jp':
         specifier: 5.3.1
         version: 5.3.1
-      '@mds/core':
+      '@mdhs/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@mds/embeds':
+      '@mdhs/embeds':
         specifier: workspace:*
         version: link:../../packages/embeds
-      '@mds/runtime':
+      '@mdhs/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
-      '@mds/themes':
+      '@mdhs/themes':
         specifier: workspace:*
         version: link:../../packages/themes
       elkjs:
@@ -131,16 +131,16 @@ importers:
       '@lezer/markdown':
         specifier: 1.8.1
         version: 1.8.1
-      '@mds/core':
+      '@mdhs/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@mds/embeds':
+      '@mdhs/embeds':
         specifier: workspace:*
         version: link:../../packages/embeds
-      '@mds/runtime':
+      '@mdhs/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
-      '@mds/themes':
+      '@mdhs/themes':
         specifier: workspace:*
         version: link:../../packages/themes
       '@preact/signals':
@@ -165,7 +165,7 @@ importers:
 
   packages/core:
     dependencies:
-      '@mds/themes':
+      '@mdhs/themes':
         specifier: workspace:*
         version: link:../themes
       budoux:
@@ -180,7 +180,7 @@ importers:
 
   packages/embeds:
     dependencies:
-      '@mds/core':
+      '@mdhs/core':
         specifier: workspace:*
         version: link:../core
       katex:

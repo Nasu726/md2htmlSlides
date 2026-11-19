@@ -104,7 +104,7 @@ export function startPlayer(doc: Document): void {
         end: 'This is the last slide',
         exit: ['Esc', 'End the slideshow (back to preview)'],
       };
-  // スライドショーを終えて戻る先（mds dev のプレビュー）。書き出した HTML にはないので、
+  // スライドショーを終えて戻る先（mdhs dev のプレビュー）。書き出した HTML にはないので、
   // そのときは Esc で終える動きもない（#60）
   const exitUrl = deck.dataset.exitUrl;
   // Web エディタ（#73）の中の発表：Esc で、親の画面にメッセージを送って終える
@@ -1027,7 +1027,7 @@ html, body { height: 100%; margin: 0; background: #0f172a; color: #e2e8f0; font-
   slides.forEach((slide) => playMedia(slide, false));
   const start = pageFromHash() ?? [0, 0];
   go(start[0], start[1]);
-  // mds dev で保存して読み込み直したときは、開いていた発表者ビューをつなぎ直す
+  // mdhs dev で保存して読み込み直したときは、開いていた発表者ビューをつなぎ直す
   const resume = remembered();
   if (resume !== undefined) openPresenter(resume);
 

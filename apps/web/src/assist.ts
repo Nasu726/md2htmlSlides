@@ -22,7 +22,7 @@ import {
   findFrontmatterKey,
   parseArch,
   type AttrPlace,
-} from '@mds/core';
+} from '@mdhs/core';
 import { SNIPPETS, valueOptions, type Snippet } from './cheatsheet.js';
 
 /**

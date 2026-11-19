@@ -1,4 +1,4 @@
-import { build, buildSingle } from '@mds/cli';
+import { build, buildSingle } from '@mdhs/cli';
 import { expect, test, type Page } from '@playwright/test';
 import {
   createReadStream,
@@ -117,7 +117,7 @@ test('エディタ：ファイルを開く → 編集するとプレビューが
   await expect(page.locator('.present')).toHaveCount(0);
 });
 
-test('?src=URL で開き、ブラウザで測って分割した枚数は mds build と同じ（#73）', async ({
+test('?src=URL で開き、ブラウザで測って分割した枚数は mdhs build と同じ（#73）', async ({
   page,
 }) => {
   const name = '03-long-lecture.md';
@@ -215,7 +215,7 @@ test('明朝体（academic の見出し）は、academic のときだけ読み�
   }
 });
 
-test('動く構成図：エディタのプレビューでも配置して描き、枚数は mds build と同じ（#107）', async ({
+test('動く構成図：エディタのプレビューでも配置して描き、枚数は mdhs build と同じ（#107）', async ({
   page,
 }) => {
   const name = '13-arch.md';
@@ -249,7 +249,7 @@ test('動く構成図：エディタのプレビューでも配置して描き�
   await page.keyboard.press('Escape');
 });
 
-test('HTML を書き出す：素材を埋め込んだ HTML を1つダウンロードし、ネットワークなしで開ける。枚数と見出しは mds build --single と同じ（#121）', async ({
+test('HTML を書き出す：素材を埋め込んだ HTML を1つダウンロードし、ネットワークなしで開ける。枚数と見出しは mdhs build --single と同じ（#121）', async ({
   page,
   browser,
 }) => {
@@ -429,7 +429,7 @@ test('プレビューでも、コードの色分け・数式・Mermaid を書き
         ),
     )
     .toBe(true);
-  // 構文エラーは、警告の一覧に行番号付きで出る（mds build と同じ 50 行目）
+  // 構文エラーは、警告の一覧に行番号付きで出る（mdhs build と同じ 50 行目）
   await page.getByRole('button', { name: /警告/ }).click();
   const warning = page.locator('.warnings li').first();
   await expect(warning).toContainText('50 行');

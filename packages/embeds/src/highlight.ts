@@ -5,7 +5,7 @@
  * 色の値はテーマの CSS が決めるので、テーマを変えても色分けをやり直さなくてよい。
  * 文字は変えずに span で囲むだけなので、コードの高さ（計測）は変わらない。
  */
-import type { CodeHighlighter } from '@mds/core';
+import type { CodeHighlighter } from '@mdhs/core';
 import { codeLanguages, FIGURE_LANGS } from './langs.js';
 import {
   bundledLanguages,

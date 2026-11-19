@@ -1,4 +1,4 @@
-import { decodePath, isLocalPath, mediaSize, type MediaInfo } from '@mds/core';
+import { decodePath, isLocalPath, mediaSize, type MediaInfo } from '@mdhs/core';
 
 /**
  * 資料が参照する素材（画像・動画・ロゴ・CSS）をどこから読むか（#73、設計プラン §9.1）。

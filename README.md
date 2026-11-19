@@ -99,16 +99,16 @@ scenario 正常時
 
 ### コマンドライン（CLI）
 
-Node.js 22 以上と pnpm（`corepack enable` で使えるようになる）が要る。
+Node.js 22 以上と pnpm（`corepack enable` で使えるようになる）が要る。npm には登録していないので、このリポジトリから使う。
 
 ```sh
 pnpm install && pnpm build
-alias mds="node $PWD/apps/cli/dist/bin.js"
+alias mdhs="node $PWD/apps/cli/dist/bin.js"
 
-mds dev deck.md                # プレビュー（保存するたびに反映。S で発表）
-mds build deck.md -o dist      # dist/index.html と素材を書き出す
-mds build deck.md --single     # 素材を埋め込んだ deck.html を1つだけ書き出す
-mds pdf deck.md                # deck.pdf（--steps でステップごとのページ）
+mdhs dev deck.md                # プレビュー（保存するたびに反映。S で発表）
+mdhs build deck.md -o dist      # dist/index.html と素材を書き出す
+mdhs build deck.md --single     # 素材を埋め込んだ deck.html を1つだけ書き出す
+mdhs pdf deck.md                # deck.pdf（--steps でステップごとのページ）
 ```
 
 | オプション | 内容 |
@@ -151,7 +151,7 @@ mds pdf deck.md                # deck.pdf（--steps でステップごとのペ�
 |---|---|
 | `pnpm install` | 依存関係を入れる |
 | `pnpm build` | 型チェックとビルド（エディタは `apps/web/dist` に書き出す） |
-| `pnpm --filter @mds/web dev` | エディタの開発用のサーバー（http://localhost:5173/） |
+| `pnpm --filter @mdhs/web dev` | エディタの開発用のサーバー（http://localhost:5173/） |
 | `pnpm test` | 単体テスト（Vitest） |
 | `pnpm test:e2e` | ブラウザでのテスト（Playwright）。初回は `pnpm exec playwright install chromium` |
 | `pnpm lint` | ESLint と Prettier の確認 |
@@ -163,7 +163,7 @@ mds pdf deck.md                # deck.pdf（--steps でステップごとのペ�
 | `packages/runtime` | 発表用のプレイヤー、動く構成図の配置と再生、印刷の準備 |
 | `packages/themes` | テーマ（clean / dark / bold / band / academic / pop） |
 | `packages/embeds` | コードの色分け・数式・Mermaid（CLI とエディタで共通） |
-| `apps/cli` | コマンドライン `mds` |
+| `apps/cli` | コマンドライン `mdhs` |
 | `apps/web` | Web エディタ（PWA。GitHub Pages に公開） |
 | `e2e/` | ブラウザでのテスト |
 | `fixtures/` | テスト用の資料 |

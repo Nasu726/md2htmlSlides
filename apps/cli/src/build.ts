@@ -16,17 +16,17 @@ import {
   type Diagnostic,
   type RenderOptions,
   type SlideDeck,
-} from '@mds/core';
-import { ARCH_SCRIPT, RUNTIME_SCRIPT } from '@mds/runtime';
-import { SERIF_FAMILY, themeFonts } from '@mds/themes';
+} from '@mdhs/core';
+import { ARCH_SCRIPT, RUNTIME_SCRIPT } from '@mdhs/runtime';
+import { SERIF_FAMILY, themeFonts } from '@mdhs/themes';
 import type { Browser } from 'playwright-core';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createAssets, registerDeckAssets, type Assets } from './assets.js';
 import { FONT_HOST, codeText, linkedFontCss, subsetFontCss, visibleText } from './fonts.js';
-import { collectMermaid, diagramDiagnostic, normalizeCode } from '@mds/embeds';
-import { codeHighlighter, codeLanguages } from '@mds/embeds/highlight';
+import { collectMermaid, diagramDiagnostic, normalizeCode } from '@mdhs/embeds';
+import { codeHighlighter, codeLanguages } from '@mdhs/embeds/highlight';
 import {
   linkedMathFontCss,
   mathDiagnostics,
@@ -39,7 +39,7 @@ import { ChromiumMeasurer } from './measurer.js';
 /**
  * 同梱するフォントの扱い（docs/design.md §6）。
  * - `embed`：スライドで使う文字だけに絞り、HTML に埋め込む（書き出し）
- * - `link`：分割ファイル一式を `/__mds/fonts/` から読み込む（`mds dev`）
+ * - `link`：分割ファイル一式を `/__mds/fonts/` から読み込む（`mdhs dev`）
  * - なし：フォントを含めない（OS のフォントで表示する）
  */
 export type FontMode = 'embed' | 'link';

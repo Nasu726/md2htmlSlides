@@ -1,5 +1,5 @@
-import { buildSlides, parseDeck, renderDeckHtml } from '@mds/core';
-import { RUNTIME_SCRIPT, preparePrint } from '@mds/runtime';
+import { buildSlides, parseDeck, renderDeckHtml } from '@mdhs/core';
+import { RUNTIME_SCRIPT, preparePrint } from '@mdhs/runtime';
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';

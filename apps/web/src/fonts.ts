@@ -129,4 +129,4 @@ export async function embeddedFontCss(faces: WebFontFace[]): Promise<string> {
   return rules.filter(Boolean).join('\n');
 }
 
-export { visibleText } from '@mds/embeds';
+export { visibleText } from '@mdhs/embeds';

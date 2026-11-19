@@ -2,7 +2,7 @@
  * md2htmlSlides の中核：Markdown → スライド（パース・分割・レイアウト・描画）。
  * 設計は docs/design.md §3〜§5 を参照。
  */
-export const VERSION = '0.0.0';
+export const VERSION = '1.0.0';
 
 export type { Diagnostic, Severity } from './diagnostics.js';
 export { type Author, type DeckMeta, type FrontmatterBlock } from './frontmatter.js';

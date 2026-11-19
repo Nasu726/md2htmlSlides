@@ -1,4 +1,4 @@
-import type { CodeHighlighter } from '@mds/core';
+import type { CodeHighlighter } from '@mdhs/core';
 import {
   mathEngine,
   needsHighlighter,
@@ -6,18 +6,18 @@ import {
   usedFaceKeys,
   type KatexCss,
   type MathEngine,
-} from '@mds/embeds';
+} from '@mdhs/embeds';
 import type { WebFontFace } from './fonts.js';
 
 /**
  * コードの色分け・数式・図（#84）を、使うときだけ読み込む（設計プラン §11.2）。
- * 描き方は CLI と同じ（@mds/embeds と runtime の renderMermaid）なので、書き出しと同じ見た目になる。
+ * 描き方は CLI と同じ（@mdhs/embeds と runtime の renderMermaid）なので、書き出しと同じ見た目になる。
  */
 
 /** コードの色分け（Shiki）。色分けする言語がなければ読み込まない */
 export async function loadHighlighter(text: string): Promise<CodeHighlighter | undefined> {
   if (!needsHighlighter(text)) return undefined;
-  const { codeHighlighter, codeLanguages } = await import('@mds/embeds/highlight');
+  const { codeHighlighter, codeLanguages } = await import('@mdhs/embeds/highlight');
   return codeHighlighter(codeLanguages(text));
 }
 

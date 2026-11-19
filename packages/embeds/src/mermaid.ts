@@ -2,7 +2,7 @@
  * Mermaid の図（#71）の補助。描くのは runtime の renderMermaid（ブラウザの中で動く）。
  * CLI（ヘッドレス Chromium）と Web エディタ（計測用の iframe）で共有する（#84）。
  */
-import { collectMedia, decodePath, isLocalPath, type Deck, type Diagnostic } from '@mds/core';
+import { collectMedia, decodePath, isLocalPath, type Deck, type Diagnostic } from '@mdhs/core';
 
 /** 図にする Mermaid のコード（```mermaid と、`![](flow.mmd)` で参照するファイル） */
 export interface MermaidSource {
