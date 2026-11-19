@@ -4,7 +4,7 @@
  */
 import type { Block } from '../ir.js';
 import type { DiagramRenderer, DiagramResult } from '../md/media.js';
-import type { MediaProbe } from '../media.js';
+import { decodePath, type MediaProbe } from '../media.js';
 import type { Slide } from '../slides.js';
 import { LAYOUTS, type LayoutName } from '../syntax/elements.js';
 import { archUse, captionsBelow, hasCaptions } from './arch.js';
@@ -22,7 +22,7 @@ export interface LayoutChoice {
 const HIDDEN = new Set<Block['kind']>(['comment', 'pause', 'slide-attrs', 'directive']);
 const IMAGE = /!\[[^\]]*\]\([^)]*\)(\{[^}]*\})?/g;
 
-/** 図として扱うコード（M3 で描く Mermaid・動く構成図）。 */
+/** 図として扱うコード（Mermaid・動く構成図）。 */
 export const isFigureCode = (b: Block) =>
   b.kind === 'code' && (b.lang === 'mermaid' || b.lang === 'arch');
 
@@ -158,7 +158,7 @@ export function chooseLayout(
           ? diagramAspect(
               diagram?.({
                 lang: visibleMedia(block)[0]!.kind === 'arch' ? 'arch' : 'mermaid',
-                src: decodeSrc(visibleMedia(block)[0]!.src),
+                src: decodePath(visibleMedia(block)[0]!.src),
               }),
             )
           : aspectOf(visibleMedia(block)[0]?.src, probe);
@@ -205,22 +205,9 @@ function fenceContent(raw: string): string {
   return `${lines.slice(1, -1).join('\n')}\n`;
 }
 
-function decodeSrc(src: string): string {
-  try {
-    return decodeURI(src);
-  } catch {
-    return src;
-  }
-}
-
 function aspectOf(src: string | undefined, probe: MediaProbe | undefined): number | undefined {
   if (!src || !probe) return undefined;
-  let path = src;
-  try {
-    path = decodeURI(src);
-  } catch {
-    // そのまま使う
-  }
+  const path = decodePath(src);
   const info = probe(path);
   return info?.width && info.height ? info.width / info.height : undefined;
 }

@@ -7,8 +7,8 @@
  *
  * - 1280×720 の論理キャンバスを `transform: scale()` で画面に合わせる（余白は帯）
  * - キー操作・プレゼンリモコン（PageUp / PageDown）・スワイプ
- * - URL `#/12`（12枚目）。`#/見出しのID` でも移動できる
- * - 段階的表示と発表者ビューは M2
+ * - URL `#/12`（12枚目）・`#/12/2`（12枚目の2ステップ目）。`#/見出しのID` でも移動できる
+ * - 段階的表示（`data-step`・埋め込みの内部ステップ）、発表者ビュー、一覧、切り替え効果
  */
 export function startPlayer(doc: Document): void {
   const deck = doc.querySelector<HTMLElement>('.mds-deck');

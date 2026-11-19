@@ -2,7 +2,7 @@
  * Mermaid の図（#71）の補助。描くのは runtime の renderMermaid（ブラウザの中で動く）。
  * CLI（ヘッドレス Chromium）と Web エディタ（計測用の iframe）で共有する（#84）。
  */
-import { collectMedia, isLocalPath, type Deck, type Diagnostic } from '@mds/core';
+import { collectMedia, decodePath, isLocalPath, type Deck, type Diagnostic } from '@mds/core';
 
 /** 図にする Mermaid のコード（```mermaid と、`![](flow.mmd)` で参照するファイル） */
 export interface MermaidSource {
@@ -11,14 +11,6 @@ export interface MermaidSource {
   line: number;
   /** ファイルを参照したとき（資料のフォルダからのパス） */
   src?: string;
-}
-
-function decodeSrc(src: string): string {
-  try {
-    return decodeURI(src);
-  } catch {
-    return src;
-  }
 }
 
 /**
@@ -36,7 +28,7 @@ export function collectMermaid(
   }
   for (const media of collectMedia(deck)) {
     if (media.kind !== 'diagram' || !isLocalPath(media.src)) continue;
-    const src = decodeSrc(media.src);
+    const src = decodePath(media.src);
     const code = read(src);
     if (code === undefined) continue;
     found.push({ code, line: media.line, src });

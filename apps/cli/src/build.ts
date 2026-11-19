@@ -12,6 +12,7 @@ import {
   renderDeckHtml,
   type Deck,
   type DiagramResult,
+  decodePath,
   type Diagnostic,
   type RenderOptions,
   type SlideDeck,
@@ -109,7 +110,7 @@ export async function renderFile(
   if (measurer) {
     const backgrounds = collectMedia(deck)
       .filter((m) => m.attrs?.values.bg !== undefined && isLocalPath(m.src))
-      .map((m) => decodeSrc(m.src));
+      .map((m) => decodePath(m.src));
     const measured = await measurer.luminance(backgrounds.map((src) => resolve(assets.root, src)));
     for (const src of backgrounds) {
       const value = measured.get(resolve(assets.root, src));
@@ -263,7 +264,7 @@ function omittedVideos(deck: Deck, assets: Assets, limit: number): Diagnostic[] 
   const out: Diagnostic[] = [];
   for (const media of collectMedia(deck)) {
     if (media.kind !== 'video' || !isLocalPath(media.src)) continue;
-    const src = decodeSrc(media.src);
+    const src = decodePath(media.src);
     const size = assets.bytes(src);
     if (size === undefined || !tooLarge(size, limit)) continue;
     const poster = media.attrs?.values.poster;
@@ -284,14 +285,6 @@ function omittedVideos(deck: Deck, assets: Assets, limit: number): Diagnostic[] 
     });
   }
   return out;
-}
-
-function decodeSrc(src: string): string {
-  try {
-    return decodeURI(src);
-  } catch {
-    return src;
-  }
 }
 
 export interface BuildOptions {

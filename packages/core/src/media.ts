@@ -71,6 +71,15 @@ export function isLocalPath(src: string): boolean {
   return src !== '' && !/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(src);
 }
 
+/** markdown-it が符号化したパス（`%E5%9B%B3.png` など）を、ファイルを探せる形に戻す。戻せなければそのまま */
+export function decodePath(src: string): string {
+  try {
+    return decodeURI(src);
+  } catch {
+    return src;
+  }
+}
+
 /** ファイルを調べた結果。width と height は画像の縦横の画素数（わかれば）。 */
 export interface MediaInfo {
   exists: boolean;

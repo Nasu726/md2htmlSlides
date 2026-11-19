@@ -1,4 +1,4 @@
-import { isLocalPath, mediaSize, type MediaInfo } from '@mds/core';
+import { decodePath, isLocalPath, mediaSize, type MediaInfo } from '@mds/core';
 
 /**
  * 資料が参照する素材（画像・動画・ロゴ・CSS）をどこから読むか（#73、設計プラン §9.1）。
@@ -19,12 +19,7 @@ export const noAssets: AssetSource = { read: async () => undefined };
  * 資料のフォルダより上（`../assets/a.png`）は、`..` を残す（URL から開いたときは、その先を読む。#90）
  */
 export function normalizePath(src: string): string {
-  let path = src.split(/[?#]/)[0]!;
-  try {
-    path = decodeURI(path);
-  } catch {
-    // そのまま
-  }
+  const path = decodePath(src.split(/[?#]/)[0]!);
   const parts: string[] = [];
   for (const part of path.split('/')) {
     if (part === '' || part === '.') continue;

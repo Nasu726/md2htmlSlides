@@ -660,7 +660,7 @@ body { margin: 0; background: #d1d5db; }
 }
 .mds-slide.bg-tone-light > :not(.mds-bg) { text-shadow: 0 1px 3px rgb(255 255 255 / 0.75); }
 
-/* 縮小しても収まらなかったスライド（M2 の自動分割までの目印。debug のときだけ表示） */
+/* 縮小しても収まらなかったスライドの目印（debug のときだけ表示） */
 .mds-deck[data-debug] .mds-slide[data-overflow] { outline: 4px dashed #dc2626; outline-offset: -4px; }
 
 /* 印刷のときだけ出す、埋め込み動画の代わり（サムネイルとリンク） */

@@ -40,6 +40,9 @@ export async function renderMermaid(input: {
   mermaid.initialize({
     startOnLoad: false,
     securityLevel: 'strict',
+    // 図形の線は rough.js で描かれ、種を決めないと描くたびに制御点が変わる。同じ資料からは
+    // いつも同じ HTML を書き出すように、種を固定する（設計プラン §0-3。#132）
+    handDrawnSeed: 1,
     theme: 'base',
     darkMode: dark,
     fontFamily: css.getPropertyValue('--mds-font-body').trim() || 'sans-serif',

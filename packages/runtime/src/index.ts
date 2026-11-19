@@ -1,13 +1,10 @@
 /**
- * 発表用の runtime：拡大縮小・キー操作・URL でのページ指定（docs/design.md §8）。
- * 段階表示と発表者ビューは M2 で加える。
+ * 発表用の runtime（docs/design.md §8）：拡大縮小・キー操作・URL でのページ指定・段階表示・
+ * 発表者ビュー・一覧・切り替え効果。書き出した HTML には、関数のソースを文字列にして入れる。
  */
+import { startArch } from './arch-player.js';
 import { startPlayer } from './player.js';
 import { startPreview } from './preview.js';
-
-export const RUNTIME_VERSION = '0.0.0';
-
-export { startPlayer };
 
 /**
  * 書き出した HTML の `<script>` に入れるソース。
@@ -15,14 +12,10 @@ export { startPlayer };
  */
 export const RUNTIME_SCRIPT = `(${startPlayer.toString()})(document);`;
 
-export { startPreview };
-
 /**
  * 動く構成図の再生（#108）。書き出した HTML の、RUNTIME_SCRIPT より前に入れる
  * （構成図がある資料のときだけ）
  */
-export { startArch } from './arch-player.js';
-import { startArch } from './arch-player.js';
 export const ARCH_SCRIPT = `(${startArch.toString()})(document);`;
 
 /** `mds dev` のプレビュー（`/`）に入れるソース。画面に合わせる・S で発表を始める（#60） */

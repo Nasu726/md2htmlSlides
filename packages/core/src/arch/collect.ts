@@ -1,7 +1,7 @@
 import type { Diagnostic } from '../diagnostics.js';
 import type { Attrs } from '../attrs.js';
 import type { Block } from '../ir.js';
-import { isLocalPath } from '../media.js';
+import { decodePath, isLocalPath } from '../media.js';
 import type { SlideDeck } from '../slides.js';
 import { parseArch, type ArchDiagram, type ArchDiagnostic } from './parse.js';
 
@@ -23,14 +23,6 @@ export interface ArchSource {
   /** 構成図のソースの中の行の警告 */
   diagnostics: ArchDiagnostic[];
 }
-
-const decode = (src: string) => {
-  try {
-    return decodeURI(src);
-  } catch {
-    return src;
-  }
-};
 
 /** コードブロックの中身（最初と最後の囲みの行を除く） */
 const fenceContent = (raw: string) => `${raw.split('\n').slice(1, -1).join('\n')}\n`;
@@ -55,7 +47,7 @@ export function collectArch(
         }
         for (const media of block.media ?? []) {
           if (media.kind !== 'arch' || !isLocalPath(media.src)) continue;
-          const src = decode(media.src);
+          const src = decodePath(media.src);
           const code = read(src);
           if (code === undefined) continue; // 見つからないファイルは、メディアの警告に任せる
           out.push({
