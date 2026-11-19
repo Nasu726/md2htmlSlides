@@ -30,6 +30,7 @@ export {
   embedUrl,
   isLocalPath,
   mediaKind,
+  mediaMime,
   mediaSize,
   type MediaInfo,
   type MediaKind,

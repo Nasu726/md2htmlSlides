@@ -95,6 +95,15 @@ export class AssetStore {
     this.entries.set(key, { blob, info: { exists: true, ...size } });
   }
 
+  /** 読み込んだ素材の大きさ（バイト）。読めていなければ undefined */
+  size = (src: string): number | undefined =>
+    isLocalPath(src) ? this.entries.get(normalizePath(src))?.blob?.size : undefined;
+
+  /** 読み込んだ素材の Blob（キーは印と同じく符号化したもの） */
+  blobOf(key: string): Blob | undefined {
+    return this.entries.get(decodeURIComponent(key))?.blob;
+  }
+
   probe = (src: string): MediaInfo | undefined => {
     if (!isLocalPath(src)) return undefined;
     return this.entries.get(normalizePath(src))?.info;

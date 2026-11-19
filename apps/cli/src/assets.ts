@@ -1,7 +1,14 @@
-import { collectMedia, isLocalPath, mediaSize, type Deck, type MediaInfo } from '@mds/core';
+import {
+  collectMedia,
+  isLocalPath,
+  mediaMime,
+  mediaSize,
+  type Deck,
+  type MediaInfo,
+} from '@mds/core';
 import { createHash } from 'node:crypto';
 import { closeSync, existsSync, openSync, readFileSync, readSync, statSync } from 'node:fs';
-import { basename, dirname, extname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
 /** 素材（画像・動画・ロゴ・CSS）のパスを、資料のフォルダを基準に解決する。 */
 export interface Assets {
@@ -22,24 +29,6 @@ export interface Assets {
   /** data: URL にしたファイル（[元の絶対パス, バイト数]） */
   embedded(): Array<[string, number]>;
 }
-
-/** data: URL の種類（拡張子から） */
-const MIME: Readonly<Record<string, string>> = {
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  gif: 'image/gif',
-  webp: 'image/webp',
-  avif: 'image/avif',
-  svg: 'image/svg+xml',
-  bmp: 'image/bmp',
-  ico: 'image/x-icon',
-  mp4: 'video/mp4',
-  m4v: 'video/mp4',
-  webm: 'video/webm',
-  ogv: 'video/ogg',
-  mov: 'video/quicktime',
-};
 
 /**
  * 縦横を読むためのバイト列。MP4 は縦横（moov）が末尾にあることもあるので、
@@ -130,8 +119,7 @@ export function createAssets(mdFile: string): Assets {
       if (cached) return cached.url;
       if (bytesOf(src) === undefined) return src;
       const data = readFileSync(path);
-      const ext = extname(path).slice(1).toLowerCase();
-      const url = `data:${MIME[ext] ?? 'application/octet-stream'};base64,${data.toString('base64')}`;
+      const url = `data:${mediaMime(path) ?? 'application/octet-stream'};base64,${data.toString('base64')}`;
       inlined.set(path, { url, bytes: data.length });
       return url;
     },

@@ -10,6 +10,30 @@ export type MediaKind = 'image' | 'video' | 'youtube' | 'vimeo' | 'diagram' | 'a
 
 const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mov', 'm4v', 'ogv']);
 
+/** 素材の MIME の種類（単一 HTML の data: URL に使う。#120・#121） */
+const MEDIA_MIME: Readonly<Record<string, string>> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  avif: 'image/avif',
+  svg: 'image/svg+xml',
+  bmp: 'image/bmp',
+  ico: 'image/x-icon',
+  mp4: 'video/mp4',
+  m4v: 'video/mp4',
+  webm: 'video/webm',
+  ogv: 'video/ogg',
+  mov: 'video/quicktime',
+};
+
+/** 拡張子から MIME の種類を決める。知らない拡張子なら undefined */
+export function mediaMime(path: string): string | undefined {
+  const ext = /\.([a-z0-9]+)$/i.exec(path.split(/[?#]/)[0] ?? '')?.[1]?.toLowerCase();
+  return ext ? MEDIA_MIME[ext] : undefined;
+}
+
 /** 拡張子と URL から、メディアの種類を決める。 */
 export function mediaKind(src: string): MediaKind {
   if (youtubeId(src)) return 'youtube';
