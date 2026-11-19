@@ -22,7 +22,7 @@ export interface LayoutChoice {
 const HIDDEN = new Set<Block['kind']>(['comment', 'pause', 'slide-attrs', 'directive']);
 const IMAGE = /!\[[^\]]*\]\([^)]*\)(\{[^}]*\})?/g;
 
-/** 図として扱うコード（M3 で描く Mermaid・動く構成図）。 */
+/** 図として扱うコード（Mermaid・動く構成図）。 */
 export const isFigureCode = (b: Block) =>
   b.kind === 'code' && (b.lang === 'mermaid' || b.lang === 'arch');
 

@@ -69,7 +69,7 @@ interface Segment {
 
 /**
  * IR を、見出しと `---` でスライドに区切る（構文仕様 §2.1〜§2.3）。
- * あふれたときの自動分割（M2）はまだ行わない。
+ * あふれたときの自動分割は、計測の後に split/split.ts の applySplit が行う。
  */
 export function buildSlides(deck: Deck): SlideDeck {
   const slideLevel =
