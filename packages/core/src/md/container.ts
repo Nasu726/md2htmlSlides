@@ -3,6 +3,7 @@ import { parseAttrs, type Attrs } from '../attrs.js';
 import { closest } from '../suggest.js';
 import { CONTAINER_NAMES } from '../syntax/elements.js';
 import { fileLine, type ParseEnv } from './env.js';
+import { reportInvalidValues } from './attrs.js';
 
 export type ContainerMeta = {
   name: string;
@@ -99,8 +100,10 @@ function container(state: StateBlock, startLine: number, endLine: number, silent
   let attrs: Attrs | undefined;
   if (open[3]) {
     const result = parseAttrs(open[3]);
-    if (result.ok) attrs = result.attrs;
-    else
+    if (result.ok) {
+      attrs = result.attrs;
+      reportInvalidValues(result.invalid, env, fileLine(env, startLine));
+    } else
       env.diagnostics.push({
         severity: 'warning',
         code: 'attrs/unknown-key',

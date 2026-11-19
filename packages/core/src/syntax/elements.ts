@@ -27,6 +27,17 @@ export const LAYOUT_SUMMARIES: Readonly<Record<LayoutName, string>> = {
   statement: '一文を中央に大きく',
 };
 
+/** タイトルスライドのロゴの置き場所（`::maketitle{logo=…}`。#138）。top が既定 */
+export const LOGO_PLACES = [
+  'top',
+  'bottom',
+  'top-left',
+  'top-right',
+  'bottom-left',
+  'bottom-right',
+] as const;
+export type LogoPlace = (typeof LOGO_PLACES)[number];
+
 /** 属性を書ける場所 */
 export type AttrPlace = 'slide' | 'block' | 'media' | 'code' | 'container' | 'arch' | 'maketitle';
 
@@ -245,6 +256,13 @@ export const ATTRIBUTE_KEYS: readonly AttrKey[] = [
     name: 'variant',
     summary: 'タイトルの揃え',
     value: { type: 'enum', values: ['center', 'left'] },
+    places: ['maketitle'],
+    docAnchor: 'syntax.md#22-タイトルスライドmaketitle',
+  },
+  {
+    name: 'logo',
+    summary: 'ロゴの置き場所（top：文字の上、bottom：日付の下、ほかはスライドの角）',
+    value: { type: 'enum', values: LOGO_PLACES },
     places: ['maketitle'],
     docAnchor: 'syntax.md#22-タイトルスライドmaketitle',
   },

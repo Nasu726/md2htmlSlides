@@ -115,16 +115,25 @@ function countNewlines(text: string): number {
   return text.split('\n').length - 1;
 }
 
+/** 値が正しくない属性を警告する（`::maketitle{…}`・`:::名前 {…}` からも使う。#138） */
+export function reportInvalidValues(
+  invalid: { key: string; expected: string }[],
+  env: ParseEnv,
+  line: number,
+): void {
+  for (const { key, expected } of invalid) {
+    env.diagnostics.push({
+      severity: 'warning',
+      code: 'attrs/invalid-value',
+      message: `属性「${key}」の値が正しくありません（${expected}）。この属性は無視します`,
+      line,
+    });
+  }
+}
+
 function report(result: AttrsResult, env: ParseEnv, line: number): void {
   if (result.ok) {
-    for (const { key, expected } of result.invalid) {
-      env.diagnostics.push({
-        severity: 'warning',
-        code: 'attrs/invalid-value',
-        message: `属性「${key}」の値が正しくありません（${expected}）。この属性は無視します`,
-        line,
-      });
-    }
+    reportInvalidValues(result.invalid, env, line);
     return;
   }
   if (!result.typo) return;

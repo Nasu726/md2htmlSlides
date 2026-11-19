@@ -26,14 +26,25 @@ export function fitSlides(root: ParentNode, margin: number): void {
       const style = getComputedStyle(slide);
       const room =
         slide.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      // 角に置いたロゴ（#138）に、文字が重なっているか（文字の行ごとに見る）
+      const logo = slide.querySelector<HTMLElement>(':scope > .mds-logo');
+      const overlaps = () => {
+        if (!logo) return false;
+        const l = logo.getBoundingClientRect();
+        if (l.width === 0) return false;
+        return Array.from(block.children).some((child) => {
+          const r = child.getBoundingClientRect();
+          return r.left < l.right && r.right > l.left && r.top < l.bottom && r.bottom > l.top;
+        });
+      };
       let fit = 1;
       block.style.setProperty('--mds-fit', '1');
-      while (room > 0 && block.offsetHeight > room && fit > 0.6) {
+      while (room > 0 && (block.offsetHeight > room || overlaps()) && fit > 0.6) {
         fit = Math.round((fit - 0.05) * 100) / 100;
         block.style.setProperty('--mds-fit', String(fit));
       }
       slide.dataset.fit = String(fit);
-      if (room > 0 && block.offsetHeight > room) slide.dataset.overflow = '';
+      if ((room > 0 && block.offsetHeight > room) || overlaps()) slide.dataset.overflow = '';
       else delete slide.dataset.overflow;
       continue;
     }
@@ -61,6 +72,11 @@ export function fitSlides(root: ParentNode, margin: number): void {
 /**
  * 書き出した HTML に埋め込むための、fitSlides のソース。
  * 同梱したフォントは読み込みに少し時間がかかるので、読み込み終わったらもう一度収め直す。
+ * 角に置いたロゴ（#138）は、画像を読み終わるまで大きさがないので、ページを読み終わったときにも収め直す。
  */
-export const FIT_SCRIPT = `(${fitSlides.toString()})(document, ${FIT_MARGIN});
-document.fonts && document.fonts.ready.then(() => (${fitSlides.toString()})(document, ${FIT_MARGIN}));`;
+export const FIT_SCRIPT = `(() => {
+const fit = ${fitSlides.toString()};
+fit(document, ${FIT_MARGIN});
+document.fonts && document.fonts.ready.then(() => fit(document, ${FIT_MARGIN}));
+addEventListener('load', () => fit(document, ${FIT_MARGIN}));
+})();`;

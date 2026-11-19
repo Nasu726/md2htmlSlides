@@ -88,6 +88,52 @@ test('収まらないタイトルスライドは、文字とロゴを小さく�
   await expect(slide).not.toHaveAttribute('data-overflow');
 });
 
+test('ロゴを角に置く：左右の半分が背景なら文字の側の角に、文字と重なるなら文字を縮める（#138）', async ({
+  page,
+}) => {
+  const svg = encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><circle cx="60" cy="60" r="58" fill="#1e3a5f"/></svg>',
+  );
+  const markdown = (attrs: string, extra = '') =>
+    [
+      '---',
+      'title: データベース入門',
+      'subtitle: インデックスの考え方と使い方',
+      'author: 山田 太郎',
+      'affiliation: ○○大学 情報学部',
+      'date: 2026-12-05',
+      'event: 社内勉強会',
+      `logo: "data:image/svg+xml,${svg}"`,
+      'theme: band',
+      '---',
+      '',
+      `:::maketitle {${attrs}}`,
+      extra,
+      ':::',
+    ].join('\n');
+  const box = async (selector: string) => (await page.locator(selector).first().boundingBox())!;
+
+  // 右半分が背景：右上のロゴは、文字のある左半分に置く
+  await page.setContent(
+    renderDeckHtml(buildSlides(parseDeck(markdown('logo=top-right', '![](c.jpg){bg=right}')))),
+  );
+  const logo = await box('.mds-slide > .mds-logo');
+  const slide = await box('.mds-slide');
+  expect(logo.x + logo.width).toBeLessThanOrEqual(slide.x + slide.width / 2);
+
+  // band の左下：左揃えの文字の列と重なるので、文字を縮めて重ならないようにする
+  await page.setContent(renderDeckHtml(buildSlides(parseDeck(markdown('logo=bottom-left')))));
+  const overlap = await page.evaluate(() => {
+    const l = document.querySelector('.mds-slide > .mds-logo')!.getBoundingClientRect();
+    return Array.from(document.querySelector('.mds-titleblock')!.children).some((child) => {
+      const r = child.getBoundingClientRect();
+      return r.left < l.right && r.right > l.left && r.top < l.bottom && r.bottom > l.top;
+    });
+  });
+  expect(overlap).toBe(false);
+  expect(Number(await page.locator('.mds-slide').getAttribute('data-fit'))).toBeLessThan(1);
+});
+
 test('bold・pop の章の名前とイベント名は、地とのコントラストが 4.5 以上（#131）', async ({
   page,
 }) => {
