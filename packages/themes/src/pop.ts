@@ -5,7 +5,7 @@ import { FONT_MONO, FONT_SANS } from './fonts.js';
  * - 見出しに蛍光ペンの線、小見出しはラベル（丸い札）
  * - 箇条書きの印は、項目ごとに色が変わる
  * - カードと引用は、太い枠と、ずらした影
- * - 章扉はアクセントの色面に、丸い模様
+ * - 章扉は、彩度を少し落としたピンクの色面に、丸い模様（#142）
  */
 export const POP_TOKENS = `
   --mds-bg: #fffaf0;
@@ -106,7 +106,11 @@ ${selector} .mds-page {
   color: var(--mds-bg);
   font-weight: 700;
 }
-/* 章扉：アクセントの色面に、丸い模様 */
+/*
+ * 章扉：ピンクの色面に、丸い模様。アクセント（#ff4d6d）のままだと鮮やかすぎて、前後の本文の
+ * スライド（クリーム色）との差が目に優しくないので、同じ明るさのまま彩度を 0.87 に落とす（#142）。
+ * 白い文字は 3.1:1（大きな文字の基準 3:1 を満たす）。読みやすいように薄い影を付ける
+ */
 ${selector} .layout-section:not([class*='has-bg-']) {
   --mds-fg: #ffffff;
   --mds-muted: rgb(255 255 255 / 0.9);
@@ -115,7 +119,10 @@ ${selector} .layout-section:not([class*='has-bg-']) {
     radial-gradient(circle at 88% 18%, var(--mds-pop-yellow) 0 70px, transparent 71px),
     radial-gradient(circle at 96% 78%, var(--mds-pop-blue) 0 120px, transparent 121px),
     radial-gradient(circle at 76% 92%, var(--mds-pop-mint) 0 44px, transparent 45px),
-    #ff4d6d;
+    #f45e7f;
+}
+${selector} .layout-section:not([class*='has-bg-']) :is(.mds-title, .mds-body) {
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
 }
 ${selector} .layout-section .mds-title { font-weight: 900; }
 ${selector} .layout-section .mds-page { background: rgb(255 255 255 / 0.28); color: #ffffff; }
