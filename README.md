@@ -109,6 +109,7 @@ mdhs dev deck.md                # プレビュー（保存するたびに反映�
 mdhs build deck.md -o dist      # dist/index.html と素材を書き出す
 mdhs build deck.md --single     # 素材を埋め込んだ deck.html を1つだけ書き出す
 mdhs pdf deck.md                # deck.pdf（--steps でステップごとのページ）
+mdhs check deck.md              # 書き出さずに、警告と収まらないスライドを一覧にする
 ```
 
 | オプション | 内容 |
@@ -116,6 +117,8 @@ mdhs pdf deck.md                # deck.pdf（--steps でステップごとのペ
 | `--no-measure` | ヘッドレス Chromium での計測（自動分割と、収まらないスライドの確認）を省く |
 | `--video-limit <MB>` | `--single` で、これより大きい動画は埋め込まない（既定 10。0 は動画を埋め込まずポスターだけ、-1 は無制限） |
 | `--steps` | PDF をステップごとのページにする（フロントマターの `pdf: { steps: each }` と同じ） |
+| `--strict` | `check` で、警告があっても終了コードを 1 にする（既定はエラーがあるときだけ 1） |
+| `--json` | `check` の結果を JSON で出す |
 
 計測と PDF にはヘッドレス Chromium を使う。見つからなければ手元の Chrome を探し、なければ計測を省いて書き出す（`npx playwright install chromium` で入れられる）。書き出した HTML は、ブラウザで開くだけで発表できる（`file://` でも動く）。
 

@@ -1,5 +1,12 @@
 import { VERSION } from '@mdhs/core';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -206,6 +213,54 @@ describe('mdhs build', () => {
     await build(join(root, 'slides.md'), { outDir: join(root, 'out'), measure: false });
     const html = readFileSync(join(root, 'out/index.html'), 'utf8');
     expect(html).toContain('@scope (.mds-deck) {\n.mds-title { color: red; }\n}');
+  });
+});
+
+// 計測しない（--no-measure）で確かめる。あふれの確認は e2e で確かめる
+describe('mdhs check', () => {
+  const deck = (frontmatter: string) =>
+    project({ 'deck.md': `---\n${frontmatter}\n---\n\n## A\n\n![図](./a.png)\n`, 'a.png': png });
+
+  it('警告を一覧にし、警告だけなら終了コード 0。--strict なら 1', async () => {
+    const root = deck('lyout: x');
+    const file = join(root, 'deck.md');
+    const a = capture();
+    expect(await main(['check', file, '--no-measure'], a.sink)).toBe(0);
+    expect(a.io.stdout).toContain(`${file}:2  warning  未知のキー「lyout」`);
+    expect(a.io.stdout).toContain(`✓ ${file}（1 枚、エラー 0・警告 1・情報 0、`);
+    const b = capture();
+    expect(await main(['check', file, '--no-measure', '--strict'], b.sink)).toBe(1);
+    expect(b.io.stdout).toContain(`✗ ${file}（1 枚、エラー 0・警告 1・情報 0、`);
+    // 資料のフォルダに、書き出したものを残さない
+    expect(readdirSync(root).sort()).toEqual(['a.png', 'deck.md']);
+  });
+
+  it('エラーがあれば終了コード 1、問題がなければ「問題なし」で 0', async () => {
+    const broken = capture();
+    expect(
+      await main(['check', join(deck('title: [a'), 'deck.md'), '--no-measure'], broken.sink),
+    ).toBe(1);
+    expect(broken.io.stdout).toContain('error');
+    const clean = capture();
+    const file = join(deck('title: T'), 'deck.md');
+    expect(await main(['check', file, '--no-measure', '--strict'], clean.sink)).toBe(0);
+    expect(clean.io.stdout).toMatch(/^✓ .+（2 枚、問題なし、[\d.]+ 秒）\n$/);
+  });
+
+  it('--json で、枚数・重さごとの数・警告・終了コードを JSON にする', async () => {
+    const file = join(deck('lyout: x'), 'deck.md');
+    const a = capture();
+    expect(await main(['check', file, '--no-measure', '--json', '--strict'], a.sink)).toBe(1);
+    expect(JSON.parse(a.io.stdout)).toEqual({
+      file,
+      slides: 1,
+      counts: { error: 0, warning: 1, info: 0 },
+      diagnostics: [
+        expect.objectContaining({ severity: 'warning', code: 'frontmatter/unknown-key', line: 2 }),
+      ],
+      exitCode: 1,
+    });
+    expect(a.io.stderr).toBe('');
   });
 });
 

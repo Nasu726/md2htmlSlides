@@ -1,4 +1,4 @@
-import { build, buildSingle, pdf, startDev, type DevServer } from '@mdhs/cli';
+import { build, buildSingle, check, checkExitCode, pdf, startDev, type DevServer } from '@mdhs/cli';
 import { preparePrint } from '@mdhs/runtime';
 import { expect, test } from '@playwright/test';
 import {
@@ -53,6 +53,28 @@ test('mdhs build は計測して自動で分割し、fixtures の目安の枚数
       name,
     ).toEqual([]);
   }
+});
+
+test('mdhs check：計測してあふれまで確かめ、書き出したものは残さない（#148）', async () => {
+  // 11-edge-cases：書き間違いの警告が 7 つ。警告だけなので終了コードは 0、--strict なら 1
+  const edge = await check(join(fixtures, '11-edge-cases.md'));
+  expect(edge.measureError).toBeUndefined();
+  expect(edge.counts).toMatchObject({ error: 0, warning: 7 });
+  expect([checkExitCode(edge.counts, false), checkExitCode(edge.counts, true)]).toEqual([0, 1]);
+  // 01-plain-document：縮小して収めたスライド（情報）だけなので、--strict でも 0
+  const plain = await check(join(fixtures, '01-plain-document.md'));
+  expect(plain.diagnostics.map((d) => d.code)).toContain('slide/shrunk');
+  expect(plain.counts).toMatchObject({ error: 0, warning: 0 });
+  expect(checkExitCode(plain.counts, true)).toBe(0);
+  // 収まらないスライド（60% でも）は警告にする
+  const root = mkdtempSync(join(tmpdir(), 'mdhs-check-'));
+  const items = Array.from({ length: 40 }, (_, i) => `- 長めの説明が入った項目 ${i + 1}`).join(
+    '\n',
+  );
+  writeFileSync(join(root, 'long.md'), `---\nsplit: manual\n---\n\n## 長いリスト\n\n${items}\n`);
+  const long = await check(join(root, 'long.md'));
+  expect(long.diagnostics.map((d) => d.code)).toContain('slide/overflow');
+  expect(readdirSync(root)).toEqual(['long.md']);
 });
 
 /** フロントマターの theme を差し替える（なければ足す） */

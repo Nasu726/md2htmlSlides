@@ -20,7 +20,14 @@ import {
 import { ARCH_SCRIPT, RUNTIME_SCRIPT } from '@mdhs/runtime';
 import { SERIF_FAMILY, themeFonts } from '@mdhs/themes';
 import type { Browser } from 'playwright-core';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createAssets, registerDeckAssets, type Assets } from './assets.js';
@@ -293,6 +300,8 @@ export interface BuildOptions {
   measure?: boolean;
   /** 使っている文字だけに絞ったフォントを埋め込む（既定は埋め込む） */
   fonts?: boolean;
+  /** 素材をコピーせず、シンボリックリンクにする（`mdhs check`。作れなければコピーする） */
+  linkAssets?: boolean;
 }
 
 export interface BuildResult {
@@ -330,7 +339,7 @@ export async function build(mdFile: string, options: BuildOptions): Promise<Buil
       if (!existsSync(from)) continue;
       const to = join(outDir, ...url.split('/').map(decodeURIComponent));
       mkdirSync(dirname(to), { recursive: true });
-      copyFileSync(from, to);
+      if (!options.linkAssets || !tryLink(from, to)) copyFileSync(from, to);
       copied++;
     }
 
@@ -345,6 +354,16 @@ export async function build(mdFile: string, options: BuildOptions): Promise<Buil
     return result;
   } finally {
     await measurer?.close();
+  }
+}
+
+/** シンボリックリンクを作る（Windows で権限がないときなど、作れなければ false） */
+function tryLink(from: string, to: string): boolean {
+  try {
+    symlinkSync(resolve(from), to);
+    return true;
+  } catch {
+    return false;
   }
 }
 
