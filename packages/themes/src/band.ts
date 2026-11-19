@@ -3,7 +3,7 @@ import { FONT_MONO, FONT_SANS } from './fonts.js';
 /**
  * band テーマ：見出しとフッターに色の帯がある。社内資料・報告向け（#93）。
  * - 本文のスライド：見出し（と章の名前）を上の帯に入れ、下にフッターの帯を敷く
- * - タイトルスライドと章扉：帯の色の面に白い文字
+ * - タイトルスライドと章扉：白地で、左に帯の色の縦の帯（#100・#137）
  * 帯の色は accent に合わせて変わる（`accent:` で会社の色にできる）。
  */
 export const BAND_TOKENS = `
@@ -99,25 +99,20 @@ ${selector} .mds-card h3, ${selector} .mds-card h4 { padding-left: 0; border-lef
 ${selector} .mds-card { border-top: 6px solid var(--mds-band); border-radius: 0 0 var(--mds-radius) var(--mds-radius); }
 ${selector} .mds-body th { color: var(--mds-band-fg); background: var(--mds-band); border-bottom: none; }
 ${selector} .mds-body tr:nth-child(even) td { background: var(--mds-surface); }
-/* タイトルスライド：帯の色の面に白い文字（背景画像があるときはそのまま） */
-${selector} .layout-title:not([class*='has-bg-']) {
-  --mds-fg: #ffffff;
-  --mds-muted: rgb(255 255 255 / 0.82);
-  --mds-accent: #ffffff;
-  --mds-surface: rgb(255 255 255 / 0.16);
-  background: var(--mds-band);
-}
-${selector} .layout-title .mds-title { font-weight: 800; }
 /*
- * 章扉：白地のまま、左に帯の色の縦の帯を置き、見出しは右に（#100・#114）。
- * 一面を色で塗ると主張が強すぎるため。番号は付けない。背景画像のある章扉は、これまでどおり
+ * タイトルスライドと章扉：白地のまま、左に帯の色の縦の帯を置き、文字は右に（#100・#114・#137）。
+ * 一面を色で塗ると主張が強すぎるため。章扉に番号は付けない。タイトルは中央揃え（既定）でも左揃えにする。
+ * 背景画像のあるものは、これまでどおり
  */
+${selector} .layout-title .mds-title { font-weight: 800; }
 ${selector} .layout-section .mds-title { font-weight: 800; }
 ${selector} .layout-section .mds-title::before { width: 96px; height: 6px; border-radius: 0; }
+${selector} .layout-title:not([class*='has-bg-']),
 ${selector} .layout-section:not([class*='has-bg-']) {
   background: linear-gradient(to right, var(--mds-band) 0 calc(var(--mds-w) * 0.28), var(--mds-bg) 0);
   padding-left: calc(var(--mds-w) * 0.28 + 64px);
 }
+${selector} .layout-title:not([class*='has-bg-']) .mds-titleblock { align-items: flex-start; text-align: left; }
 ${selector} .layout-section:not([class*='has-bg-']) .mds-title::before { background: var(--mds-band); }
 `;
 }

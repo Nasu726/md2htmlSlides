@@ -55,7 +55,7 @@ Markdown を書くだけで、区切り・配置・デザインはアプリが�
 
 ### テーマ
 
-![6つのテーマ](docs/screenshots/93/overview.png)
+![6つのテーマ](docs/screenshots/137/themes.png)
 
 ### 動く構成図
 
