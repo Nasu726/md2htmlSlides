@@ -18,10 +18,10 @@ describe('themeCss（#66）', () => {
     expect(new Set(THEMES.map(accent)).size).toBe(THEMES.length);
   });
 
-  it('bold の色面は accent に合わせて変わる（色面の中では accent を別の色にする）', () => {
+  it('bold の線の色は accent に合わせて変わる', () => {
     const css = themeCss('bold');
     expect(css).toContain('--mds-strong: var(--mds-accent);');
-    expect(css).toMatch(/\.layout-title[^{]*\{[^}]*background: var\(--mds-strong\)/);
+    expect(css).toMatch(/\.layout-title:not\([^)]*\) \.mds-title \{[^}]*solid var\(--mds-strong\)/);
   });
 
   it('bold・band の章扉は、一面を色で塗らず、番号も付けない（#100・#114）', () => {
@@ -30,20 +30,42 @@ describe('themeCss（#66）', () => {
       /\.layout-section:not\([^)]*\) \.mds-title \{[^}]*border-bottom: 12px solid/,
     );
     expect(themeCss('bold')).not.toMatch(/\.layout-section(:not\([^)]*\))?\s*[,{][^}]*background:/);
-    expect(themeCss('band')).toMatch(
-      /\.layout-section:not\([^)]*\) \{[^}]*linear-gradient\(to right, var\(--mds-band\) 0 calc\(var\(--mds-w\) \* 0\.28\)/,
-    );
+    expect(leftBand(themeCss('band'))).toContain('.layout-section');
     for (const id of ['bold', 'band'] as const) {
       expect(themeCss(id), id).not.toContain('counter(');
     }
   });
+
+  it('bold・band のタイトルスライドも、一面を色で塗らない。章扉と同じ形にする（#137）', () => {
+    // bold：見出しの下の太い線（A 案）。band：左の縦の帯と左揃え（A 案）
+    expect(themeCss('bold')).toMatch(
+      /\.layout-title:not\([^)]*\) \.mds-title \{[^}]*border-bottom: 14px solid/,
+    );
+    for (const id of ['bold', 'band'] as const) {
+      expect(themeCss(id), id).not.toMatch(
+        /\.layout-title(:not\([^)]*\))?\s*\{[^}]*background: var/,
+      );
+    }
+    expect(leftBand(themeCss('band'))).toContain('.layout-title');
+    expect(themeCss('band')).toMatch(
+      /\.layout-title:not\([^)]*\) \.mds-titleblock \{[^}]*align-items: flex-start/,
+    );
+  });
 });
+
+/** band の左の縦の帯（スライドの 28%）を敷く規則のセレクタ */
+function leftBand(css: string): string {
+  const rule = Array.from(css.matchAll(/([^{}]+)\{([^}]*)\}/g)).find(([, , body]) =>
+    body!.includes('linear-gradient(to right, var(--mds-band) 0 calc(var(--mds-w) * 0.28)'),
+  );
+  return rule?.[1] ?? '';
+}
 
 describe('band・academic・pop（#93）', () => {
   it('band の帯の色は accent に合わせて変わる', () => {
     const css = themeCss('band');
     expect(css).toContain('--mds-band: var(--mds-accent);');
-    expect(css).toMatch(/\.layout-title[^{]*\{[^}]*background: var\(--mds-band\)/);
+    expect(leftBand(css)).not.toBe('');
   });
 
   it('academic だけが見出しに明朝体を使い、その書体を読み込む', () => {

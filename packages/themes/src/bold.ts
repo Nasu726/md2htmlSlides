@@ -1,8 +1,9 @@
 import { FONT_MONO, FONT_SANS } from './fonts.js';
 
 /**
- * bold テーマ：大きな文字と強い色面。LT・ピッチ向け（docs/design.md §6）。
- * 章扉とタイトルスライドはアクセントの色面にし、本文のスライドは白地に太い文字で見せる。
+ * bold テーマ：大きな文字と強い色。LT・ピッチ向け（docs/design.md §6）。
+ * どのスライドも白地に太い文字。タイトルスライドと章扉は、見出しの下のアクセントの太い線で見せる
+ * （一面を色で塗ると主張が強すぎるため。#100・#114・#137）。
  * 文字が大きいぶん、自動分割で枚数は増える（計測はこのテーマの CSS で行う）。
  */
 export const BOLD_TOKENS = `
@@ -59,15 +60,17 @@ ${selector} .mds-body pre { font-size: 0.65em; }
 ${selector} .mds-body strong { color: var(--mds-strong); }
 ${selector} .mds-body blockquote { border-left-width: 10px; color: var(--mds-fg); }
 ${selector} .mds-body th { color: var(--mds-fg); border-bottom-color: var(--mds-fg); }
-/* タイトルスライドは、アクセントの色面に白い文字 */
-${selector} .layout-title:not([class*='has-bg-']) {
-  --mds-fg: #ffffff;
-  --mds-muted: rgb(255 255 255 / 0.86);
-  --mds-accent: #111111;
-  --mds-surface: rgb(255 255 255 / 0.18);
-  background: var(--mds-strong);
-}
+/*
+ * タイトルスライド：白地のまま、見出しの下にアクセントの色の太い線（#137 の A 案。章扉と同じ形）。
+ * 背景画像のあるタイトルスライドは、線を付けない
+ */
 ${selector} .layout-title .mds-title { font-weight: 900; }
+${selector} .layout-title:not([class*='has-bg-']) .mds-title {
+  width: fit-content;
+  max-width: 100%;
+  padding-bottom: 0.18em;
+  border-bottom: 14px solid var(--mds-strong);
+}
 /*
  * 章扉：白地のまま、見出しの下にアクセントの色の太い線（#100・#114）。
  * 一面を色で塗ると主張が強すぎるため。番号は付けない。背景画像のある章扉は、白い短い線だけ
