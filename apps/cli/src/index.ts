@@ -34,7 +34,8 @@ export const HELP = `mds — Markdown から HTML スライドを作る
         --no-measure               ヘッドレス Chromium での計測（自動分割と確認）を省く
         --single                   素材を埋め込んだ HTML を1つだけ書き出す（-o はファイル。
                                    既定は資料と同じ名前の .html）
-        --video-limit <MB>         --single で、これより大きい動画は埋め込まない（既定は 10）
+        --video-limit <MB>         --single で、これより大きい動画は埋め込まない（既定は 10。
+                                   0 は動画を埋め込まずポスターだけ、-1 は無制限）
   mds pdf <file.md> [-o <file.pdf>]  PDF を書き出す（1スライド＝1ページ。既定は資料と同じ名前の .pdf）
         --steps                    段階的表示をステップごとのページにする（pdf: { steps: each } と同じ）
   mds dev <file.md> [-p <port>]    プレビューを開き、保存するたびに反映する（既定のポートは 3000）
@@ -97,8 +98,10 @@ export async function main(argv: readonly string[], io: Io = defaultIo): Promise
     const started = performance.now();
     const limit = args.values['video-limit'];
     const videoLimit = limit === undefined ? undefined : Number(limit);
-    if (videoLimit !== undefined && !(videoLimit >= 0)) {
-      io.err(`mds build: --video-limit の値が正しくありません: ${limit}\n`);
+    if (videoLimit !== undefined && !(videoLimit >= 0 || videoLimit === -1)) {
+      io.err(
+        `mds build: --video-limit の値が正しくありません: ${limit}（0 以上の MB、または -1 で無制限）\n`,
+      );
       return 1;
     }
     const out = args.values.out ?? file.replace(/\.(md|markdown)$/i, '') + '.html';
@@ -176,7 +179,14 @@ export async function main(argv: readonly string[], io: Io = defaultIo): Promise
 
 function parseCommand(args: string[]) {
   return parseArgs({
-    args,
+    // `--video-limit -1` の -1 を、別のオプションと読まないようにする（#124）
+    args: args.flatMap((arg, i) =>
+      arg === '--video-limit' && /^-\d/.test(args[i + 1] ?? '')
+        ? [`--video-limit=${args[i + 1]}`]
+        : i > 0 && args[i - 1] === '--video-limit' && /^-\d/.test(arg)
+          ? []
+          : [arg],
+    ),
     allowPositionals: true,
     options: {
       out: { type: 'string', short: 'o' },

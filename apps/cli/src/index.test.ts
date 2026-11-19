@@ -118,6 +118,53 @@ describe('mds build', () => {
     expect(existsSync(join(root, 'out/_external'))).toBe(false);
   });
 
+  it('--single：--video-limit -1 は無制限（すべての動画を埋め込む）。ほかの負の数は受け付けない（#124）', async () => {
+    const root = project({ 'talk.md': '## A\n\n![動画](./v.mp4)\n', 'v.mp4': Buffer.alloc(4096) });
+    const out = join(root, 'talk.html');
+    const a = capture();
+    // 空白で区切って書いても、-1 を値として読む
+    expect(
+      await main(
+        [
+          'build',
+          join(root, 'talk.md'),
+          '--single',
+          '--video-limit',
+          '-1',
+          '--no-measure',
+          '-o',
+          out,
+        ],
+        a.sink,
+      ),
+    ).toBe(0);
+    expect(a.io.stderr).not.toContain('export/video-omitted');
+    expect(readFileSync(out, 'utf8')).toContain('<video src="data:video/mp4;base64,');
+    const b = capture();
+    expect(
+      await main(['build', join(root, 'talk.md'), '--single', '--video-limit', '-2'], b.sink),
+    ).toBe(1);
+    expect(b.io.stderr).toContain('0 以上の MB、または -1 で無制限');
+  });
+
+  it('--single：--video-limit 0 は動画を埋め込まない（0 バイトの動画も）。警告もそう書く（#124）', async () => {
+    const root = project({
+      'talk.md': '## A\n\n![動画](./v.mp4)\n\n## B\n\n![空](./empty.mp4)\n',
+      'v.mp4': Buffer.alloc(2048),
+      'empty.mp4': Buffer.alloc(0),
+    });
+    const { io, sink } = capture();
+    const out = join(root, 'talk.html');
+    const args = ['build', join(root, 'talk.md'), '--single', '--video-limit', '0', '--no-measure'];
+    expect(await main([...args, '-o', out], sink)).toBe(0);
+    expect(io.stderr.match(/\[export\/video-omitted\]/g)).toHaveLength(2);
+    expect(io.stderr).toContain(
+      '--video-limit 0 なので、単一 HTML には動画を埋め込みません：./v.mp4',
+    );
+    expect(io.stderr).not.toContain('上限');
+    expect(readFileSync(out, 'utf8')).not.toContain('<video');
+  });
+
   it('--single：-o がなければ資料と同じ名前の .html。--video-limit の値を確かめる（#120）', async () => {
     const root = project({ 'talk.md': '## A\n\n本文\n' });
     const a = capture();

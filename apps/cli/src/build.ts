@@ -212,7 +212,10 @@ export async function renderFile(
       ? htmlOptions.scripts.flatMap((s) => (s === RUNTIME_SCRIPT ? [ARCH_SCRIPT, s] : [s]))
       : htmlOptions.scripts;
   // 単一 HTML（#120）：素材を data: URL にし、大きすぎる動画はポスター（なければ枠）にする
-  const omitVideo = (src: string) => (assets.bytes(src) ?? 0) > (embed?.videoLimit ?? Infinity);
+  const omitVideo = (src: string) => {
+    const size = assets.bytes(src);
+    return embed !== undefined && size !== undefined && tooLarge(size, embed.videoLimit);
+  };
   if (embed) diagnostics.push(...omittedVideos(deck, assets, embed.videoLimit));
   let html = renderDeckHtml(slides, {
     ...htmlOptions,
@@ -253,13 +256,16 @@ export const sizeText = (bytes: number) =>
     : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
 /** 単一 HTML に埋め込まない（大きすぎる）動画の警告 */
+/** 単一 HTML に埋め込まない動画か（上限 0 は「動画を埋め込まない」：0 バイトの動画も外す） */
+const tooLarge = (size: number, limit: number) => limit <= 0 || size > limit;
+
 function omittedVideos(deck: Deck, assets: Assets, limit: number): Diagnostic[] {
   const out: Diagnostic[] = [];
   for (const media of collectMedia(deck)) {
     if (media.kind !== 'video' || !isLocalPath(media.src)) continue;
     const src = decodeSrc(media.src);
     const size = assets.bytes(src);
-    if (size === undefined || size <= limit) continue;
+    if (size === undefined || !tooLarge(size, limit)) continue;
     const poster = media.attrs?.values.poster;
     const instead =
       typeof poster === 'string'
@@ -270,7 +276,10 @@ function omittedVideos(deck: Deck, assets: Assets, limit: number): Diagnostic[] 
     out.push({
       severity: 'warning',
       code: 'export/video-omitted',
-      message: `動画が大きいので（${sizeText(size)}。上限 ${sizeText(limit)}）、単一 HTML には埋め込みません：${src}。${instead}`,
+      message:
+        limit <= 0
+          ? `--video-limit 0 なので、単一 HTML には動画を埋め込みません：${src}。${instead}`
+          : `動画が大きいので（${sizeText(size)}。上限 ${sizeText(limit)}）、単一 HTML には埋め込みません：${src}。${instead}`,
       line: media.line,
     });
   }
@@ -361,6 +370,9 @@ async function addOverflow(
   }
 }
 
+/** 動画の上限（MB）をバイトにする。負の数（-1）は無制限、0 は動画を埋め込まない（#124） */
+const videoLimitBytes = (mb: number) => (mb < 0 ? Infinity : mb * 1024 * 1024);
+
 export interface SingleOptions {
   /** 書き出す HTML のパス */
   out: string;
@@ -368,7 +380,7 @@ export interface SingleOptions {
   measure?: boolean;
   /** 使っている文字だけに絞ったフォントを埋め込む（既定は埋め込む） */
   fonts?: boolean;
-  /** これより大きい動画（MB）は埋め込まない（既定は 10） */
+  /** これより大きい動画（MB）は埋め込まない（既定は 10。0 は動画を埋め込まない、-1 は無制限） */
   videoLimit?: number;
 }
 
@@ -396,7 +408,7 @@ export async function buildSingle(mdFile: string, options: SingleOptions): Promi
       {
         scripts: [RUNTIME_SCRIPT],
         ...(options.fonts === false ? {} : { fonts: 'embed' as const }),
-        embed: { videoLimit: (options.videoLimit ?? 10) * 1024 * 1024 },
+        embed: { videoLimit: videoLimitBytes(options.videoLimit ?? 10) },
       },
       measurer,
     );
