@@ -46,10 +46,12 @@ subtitle: 書くことに集中するために
 author: 山田 太郎
 affiliation: ○○大学
 date: today
-event: 社内勉強会 #12
+event: "社内勉強会 #12"
 theme: clean
 ---
 ```
+
+値に「空白＋`#`」を含むときは `"…"` で囲む。YAML では、空白の後の `#` から行末までがコメントになるため（`event: 勉強会 #12` は「勉強会」になる）。
 
 ### 1.1 キーの一覧
 
@@ -117,7 +119,7 @@ author:
   - name: 佐藤 花子
     affiliation: △△株式会社
 date: 2026-11-16
-event: 社内勉強会 #12
+event: "社内勉強会 #12"
 logo: ./assets/logo.svg
 ---
 

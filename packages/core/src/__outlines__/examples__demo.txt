@@ -4,7 +4,7 @@ meta
   authors: 山田 太郎（○○大学）
   affiliation: ○○大学
   date: today
-  event: 社内勉強会
+  event: 社内勉強会 #12
   footer: 構文仕様 v0.1 サンプル
   theme=clean aspect=16:9 lang=ja slideLevel=auto split=auto titleSlide=auto paginate=true
 diagnostics
