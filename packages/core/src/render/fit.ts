@@ -20,6 +20,23 @@ export function fitSlides(root: ParentNode, margin: number): void {
       : Array.from(root.querySelectorAll<HTMLElement>('.mds-slide'));
   for (const slide of slides) {
     const body = slide.querySelector<HTMLElement>('.mds-body');
+    // タイトルスライド（本文がない）：文字のかたまりが、スライドの上下の余白の内側に収まるまで縮める（#131）
+    const block = body ? null : slide.querySelector<HTMLElement>('.mds-titleblock');
+    if (block) {
+      const style = getComputedStyle(slide);
+      const room =
+        slide.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+      let fit = 1;
+      block.style.setProperty('--mds-fit', '1');
+      while (room > 0 && block.offsetHeight > room && fit > 0.6) {
+        fit = Math.round((fit - 0.05) * 100) / 100;
+        block.style.setProperty('--mds-fit', String(fit));
+      }
+      slide.dataset.fit = String(fit);
+      if (room > 0 && block.offsetHeight > room) slide.dataset.overflow = '';
+      else delete slide.dataset.overflow;
+      continue;
+    }
     if (!body) continue;
     let fit = Number(body.dataset.scale ?? 1);
     body.style.setProperty('--mds-fit', String(fit));

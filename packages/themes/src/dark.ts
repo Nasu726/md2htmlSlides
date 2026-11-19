@@ -29,7 +29,7 @@ export const DARK_TOKENS = `
   --mds-code-token-keyword: #c792ea;
   --mds-code-token-string: #c3e88d;
   --mds-code-token-string-expression: #c3e88d;
-  --mds-code-token-comment: #697098;
+  --mds-code-token-comment: #7c84ab;
   --mds-code-token-function: #82aaff;
   --mds-code-token-constant: #f78c6c;
   --mds-code-token-parameter: #ffcb6b;

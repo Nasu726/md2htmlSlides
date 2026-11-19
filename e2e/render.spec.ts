@@ -50,6 +50,84 @@ test('あふれたスライドは文字を小さくして収める', async ({ pa
   expect(overflow).toBe(false);
 });
 
+test('収まらないタイトルスライドは、文字とロゴを小さくして収める（#131）', async ({ page }) => {
+  // bold の大きな見出しで、著者が多く、右半分が背景のタイトル（fixtures/08 の bold で上が切れていた）
+  const authors = Array.from(
+    { length: 6 },
+    (_, i) => `  - name: 著者 ${i + 1}\n    affiliation: 所属 ${i + 1} の長い名前の研究室`,
+  ).join('\n');
+  const markdown = [
+    '---',
+    'title: とても長いタイトルが三行にわたって続くスライドの見本',
+    'subtitle: 副題も二行になるくらいの長さにしておく',
+    `author:\n${authors}`,
+    'date: 2026-12-05',
+    'event: 研究会',
+    'theme: bold',
+    '---',
+    '',
+    ':::maketitle {variant=left}',
+    '![](cover.jpg){bg=right}',
+    '',
+    '補足の一行目',
+    '',
+    '補足の二行目',
+    ':::',
+  ].join('\n');
+  await page.setContent(renderDeckHtml(buildSlides(parseDeck(markdown))));
+  const slide = page.locator('.mds-slide').first();
+  const fit = await slide.getAttribute('data-fit');
+  expect(fit).not.toBeNull();
+  expect(Number(fit)).toBeLessThan(1);
+  const inside = await slide.evaluate((el) => {
+    const s = el.getBoundingClientRect();
+    const b = el.querySelector('.mds-titleblock')!.getBoundingClientRect();
+    return b.top >= s.top && b.bottom <= s.bottom;
+  });
+  expect(inside).toBe(true);
+  await expect(slide).not.toHaveAttribute('data-overflow');
+});
+
+test('bold・pop の章の名前とイベント名は、地とのコントラストが 4.5 以上（#131）', async ({
+  page,
+}) => {
+  for (const theme of ['bold', 'pop']) {
+    const markdown = `---\ntitle: T\nevent: 勉強会\ntheme: ${theme}\n---\n\n# 章\n\n## 節\n\n本文\n`;
+    await page.setContent(renderDeckHtml(buildSlides(parseDeck(markdown))));
+    const ratios = await page.evaluate(() => {
+      const rgb = (c: string) => {
+        const srgb = /color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)/.exec(c);
+        if (srgb) return [1, 2, 3].map((i) => Number(srgb[i]) * 255);
+        return (/rgba?\(([^)]+)\)/.exec(c)?.[1] ?? '')
+          .split(/[\s,]+/)
+          .map(Number)
+          .slice(0, 3);
+      };
+      const lum = (c: string) => {
+        const [r, g, b] = rgb(c).map((v) => {
+          const s = v / 255;
+          return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+      };
+      // 地：要素に地の色があればそれ（pop の丸い札）、なければスライド
+      const ground = (el: Element) =>
+        getComputedStyle(el).backgroundColor === 'rgba(0, 0, 0, 0)'
+          ? el.closest('.mds-slide')!
+          : el;
+      const ratio = (el: Element) => {
+        const [a, b] = [
+          lum(getComputedStyle(el).color),
+          lum(getComputedStyle(ground(el)).backgroundColor),
+        ].sort((x, y) => y - x);
+        return (a! + 0.05) / (b! + 0.05);
+      };
+      return ['.mds-chapter', '.mds-event'].map((s) => ratio(document.querySelector(s)!));
+    });
+    for (const r of ratios) expect(r, theme).toBeGreaterThanOrEqual(4.5);
+  }
+});
+
 test('画像だけの段落は、空いた領域いっぱいに縦横比を保って広がる', async ({ page }) => {
   // 縦横比は調べる関数から渡すので、画像を読み込まなくても大きさが決まる
   const probe = () => ({ exists: true, width: 1600, height: 900 });
