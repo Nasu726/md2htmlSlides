@@ -72,6 +72,7 @@ Refs #15
 
 - 変更前と変更後を並べる。スライドが複数あるときは、縮小画像の一覧にする。
 - 画像は `docs/screenshots/<issue番号>/` にコミットし、PR の本文から参照する。
+- PR の本文の画像は、**コミットの SHA を使った URL** で載せる（`https://raw.githubusercontent.com/<owner>/<repo>/<SHA>/docs/screenshots/<issue番号>/<名前>.png`）。ブランチの名前の URL は、マージしてブランチを消すと表示されなくなるため（作者の決定：2026-11-19）。
 - 幅は 1280px 程度にし、1枚あたり 500KB 以下を目安にする。
 
 ## 5. 進み具合の報告
