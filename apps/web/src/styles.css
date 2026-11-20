@@ -311,6 +311,135 @@ button.primary {
   }
 }
 
+/*
+ * スマホ（#154）：幅 700px 以下か、高さ 500px 以下（横向き）。
+ * エディタとプレビューを1つずつ表示し、上の「編集｜スライド」で切り替える。
+ * 2つは同じ場所に重ね、隠す側は visibility で隠す（大きさを保ち、プレビューの位置がずれないように）。
+ * ツールバーには切り替えと発表だけを残し、ほかの操作は「≡」のメニューにまとめる
+ */
+.narrow-only {
+  display: none;
+}
+.toolbar button,
+.status > * {
+  white-space: nowrap;
+}
+@media (max-width: 700px), (max-height: 500px) {
+  .wide-only {
+    display: none;
+  }
+  .narrow-only {
+    display: revert;
+  }
+  .toolbar {
+    gap: 6px;
+    padding: 6px 8px;
+    position: relative;
+  }
+  .doc-name {
+    flex: 1;
+    margin-left: 2px;
+  }
+  .toolbar .spacer {
+    display: none;
+  }
+  .menu-button {
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px 10px;
+  }
+  .pane-switch {
+    display: flex;
+    flex: none;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .pane-switch button {
+    border: 0;
+    border-radius: 0;
+    padding: 5px 10px;
+  }
+  .pane-switch button[aria-pressed='true'] {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .menu {
+    display: flex;
+    position: absolute;
+    top: 46px;
+    left: 8px;
+    z-index: 20;
+    flex-direction: column;
+    min-width: 220px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  }
+  .menu > * {
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--fg);
+    text-align: left;
+    text-decoration: none;
+  }
+  .menu > :hover {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+  .workspace,
+  .workspace.has-files {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .workspace .editor,
+  .workspace .preview {
+    grid-area: 1 / 1;
+    border: 0;
+  }
+  .workspace.pane-edit .preview,
+  .workspace.pane-preview .editor {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  /* 行番号は隠し、スライドの番号だけを残す（CodeMirror の基本の CSS が !important で表示するため） */
+  .editor .cm-lineNumbers {
+    display: none !important;
+  }
+  .status {
+    gap: 8px;
+    padding: 4px 8px;
+  }
+  /* キーボードが出ている間は、下の状態の行を隠して、エディタを広くする */
+  .keyboard-open .status {
+    display: none;
+  }
+}
+
+/*
+ * 指で操作する端末（#154）：入力欄の文字を 16px にする（iOS の Safari は、16px 未満の入力欄に
+ * フォーカスすると画面を拡大する）。画面の高さは、キーボードを除いた見えている範囲に合わせる（app.tsx）
+ */
+@media (pointer: coarse) {
+  .editor .cm-scroller,
+  input,
+  textarea {
+    font-size: 16px;
+  }
+  .app {
+    position: fixed;
+    top: var(--app-top, 0);
+    left: 0;
+    right: 0;
+    height: var(--app-height, 100%);
+  }
+}
+
 /* 行番号欄の目印（#74）：スライドの番号と、自動で区切られた位置 */
 .cm-slide-gutter {
   min-width: 34px;

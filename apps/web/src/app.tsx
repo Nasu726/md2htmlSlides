@@ -66,6 +66,56 @@ const breakMenu = signal<{ line: number; x: number; y: number } | null>(null);
 const cheatOpen = signal(false);
 const cheatQuery = signal('');
 const CHEAT_ITEMS: CheatItem[] = cheatSheet();
+
+/**
+ * 狭い画面（スマホ。#154）：エディタとプレビューを1つずつ表示し、上の「編集｜スライド」で切り替える。
+ * 横向きのスマホ（高さが低い）も含める。styles.css の同じ条件の @media と合わせる
+ */
+const NARROW = '(max-width: 700px), (max-height: 500px)';
+const isNarrow = () => typeof matchMedia !== 'undefined' && matchMedia(NARROW).matches;
+/** 狭い画面で表示している側 */
+const pane = signal<'edit' | 'preview'>('edit');
+/** 狭い画面の「≡」のメニュー */
+const menuOpen = signal(false);
+/** ソフトウェアキーボードが出ている（狭い画面では、下の状態の行を隠す） */
+const keyboard = signal(false);
+
+/** 狭い画面で、編集とスライドを切り替える。スライドにするときはキーボードを閉じ、カーソルのスライドを見せる */
+function showPane(next: 'edit' | 'preview'): void {
+  pane.value = next;
+  if (next === 'preview') {
+    editor.view.contentDOM.blur();
+    requestAnimationFrame(() => focusCursorSlide(true));
+  }
+}
+
+/**
+ * キーボードが出ている間も、画面の高さを見えている範囲（visualViewport）に合わせる（#154）。
+ * iOS の Safari は、キーボードが出ても画面の高さを変えず、ページをずらすため。
+ * 指で操作する端末だけで行う（パソコンでブラウザを拡大したときに、画面が縮まないように）
+ */
+function followVisualViewport(): () => void {
+  const vv = window.visualViewport;
+  if (!vv || !matchMedia('(pointer: coarse)').matches) return () => undefined;
+  const root = document.documentElement;
+  /** 向き（幅）ごとの、いちばん高かったときの高さ。これより十分低ければ、キーボードが出ている */
+  const tallest = new Map<number, number>();
+  const update = () => {
+    const zoomed = vv.scale > 1.05;
+    const width = Math.round(vv.width * vv.scale);
+    if (!zoomed) tallest.set(width, Math.max(tallest.get(width) ?? 0, vv.height));
+    root.style.setProperty('--app-height', `${zoomed ? window.innerHeight : vv.height}px`);
+    root.style.setProperty('--app-top', `${zoomed ? 0 : vv.offsetTop}px`);
+    keyboard.value = !zoomed && vv.height < (tallest.get(width) ?? vv.height) * 0.8;
+  };
+  update();
+  vv.addEventListener('resize', update);
+  vv.addEventListener('scroll', update);
+  return () => {
+    vv.removeEventListener('resize', update);
+    vv.removeEventListener('scroll', update);
+  };
+}
 /** ファイルを選んだ・落としたときの、一緒に選んだファイルの名前（`![](` の候補） */
 let pickedFiles: string[] = [];
 
@@ -87,7 +137,18 @@ function assetCandidates(): string[] {
 function insertCheat(item: CheatItem): void {
   const { from, to } = editor.view.state.selection.main;
   insertSnippet(editor.view, item.snippet, from, to);
+  // 狭い画面では、早見表はスライドの側に重ねて出すので、入れたら編集に戻る（#154）
+  if (isNarrow()) {
+    cheatOpen.value = false;
+    pane.value = 'edit';
+  }
   editor.view.focus();
+}
+
+/** 早見表を開く・閉じる。狭い画面では、スライドの側に重ねて出す（#154） */
+function toggleCheatSheet(): void {
+  cheatOpen.value = !cheatOpen.value;
+  if (cheatOpen.value && isNarrow()) showPane('preview');
 }
 const canOpenFolder = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
@@ -420,6 +481,8 @@ async function present(slide?: string): Promise<void> {
 function jumpTo(line: number): void {
   const view = editor.view;
   const target = view.state.doc.line(Math.max(1, Math.min(line, view.state.doc.lines)));
+  // 狭い画面でスライドを押したとき・警告を選んだときは、編集に戻ってその行に移る（#154）
+  pane.value = 'edit';
   view.dispatch({ selection: { anchor: target.from }, scrollIntoView: true });
   view.focus();
   showWarnings.value = false;
@@ -457,7 +520,7 @@ export function App() {
       onSave: () => void save(),
       onPresent: () => void present(),
       onCursor,
-      onCheatSheet: () => (cheatOpen.value = !cheatOpen.value),
+      onCheatSheet: toggleCheatSheet,
       assist: {
         files: assetCandidates,
         layoutAt: (line) => slideInfoAt(editor.view, line)?.layout,
@@ -496,7 +559,9 @@ export function App() {
     window.addEventListener('dragover', dragover);
     window.addEventListener('dragleave', dragleave);
     window.addEventListener('drop', drop);
+    const stopViewport = followVisualViewport();
     return () => {
+      stopViewport();
       window.removeEventListener('keydown', keydown);
       window.removeEventListener('dragover', dragover);
       window.removeEventListener('dragleave', dragleave);
@@ -507,18 +572,27 @@ export function App() {
   const r = result.value;
   const warnings: Diagnostic[] = r?.diagnostics.filter((d) => d.severity !== 'info') ?? [];
   return (
-    <div class="app">
+    <div class={`app${keyboard.value ? ' keyboard-open' : ''}`}>
       <header class="toolbar">
         <span class="brand">md2htmlSlides</span>
+        <button
+          type="button"
+          class="narrow-only menu-button"
+          aria-label="メニュー"
+          aria-expanded={menuOpen.value}
+          onClick={() => (menuOpen.value = !menuOpen.value)}
+        >
+          ≡
+        </button>
         {canOpenFolder && (
-          <button type="button" onClick={() => void openFolder()}>
+          <button type="button" class="wide-only" onClick={() => void openFolder()}>
             フォルダを開く
           </button>
         )}
-        <button type="button" onClick={() => fileRef.current!.click()}>
+        <button type="button" class="wide-only" onClick={() => fileRef.current!.click()}>
           ファイルを開く
         </button>
-        <button type="button" onClick={askUrl}>
+        <button type="button" class="wide-only" onClick={askUrl}>
           URL を開く
         </button>
         <input
@@ -544,22 +618,39 @@ export function App() {
             </span>
           )}
         </span>
-        <button type="button" onClick={() => void save()} title="Ctrl+S">
+        <button type="button" class="wide-only" onClick={() => void save()} title="Ctrl+S">
           {doc.value.kind === 'folder' ? '保存' : 'ダウンロード'}
         </button>
         <button
           type="button"
+          class="wide-only"
           onClick={() => void exportHtml()}
           title="素材を埋め込んだ HTML を1つ書き出す（ネットワークなしで開いて発表できる）"
         >
           HTML を書き出す
         </button>
         <span class="spacer" />
+        <div class="narrow-only pane-switch" role="group" aria-label="表示">
+          <button
+            type="button"
+            aria-pressed={pane.value === 'edit'}
+            onClick={() => showPane('edit')}
+          >
+            編集
+          </button>
+          <button
+            type="button"
+            aria-pressed={pane.value === 'preview'}
+            onClick={() => showPane('preview')}
+          >
+            スライド
+          </button>
+        </div>
         <button
           type="button"
-          class={cheatOpen.value ? 'active' : ''}
+          class={`wide-only${cheatOpen.value ? ' active' : ''}`}
           title="Ctrl+/"
-          onClick={() => (cheatOpen.value = !cheatOpen.value)}
+          onClick={toggleCheatSheet}
         >
           ? 早見表
         </button>
@@ -572,6 +663,45 @@ export function App() {
           ▶ 発表
         </button>
       </header>
+      {menuOpen.value && (
+        <div
+          class="menu narrow-only"
+          role="menu"
+          aria-label="メニュー"
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest('button, a')) menuOpen.value = false;
+          }}
+        >
+          {canOpenFolder && (
+            <button type="button" role="menuitem" onClick={() => void openFolder()}>
+              フォルダを開く
+            </button>
+          )}
+          <button type="button" role="menuitem" onClick={() => fileRef.current!.click()}>
+            ファイルを開く
+          </button>
+          <button type="button" role="menuitem" onClick={askUrl}>
+            URL を開く
+          </button>
+          <button type="button" role="menuitem" onClick={() => void save()}>
+            {doc.value.kind === 'folder' ? '保存' : 'ダウンロード'}
+          </button>
+          <button type="button" role="menuitem" onClick={() => void exportHtml()}>
+            HTML を書き出す
+          </button>
+          <button type="button" role="menuitem" onClick={toggleCheatSheet}>
+            ? 早見表
+          </button>
+          <a
+            role="menuitem"
+            href="https://github.com/Nasu726/md2htmlSlides/blob/main/THIRD_PARTY_NOTICES.md"
+            target="_blank"
+            rel="noopener"
+          >
+            このアプリについて・ライセンス
+          </a>
+        </div>
+      )}
       {notice.value && (
         <div class="notice" role="status">
           <span>{notice.value.text}</span>
@@ -590,7 +720,7 @@ export function App() {
           </button>
         </div>
       )}
-      <main class={`workspace${folder.value ? ' has-files' : ''}`}>
+      <main class={`workspace pane-${pane.value}${folder.value ? ' has-files' : ''}`}>
         {folder.value && (
           <nav class="files" aria-label="ファイル">
             <h2>{folder.value.name}</h2>
@@ -681,9 +811,9 @@ export function App() {
         >
           警告 {warnings.length} 件
         </button>
-        {r && <span class="muted">{Math.round(r.ms)} ms</span>}
+        {r && <span class="muted wide-only">{Math.round(r.ms)} ms</span>}
         <span class="spacer" />
-        <span class="muted">
+        <span class="muted wide-only">
           {doc.value.kind === 'folder'
             ? 'フォルダ'
             : doc.value.kind === 'url'
@@ -694,7 +824,7 @@ export function App() {
           ・自動で下書きを保存
         </span>
         <a
-          class="muted"
+          class="muted wide-only"
           href="https://github.com/Nasu726/md2htmlSlides/blob/main/THIRD_PARTY_NOTICES.md"
           target="_blank"
           rel="noopener"

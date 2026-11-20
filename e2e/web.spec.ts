@@ -1,5 +1,5 @@
 import { build, buildSingle } from '@mdhs/cli';
-import { expect, test, type Page } from '@playwright/test';
+import { devices, expect, test, type Page } from '@playwright/test';
 import {
   createReadStream,
   existsSync,
@@ -766,4 +766,52 @@ test('挿入メニュー（空の行で /）・構文ヒント・修正の候補
   await expect(sheet.locator('h3')).toHaveText(['発表者ノート']);
   await sheet.getByRole('button', { name: '挿入' }).first().click();
   await expect(lineWith(page, ':::notes')).toHaveCount(1);
+});
+
+test.describe('スマホ（#154）', () => {
+  // iPhone の大きさとタッチの操作（ブラウザの種類は Chromium のまま）
+  const { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = devices['iPhone 13'];
+  test.use({ viewport, userAgent, deviceScaleFactor, isMobile, hasTouch });
+
+  test('編集とスライドを1回で切り替え、ほかの操作はメニューから。崩れず、フォーカスで拡大しない文字の大きさ', async ({
+    page,
+  }) => {
+    await page.goto(origin);
+    await expect(slideCount(page)).toHaveText(/\d+ 枚/);
+    // ツールバーは1行に収まり、ページは横にはみ出さない
+    expect((await page.locator('.toolbar').boundingBox())!.height).toBeLessThan(60);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+    // 入力欄の文字は 16px（iOS の Safari は、16px 未満の入力欄にフォーカスすると拡大する）。行番号は隠す
+    const fontSize = await page
+      .locator('.cm-scroller')
+      .evaluate((el) => getComputedStyle(el).fontSize);
+    expect(fontSize).toBe('16px');
+    await expect(page.locator('.cm-lineNumbers')).toBeHidden();
+    await expect(page.locator('.cm-slide-marker').first()).toBeVisible();
+
+    // はじめは編集。「スライド」でプレビューだけにする
+    await expect(page.locator('.cm-content')).toBeVisible();
+    await expect(page.locator('.preview-frame')).toBeHidden();
+    await page.getByRole('button', { name: 'スライド', exact: true }).click();
+    await expect(page.locator('.preview-frame')).toBeVisible();
+    await expect(page.locator('.cm-content')).toBeHidden();
+    // スライドを押すと、編集に戻ってその見出しの行に移る
+    await preview(page)
+      .locator('.mds-slide', { hasText: 'このエディタについて' })
+      .click({ position: { x: 20, y: 20 } });
+    await expect(page.locator('.cm-content')).toBeVisible();
+    await expect(page.locator('.cm-activeLine')).toHaveText('## このエディタについて');
+
+    // ほかの操作は「≡」のメニューに。早見表はスライドの側に重ね、挿入すると編集に戻る
+    await expect(page.getByRole('button', { name: 'ファイルを開く' })).toBeHidden();
+    await page.getByRole('button', { name: 'メニュー' }).click();
+    await expect(page.getByRole('menuitem', { name: 'ファイルを開く' })).toBeVisible();
+    await page.getByRole('menuitem', { name: '? 早見表' }).click();
+    await expect(page.getByRole('menu')).toHaveCount(0);
+    const sheet = page.getByRole('complementary', { name: '早見表' });
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole('button', { name: '挿入' }).first().click();
+    await expect(sheet).toHaveCount(0);
+    await expect(page.locator('.cm-content')).toBeVisible();
+  });
 });
