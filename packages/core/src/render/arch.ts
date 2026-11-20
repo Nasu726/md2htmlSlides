@@ -6,7 +6,7 @@ import type { Attrs } from '../attrs.js';
 import type { ArchScenario } from '../arch/parse.js';
 import type { Block } from '../ir.js';
 import { decodePath } from '../media.js';
-import type { DiagramRenderer } from '../md/media.js';
+import type { DiagramRenderer, DiagramResult } from '../md/media.js';
 
 export type ArchCaptions = 'auto' | 'side' | 'below' | 'none';
 
@@ -37,13 +37,69 @@ export function archUse(block: Block, diagram: DiagramRenderer | undefined): Arc
   if (!result || 'error' in result) return undefined;
   const scenario = selectArchScenario(result.scenarios, attrs);
   const captions = attrs?.values.captions;
+  const viewed = archView(result, attrs) as { width: number; height: number };
   return {
-    aspect: result.height > 0 ? result.width / result.height : 1.6,
+    aspect: viewed.height > 0 ? viewed.width / viewed.height : 1.6,
     ...(scenario ? { scenario } : {}),
     captions:
       captions === 'side' || captions === 'below' || captions === 'none' ? captions : 'auto',
   };
 }
+
+/**
+ * 見せ方（#182、`view=`）：`both` は構成図とシーケンス図を1つの SVG に並べ、`sequence` はシーケンス図だけ。
+ * シーケンス図は renderArch がシナリオごとに描いておく（result.sequences）。並べ方は、全体の縦横比が
+ * 2:1 に近いほう（横に並べるか、下に置くか）
+ */
+export function archView(result: DiagramResult, attrs: Attrs | undefined): DiagramResult {
+  const view = attrs?.values.view;
+  if ('error' in result || (view !== 'both' && view !== 'sequence')) return result;
+  const scenario = selectArchScenario(result.scenarios, attrs);
+  const seq = scenario ? result.sequences?.[scenario.name] : undefined;
+  if (!seq) return result;
+  const head = result.svg.slice(0, result.svg.indexOf('>') + 1);
+  const inner = result.svg.slice(head.length, result.svg.lastIndexOf('</svg>'));
+  const [x = 0, y = 0, w = 0, h = 0] = (/viewBox="([^"]*)"/.exec(head)?.[1] ?? '')
+    .split(/\s+/)
+    .map(Number);
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+  const svg = (box: number[], body: string) =>
+    `${head.replace(/viewBox="[^"]*"/, `viewBox="${box.map(r1).join(' ')}"`)}${body}</svg>`;
+  const group = (tx: number, ty: number) =>
+    `<g class="arch-seq" transform="translate(${r1(tx)} ${r1(ty)})">${seq.body}</g>`;
+  if (view === 'sequence') {
+    return {
+      ...result,
+      svg: svg([0, 0, seq.width, seq.height], group(0, 0)),
+      ...size(seq.width, seq.height),
+    };
+  }
+  const GAP = 48;
+  const side = { W: w + GAP + seq.width, H: Math.max(h, seq.height) };
+  const below = { W: Math.max(w, seq.width), H: h + GAP + seq.height };
+  const off = (a: { W: number; H: number }) => Math.abs(Math.log(a.W / a.H / 2));
+  if (off(side) <= off(below)) {
+    const top = y - (side.H - h) / 2;
+    return {
+      ...result,
+      svg: svg(
+        [x, top, side.W, side.H],
+        inner + group(x + w + GAP, top + (side.H - seq.height) / 2),
+      ),
+      ...size(side.W, side.H),
+    };
+  }
+  const left = x - (below.W - w) / 2;
+  return {
+    ...result,
+    svg: svg(
+      [left, y, below.W, below.H],
+      inner + group(left + (below.W - seq.width) / 2, y + h + GAP),
+    ),
+    ...size(below.W, below.H),
+  };
+}
+const size = (width: number, height: number) => ({ width, height });
 
 /** 説明のリストを出すか（シナリオにステップがあり、captions=none でない） */
 export const hasCaptions = (use: ArchUse) =>
@@ -87,8 +143,12 @@ export function archEmbedAttrs(
   attrs?: Attrs,
 ): string {
   if (!scenario || scenario.steps.length === 0) return '';
-  // カメラ（#109、§6.2）を使わない
-  const focus = attrs?.values.focus === 'none' ? ' data-arch-focus="none"' : '';
+  // カメラ（#109、§6.2）を使わない。シーケンス図と並べるとき（#182）も使わない
+  const view = attrs?.values.view;
+  const focus =
+    attrs?.values.focus === 'none' || view === 'both' || view === 'sequence'
+      ? ' data-arch-focus="none"'
+      : '';
   const steps = scenario.steps.map((step) =>
     step.actions.map((a) => {
       if (a.type === 'move') {

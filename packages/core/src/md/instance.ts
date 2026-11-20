@@ -1,4 +1,4 @@
-import { archEmbedAttrs, selectArchScenario } from '../render/arch.js';
+import { archEmbedAttrs, archView, selectArchScenario } from '../render/arch.js';
 import markdownIt, { type MarkdownIt, type StateCore, type Token } from 'markdown-it';
 import type { Attrs } from '../attrs.js';
 import { attrsPlugin, type BlockMeta } from './attrs.js';
@@ -169,7 +169,12 @@ function renderRules(instance: MarkdownIt): void {
     if (diagram) {
       const arch = lang === 'arch';
       const inner = arch
-        ? diagramHtml(instance.utils.escapeHtml, diagram, '動く構成図', '動く構成図を描けません')
+        ? diagramHtml(
+            instance.utils.escapeHtml,
+            archView(diagram, (token.meta as BlockMeta | null)?.attrs),
+            '動く構成図',
+            '動く構成図を描けません',
+          )
         : diagramHtml(instance.utils.escapeHtml, diagram, 'Mermaid の図');
       // 動く構成図（#108）：シナリオの再生のための属性
       const embed =

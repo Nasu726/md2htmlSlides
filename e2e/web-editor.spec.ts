@@ -173,7 +173,7 @@ test('動く構成図：エディタのプレビューでも配置して描き�
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${origin}/?src=${encodeURIComponent(`${origin}/fixtures/${name}`)}`);
   await expect(slideCount(page)).toHaveText(`${cli.slides} 枚`);
-  await expect(preview(page).locator('.mds-arch-svg')).toHaveCount(12);
+  await expect(preview(page).locator('.mds-arch-svg')).toHaveCount(14);
   await expect(preview(page).locator('.mds-arch-captions').first().locator('li')).toHaveText([
     '注文を送る',
     '在庫を確認して保存する',

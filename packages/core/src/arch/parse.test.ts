@@ -305,6 +305,8 @@ describe('collectArch・archDiagnostics（#106）', () => {
       'code',
       'code',
       'code',
+      'code',
+      './assets/order-system.arch',
     ]);
     // 「書き間違い」のスライドには、図が2つある
     expect(sources[7]!.slideId).toBe(sources[8]!.slideId);
@@ -323,6 +325,8 @@ describe('collectArch・archDiagnostics（#106）', () => {
       '決済の障害',
       '注文の集中',
       'キャッシュ',
+      '注文',
+      '決済の障害',
     ]);
     expect(sources[5]!.diagram.direction).toBe('down');
   });

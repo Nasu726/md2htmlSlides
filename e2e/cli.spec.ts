@@ -426,13 +426,13 @@ test('動く構成図の PDF：既定はまとめの1枚（すべての番号・
 }) => {
   const out = mkdtempSync(join(tmpdir(), 'mds-pdf-'));
   const final = await pdf(join(fixtures, '13-arch.md'), { out: join(out, 'final.pdf') });
-  expect(final.pages).toBe(11);
-  // 11 枚 + ステップ（4・4・4・0・4・3・6・2・4・4・4）
+  expect(final.pages).toBe(13);
+  // 13 枚 + ステップ（4・4・4・0・4・3・6・2・4・4・4・4・4）
   const steps = await pdf(join(fixtures, '13-arch.md'), {
     out: join(out, 'steps.pdf'),
     steps: true,
   });
-  expect(steps.pages).toBe(50);
+  expect(steps.pages).toBe(60);
   // まとめの中身は、書き出した HTML で印刷の準備をして確かめる
   const result = await build(join(fixtures, '13-arch.md'), { outDir: join(out, 'html') });
   await page.goto(pathToFileURL(result.index).href);
@@ -603,6 +603,61 @@ test('動く構成図のノードの中身：表・上限・入らない中身�
         ),
     );
   expect(summary).toEqual([['注文2', '注文3', '注文4', '注文5', '注文6'], []]);
+});
+
+test('動く構成図の view=both・sequence：シーケンス図の矢印が、パケットと一緒に1本ずつ出る。まとめはすべて（13-arch。#182）', async ({
+  page,
+}) => {
+  const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
+  const result = await build(join(fixtures, '13-arch.md'), { outDir: out });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(`${pathToFileURL(result.index).href}#/12`);
+  const slide = page.locator('.mds-slide.is-current');
+  const rows = () =>
+    slide.evaluate((el) => ({
+      shown: el.querySelectorAll('.seq-row:not(.is-future)').length,
+      past: el.querySelectorAll('.seq-row.is-past').length,
+      total: el.querySelectorAll('.seq-row').length,
+      nodes: el.querySelectorAll('.arch-node').length,
+    }));
+  // 構成図（5 ノード）とシーケンス図（8 行）を1つの SVG に並べる。最初は矢印なし
+  expect(await rows()).toEqual({ shown: 0, past: 0, total: 8, nodes: 5 });
+  // 構成図が縦長なので、シーケンス図は右
+  const right = await slide.evaluate((el) => {
+    const seq = el.querySelector('.arch-seq')!.getBoundingClientRect();
+    const nodes = Array.from(el.querySelectorAll('.arch-node'), (n) => n.getBoundingClientRect());
+    return seq.left > Math.max(...nodes.map((n) => n.right));
+  });
+  expect(right).toBe(true);
+  // →：パケットと同時にシーケンス図の点が動き、矢印が1本ずつ出る
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => slide.locator('.seq-dot').count()).toBe(1);
+  await expect.poll(async () => (await rows()).shown, { timeout: 5000 }).toBe(2);
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await rows()).shown, { timeout: 5000 }).toBe(4);
+  expect((await rows()).past).toBe(2);
+  // 戻る：動かさずに、前のステップの行だけ
+  await page.keyboard.press('ArrowLeft');
+  expect(await rows()).toMatchObject({ shown: 2, past: 0 });
+  await page.evaluate(() => (location.hash = '#/12/4'));
+  await expect.poll(rows).toMatchObject({ shown: 8, past: 6 });
+
+  // view=sequence：構成図は出さず、シーケンス図だけを進める
+  await page.evaluate(() => (location.hash = '#/13'));
+  await expect.poll(rows).toMatchObject({ shown: 0, nodes: 0 });
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await rows()).shown, { timeout: 6000 }).toBe(4);
+
+  // まとめ（一覧・PDF）：すべての行を同じに見せる
+  await page.evaluate(preparePrint, { steps: 'final' as const });
+  const summary = await page
+    .locator('.mds-deck > .mds-slide')
+    .nth(11)
+    .evaluate((el) => ({
+      hidden: el.querySelectorAll('.seq-row.is-future, .seq-row.is-past').length,
+      total: el.querySelectorAll('.seq-row').length,
+    }));
+  expect(summary).toEqual({ hidden: 0, total: 8 });
 });
 
 test('mdhs build：動く構成図の書き間違いを、行番号付きで警告する（13-arch。#106）', async () => {

@@ -251,6 +251,13 @@ export const ATTRIBUTE_KEYS: readonly AttrKey[] = [
     places: ['arch'],
     docAnchor: ARCH,
   },
+  {
+    name: 'view',
+    summary: '見せ方（arch：構成図、both：構成図とシーケンス図、sequence：シーケンス図だけ）',
+    value: { type: 'enum', values: ['arch', 'both', 'sequence'] },
+    places: ['arch'],
+    docAnchor: ARCH,
+  },
   // タイトルスライド（構文仕様 §2.2）
   {
     name: 'variant',

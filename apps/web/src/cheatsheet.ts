@@ -230,6 +230,7 @@ export const CHEAT_SECTIONS: ReadonlyArray<{
       { attr: 'scenario' },
       { attr: 'captions' },
       { attr: 'focus' },
+      { attr: 'view' },
     ],
   },
   {

@@ -313,6 +313,40 @@ export function startArch(doc: Document): void {
     }
     for (const [id, b] of world.badges) badge(g, svg, id, b.t, b.e);
   };
+  /**
+   * シーケンス図（#182）：ステップの行（.seq-row）と番号（.seq-step）を、まだ（隠す）・今・終わった（薄く）に
+   * 分ける。summary（一覧・PDF）ではすべて同じに見せる
+   */
+  const seqStage = (svg: Element, done: number, summary = false) => {
+    for (const el of Array.from(svg.querySelectorAll<SVGElement>('.seq-row, .seq-step'))) {
+      const k = Number(el.dataset.k);
+      el.classList.toggle('is-future', !summary && k >= done);
+      el.classList.toggle('is-past', !summary && k < done - 1);
+    }
+  };
+  /** ステップ k の動き a（移動なら区間 s）の行 */
+  const seqRow = (svg: Element, k: number, a: number, s?: number) =>
+    svg.querySelector<SVGElement>(
+      `.seq-row[data-k="${k}"][data-a="${a}"]${s === undefined ? ':not([data-s])' : `[data-s="${s}"]`}`,
+    );
+  /** シーケンス図の矢印に沿って点を動かす（構成図のパケットと同じ時間） */
+  const seqDot = (row: SVGElement, duration: number) => {
+    const x1 = Number(row.dataset.x1);
+    const x2 = Number(row.dataset.x2);
+    const y = Number(row.dataset.y);
+    const dot = make('g', { class: 'seq-dot' }, row);
+    make('circle', { r: 7 }, dot);
+    dot.style.setProperty('offset-path', `path('M${x1} ${y}H${x2}')`);
+    dot.style.setProperty('offset-rotate', '0deg');
+    return dot
+      .animate([{ offsetDistance: '0%' }, { offsetDistance: '100%' }], {
+        duration,
+        easing: 'ease-in-out',
+        fill: 'forwards',
+      })
+      .finished.catch(() => undefined)
+      .then(() => dot.remove());
+  };
   /** 上限で入らなかった中身：表の右上に赤い札と × を出して消す（#181） */
   const reject = async (svg: SVGSVGElement, id: string, items: string[]) => {
     const node = nodeOf(svg, id) as SVGElement | null;
@@ -557,6 +591,7 @@ export function startArch(doc: Document): void {
       }
     }
     paint(svg, world);
+    seqStage(svg, done, summary);
     const last = done > 0 && !summary ? steps[done - 1] : undefined;
     highlight(svg, last);
     captions(figure, done, summary);
@@ -591,8 +626,18 @@ export function startArch(doc: Document): void {
     for (const before of stepsOf(figure).slice(0, stage - 1)) {
       for (const a of before) if (!isMove(a)) apply(world, a);
     }
-    for (const a of step) {
+    // シーケンス図：前のステップは薄く、このステップの番号だけ出し、行は動きに合わせて1つずつ出す
+    for (const el of Array.from(svg.querySelectorAll<SVGElement>('.seq-row, .seq-step'))) {
+      const k = Number(el.dataset.k);
+      el.classList.toggle('is-past', k < stage - 1);
+      el.classList.toggle(
+        'is-future',
+        k > stage - 1 || (k === stage - 1 && el.classList.contains('seq-row')),
+      );
+    }
+    for (const [ai, a] of step.entries()) {
       if (!isMove(a)) {
+        seqRow(svg, stage - 1, ai)?.classList.remove('is-future');
         const rejected = apply(world, a);
         paint(
           svg,
@@ -609,9 +654,22 @@ export function startArch(doc: Document): void {
       for (let rep = 0; rep < times; rep++) {
         for (let i = 0; i + 1 < a.m.length; i++) {
           const seg = segment(svg, a.m[i]!, a.m[i + 1]!, Boolean(a.r[i]));
-          if (!seg) continue;
-          if (seg.temp) make('path', { class: 'arch-temp', d: pathOf(seg.pts) }, fx);
+          const row = seqRow(svg, stage - 1, ai, i);
+          if (!seg && !row) continue;
+          row?.classList.remove('is-future');
           const blocked = blockedAt(world, a, i);
+          const stop = blocked && seg ? stopAt(seg.pts) : 1;
+          const duration = 600 * Math.max(0.5, stop);
+          const moving: Array<Promise<unknown>> = [];
+          // シーケンス図の点（構成図のない view=sequence では、これだけ動かす）
+          if (row) moving.push(seqDot(row, duration));
+          if (!seg) {
+            await Promise.all(moving);
+            if (runs.get(figure) !== run) return;
+            if (blocked) break;
+            continue;
+          }
+          if (seg.temp) make('path', { class: 'arch-temp', d: pathOf(seg.pts) }, fx);
           const packet = make('g', { class: `arch-packet${a.r[i] ? ' is-reply' : ''}` }, fx);
           make('circle', { r: 9 }, packet);
           // 届かない移動のラベルは × の横に出し、パケットには回数（1/3）だけ付ける
@@ -636,12 +694,12 @@ export function startArch(doc: Document): void {
           }
           packet.style.setProperty('offset-path', `path('${pathOf(seg.pts)}')`);
           packet.style.setProperty('offset-rotate', '0deg');
-          const stop = blocked ? stopAt(seg.pts) : 1;
           const anim = packet.animate(
             [{ offsetDistance: '0%' }, { offsetDistance: `${stop * 100}%` }],
-            { duration: 600 * Math.max(0.5, stop), easing: 'ease-in-out', fill: 'forwards' },
+            { duration, easing: 'ease-in-out', fill: 'forwards' },
           );
-          await anim.finished.catch(() => undefined);
+          moving.push(anim.finished.catch(() => undefined));
+          await Promise.all(moving);
           packet.remove();
           if (runs.get(figure) !== run) return;
           if (blocked) {
