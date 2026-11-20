@@ -4,13 +4,15 @@
  */
 import { startArch } from './arch-player.js';
 import { startPlayer } from './player.js';
+import { PLAYER_UI } from './player-ui.js';
 import { startPreview } from './preview.js';
 
 /**
  * 書き出した HTML の `<script>` に入れるソース。
  * `renderDeckHtml(deck, { scripts: [RUNTIME_SCRIPT] })` のように渡す。
+ * 文言と見た目（player-ui.ts）は JSON にして渡す（`</script>` にならないよう、`<` は符号にする。#172）
  */
-export const RUNTIME_SCRIPT = `(${startPlayer.toString()})(document);`;
+export const RUNTIME_SCRIPT = `(${startPlayer.toString()})(document, ${JSON.stringify(PLAYER_UI).replace(/</g, '\\u003c')});`;
 
 /**
  * 動く構成図の再生（#108）。書き出した HTML の、RUNTIME_SCRIPT より前に入れる

@@ -18,8 +18,10 @@ describe('RUNTIME_SCRIPT', () => {
 
   it('外側の変数を使わずに、そのまま実行できる形になっている', () => {
     // import した関数や定数を参照していれば、埋め込んだ先で ReferenceError になる
-    expect(RUNTIME_SCRIPT).toMatch(/^\(function startPlayer\(doc\) \{/);
-    expect(RUNTIME_SCRIPT).toMatch(/\}\)\(document\);$/);
+    // 文言と見た目は JSON にして渡す（#172）
+    expect(RUNTIME_SCRIPT).toMatch(/^\(function startPlayer\(doc, ui\) \{/);
+    expect(RUNTIME_SCRIPT).toMatch(/\}\)\(document, \{"text":.*\}\);$/s);
+    expect(RUNTIME_SCRIPT).not.toMatch(/<\/script/i);
     expect(() => new Function('document', RUNTIME_SCRIPT)).not.toThrow();
   });
 });

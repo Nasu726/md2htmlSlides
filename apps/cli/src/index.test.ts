@@ -79,7 +79,7 @@ describe('mdhs build', () => {
     expect(existsSync(join(out, 'img/a.png'))).toBe(true);
     expect(existsSync(join(out, external!))).toBe(true);
     // 発表用の runtime を埋め込んでいる
-    expect(html).toContain('function startPlayer(doc)');
+    expect(html).toContain('function startPlayer(doc, ui)');
   });
 
   it('--single：素材を data: URL で埋め込んだ HTML を1つだけ書き出す。大きすぎる動画は埋め込まずに警告する（#120）', async () => {
@@ -280,7 +280,7 @@ describe('mdhs dev', () => {
     expect(preview).toContain('<h2 class="mds-title">はじめに</h2>');
     expect(preview).toContain("new EventSource('/__mds/events')");
     const present = await (await fetch(`${server.url}present`)).text();
-    expect(present).toContain('function startPlayer(doc)');
+    expect(present).toContain('function startPlayer(doc, ui)');
     const image = await fetch(`${server.url}a.png`);
     expect(image.headers.get('content-type')).toBe('image/png');
     expect((await fetch(`${server.url}..%2F..%2Fetc%2Fpasswd`)).status).toBe(404);
