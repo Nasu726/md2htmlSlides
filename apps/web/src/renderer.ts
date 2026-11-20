@@ -1,29 +1,19 @@
 import {
-  applySplit,
-  buildSlides,
-  archDiagnostics,
-  checkMediaFiles,
-  collectArch,
-  collectMedia,
   hashString,
-  isLocalPath,
   mediaMime,
-  parseDeck,
-  planSplit,
   renderDeckHtml,
   renderSlide,
   type Diagnostic,
-  type ArchSource,
-  type DiagramRenderer,
   type DiagramResult,
   type Measurement,
   type RenderEnv,
   type RenderOptions,
   type SlideDeck,
+  type MeasureJob,
 } from '@mdhs/core';
-import { collectMermaid, diagramDiagnostic, mathDiagnostics, normalizeCode } from '@mdhs/embeds';
+import { prepareDeck, type ArchItem } from '@mdhs/embeds';
 import { ARCH_SCRIPT, RUNTIME_SCRIPT } from '@mdhs/runtime';
-import { AssetStore, noAssets, normalizePath } from './assets.js';
+import { AssetStore, noAssets } from './assets.js';
 import {
   katexFaces,
   loadHighlighter,
@@ -184,117 +174,31 @@ export class Renderer {
     const check = () => {
       if (generation !== this.generation) throw new Cancelled();
     };
-    const deck = parseDeck(text);
-    let slides = buildSlides(deck);
-    // テーマが使う書体（明朝体は academic のときだけ読む。#93）
-    this.families = themeFonts(deck.meta.theme);
-
-    // 素材：縦横を先に読んでおく（描く前にレイアウトを決めるため）
-    const media = collectMedia(deck).flatMap((m) => {
-      const poster = m.attrs?.values.poster;
-      return typeof poster === 'string' ? [m.src, poster] : [m.src];
-    });
-    await this.assets.ensure([...media, ...(deck.meta.logo ? [deck.meta.logo] : [])]);
-    check();
-    const diagnostics = [...deck.diagnostics, ...checkMediaFiles(deck, this.assets.probe)];
-    // 動く構成図（#106）：`.arch` のファイルを読み、書き間違いなどを警告する
-    const archFiles = new Map<string, string>();
-    for (const m of collectMedia(deck)) {
-      if (m.kind !== 'arch' || !isLocalPath(m.src)) continue;
-      const content = await this.assets.text(m.src);
-      if (content !== undefined) archFiles.set(normalizePath(m.src), content);
-    }
-    const archSources = collectArch(slides, (src) => archFiles.get(normalizePath(src)));
-    diagnostics.push(...archDiagnostics(archSources));
-    let customCss: string | undefined;
-    if (deck.meta.css) {
-      customCss = await this.assets.text(deck.meta.css);
-      if (customCss === undefined) {
-        const index = text.split('\n').findIndex((line) => /^css\s*:/.test(line));
-        diagnostics.push({
-          severity: 'warning',
-          code: 'frontmatter/css-not-found',
-          message: `CSS ファイルが見つかりません：${deck.meta.css}`,
-          line: index >= 0 ? index + 1 : (deck.frontmatter?.start ?? 1),
-        });
-      }
-    }
-    const options: RenderOptions = {
+    // 数式の部品（プレビューに数式のフォントを送るため）。読み込むのは prepareDeck の中
+    let math = undefined as MathKit | undefined;
+    // 資料の処理の流れは、CLI と共通（#170）。計測と図は、隠した iframe（テーマの CSS がある）で行う
+    const { slides, options, diagnostics } = await prepareDeck(text, {
+      readText: (src) => this.assets.text(src),
       probe: this.assets.probe,
       assetUrl: this.assets.url,
-      ...(customCss !== undefined ? { customCss } : {}),
-    };
-
-    // コードの色分けと数式（#84）：使うときだけ読み込む
-    const highlight = await loadHighlighter(text);
-    if (highlight) options.highlight = highlight;
-    let math: MathKit | undefined;
-    if (deck.math) {
-      math = await loadMath();
-      options.math = math.engine.render;
-      options.libraryCss = math.css.layout;
-      diagnostics.push(...mathDiagnostics(deck, math.engine.render));
-    }
-    check();
-
-    // スライドを空にしたデッキ：計測と図に使う（テーマ・縦横比・カスタム CSS）
-    const page = renderDeckHtml({ ...slides, slides: [] }, { ...options, fit: false });
-
-    // Mermaid の図（#84）：計測用の iframe（テーマの CSS がある）で描く
-    const diagram = await this.renderDiagrams(text, deck, page, diagnostics);
-    if (diagram) options.diagram = diagram;
-    // 動く構成図（#107）：同じ iframe で ELK を使って配置する
-    const arch = await this.renderArchs(archSources, page);
-    if (arch) {
-      const mermaid = options.diagram;
-      options.diagram = (input) => (input.lang === 'arch' ? arch(input) : mermaid?.(input));
-    }
-    check();
-
-    // 自動分割：スライドを空にしたデッキの上で、原子の高さを測る（図と数式を描いた後の大きさで）
-    const env: RenderEnv = {
-      ...(options.diagram ? { diagram: options.diagram } : {}),
-      ...(options.math ? { math: options.math } : {}),
-    };
-    const plan = planSplit(slides, env);
-    if (plan.jobs.length > 0) {
-      await this.setMeasurePage(page);
-      const css = hashString(page);
-      // 行番号（data-src）は高さに関係しないので、キーから除く（行を足しても、後ろの節を測り直さない）
-      const keys = plan.jobs.map((job) =>
-        hashString(
-          `${css}\n${job.skeleton.replace(/ data-src="[^"]*"/g, '')}\n${job.atoms.join('\0')}\n${job.heads.join('\0')}`,
-        ),
-      );
-      const missing = plan.jobs.filter((_, i) => !this.measured.has(keys[i]!));
-      if (missing.length > 0) {
-        const chars = visibleText(
-          missing.flatMap((j) => [j.skeleton, ...j.atoms, ...j.heads]).join(' '),
-        );
-        await this.sendFonts(this.measure, this.measureFonts, [
-          ...facesFor(chars, this.families),
-          ...(math ? katexFaces(math) : []),
-        ]);
-        const reply = await this.measure.request<{
-          id: number;
-          type: string;
-          results: Measurement[];
-        }>({
-          type: 'measure',
-          jobs: missing,
-        });
-        let r = 0;
-        plan.jobs.forEach((_, i) => {
-          if (!this.measured.has(keys[i]!)) this.measured.set(keys[i]!, reply.results[r++]!);
-        });
-      }
-      check();
-      slides = applySplit(
-        slides,
-        plan,
-        keys.map((key) => this.measured.get(key)!),
-      );
-    }
+      // テーマが使う書体（明朝体は academic のときだけ読む。#93）
+      parsed: (deck) => {
+        this.families = themeFonts(deck.meta.theme);
+      },
+      // 素材：縦横を先に読んでおく（描く前にレイアウトを決めるため）
+      loadMedia: (srcs) => this.assets.ensure(srcs),
+      // コードの色分けと数式（#84）：使うときだけ読み込む
+      highlighter: loadHighlighter,
+      math: async () => {
+        math = await loadMath();
+        return { render: math.engine.render, layoutCss: math.css.layout };
+      },
+      mermaid: (page, codes) => this.drawMermaid(page, codes),
+      mermaidResult: (index, result) => this.keepGood(index, result),
+      archs: (page, items) => this.layoutArchs(page, items),
+      measure: (page, jobs) => this.measureJobs(page, jobs, math),
+      checkpoint: check,
+    });
 
     // プレビュー：スライドごとに描き、変わったスライドだけを送る（設計プラン §11.2）
     const head = renderDeckHtml(
@@ -401,32 +305,12 @@ export class Renderer {
     if (pending.length > 0) await frame.request({ type: 'fonts', faces: pending });
   }
 
-  /**
-   * Mermaid の図を描き、描いた結果を返す関数を作る。構文エラーは警告にし、前に描けた図があればそれを出す。
-   * 図がなければ undefined。
-   */
-  private async renderDiagrams(
-    text: string,
-    deck: ReturnType<typeof parseDeck>,
-    page: string,
-    diagnostics: Diagnostic[],
-  ): Promise<DiagramRenderer | undefined> {
-    // `.mmd` のファイルを先に読んでおく
-    const files = new Map<string, string>();
-    for (const media of collectMedia(deck)) {
-      if (media.kind !== 'diagram' || !isLocalPath(media.src)) continue;
-      const content = await this.assets.text(media.src);
-      if (content !== undefined) files.set(normalizePath(media.src), content);
-    }
-    const found = collectMermaid(text, deck, (src) => files.get(normalizePath(src)));
-    if (found.length === 0) return undefined;
-
+  /** Mermaid の図を描く（#84）。ページの CSS とコードが同じなら、前の結果を使う */
+  private async drawMermaid(page: string, codes: string[]): Promise<Map<string, DiagramResult>> {
     await this.setMeasurePage(page);
     const css = hashString(page);
     const key = (code: string) => hashString(`${css}\n${code}`);
-    const missing = [...new Set(found.map((item) => item.code))].filter(
-      (code) => !this.diagrams.has(key(code)),
-    );
+    const missing = [...new Set(codes)].filter((code) => !this.diagrams.has(key(code)));
     if (missing.length > 0) {
       if (!this.mermaidLoaded) {
         await this.measure.request({
@@ -453,36 +337,35 @@ export class Renderer {
       });
       this.diagramVersion++;
     }
+    const results = new Map<string, DiagramResult>();
+    for (const code of codes) {
+      const result = this.diagrams.get(key(code));
+      if (result) results.set(code, result);
+    }
+    return results;
+  }
 
-    const byCode = new Map<string, DiagramResult>();
-    const bySrc = new Map<string, DiagramResult>();
-    found.forEach((item, i) => {
-      let result = this.diagrams.get(key(item.code));
-      if (!result) return;
-      if ('error' in result) {
-        diagnostics.push(diagramDiagnostic(item, result.error));
-        result = this.lastGood[i] ?? result;
-      } else if (this.lastGood[i] !== result) {
-        this.lastGood[i] = result;
-        this.diagramVersion++;
-      }
-      if (item.src !== undefined) bySrc.set(normalizePath(item.src), result);
-      else byCode.set(normalizeCode(item.code), result);
-    });
-    return (input) =>
-      'src' in input ? bySrc.get(normalizePath(input.src)) : byCode.get(normalizeCode(input.code));
+  /**
+   * n 番目の図の結果。構文エラーのときは、最後に描けた図を出したままにする（入力の途中。§7.2）。
+   * 描けた図が変わったら、スライドの HTML を描き直す
+   */
+  private keepGood(index: number, result: DiagramResult): DiagramResult {
+    if ('error' in result) return this.lastGood[index] ?? result;
+    if (this.lastGood[index] !== result) {
+      this.lastGood[index] = result;
+      this.diagramVersion++;
+    }
+    return result;
   }
 
   /** 計測のページ（テーマ・縦横比・カスタム CSS）。変わったときだけ送る */
   /** 動く構成図を配置して SVG にする（#107）。構成（とページの CSS）が同じなら、前の結果を使う */
-  private async renderArchs(
-    sources: ArchSource[],
+  private async layoutArchs(
     page: string,
-  ): Promise<DiagramRenderer | undefined> {
-    if (sources.length === 0) return undefined;
+    items: ArchItem[],
+  ): Promise<Array<DiagramResult | undefined>> {
     await this.setMeasurePage(page);
     const css = hashString(page);
-    const items = sources.map((s) => ({ id: `mds-a-${hashString(s.code)}`, diagram: s.diagram }));
     const keys = items.map((item) => hashString(`${css}\n${JSON.stringify(item)}`));
     const missing = items.filter((_, i) => !this.archs.has(keys[i]!));
     if (missing.length > 0) {
@@ -512,17 +395,49 @@ export class Renderer {
       });
       this.diagramVersion++;
     }
-    const byCode = new Map<string, DiagramResult>();
-    const bySrc = new Map<string, DiagramResult>();
-    sources.forEach((s, i) => {
-      const drawn = this.archs.get(keys[i]!);
-      if (!drawn) return;
-      const result = 'error' in drawn ? drawn : { ...drawn, scenarios: s.diagram.scenarios };
-      if (s.src !== undefined) bySrc.set(normalizePath(s.src), result);
-      else byCode.set(normalizeCode(s.code), result);
-    });
-    return (input) =>
-      'src' in input ? bySrc.get(normalizePath(input.src)) : byCode.get(normalizeCode(input.code));
+    return keys.map((key) => this.archs.get(key));
+  }
+
+  /**
+   * 自動分割のために、原子の高さを測る（図と数式を描いた後の大きさで）。
+   * 結果はページの CSS と節の中身のハッシュで覚え、変わった節だけを測り直す
+   */
+  private async measureJobs(
+    page: string,
+    jobs: MeasureJob[],
+    math: MathKit | undefined,
+  ): Promise<Measurement[]> {
+    await this.setMeasurePage(page);
+    const css = hashString(page);
+    // 行番号（data-src）は高さに関係しないので、キーから除く（行を足しても、後ろの節を測り直さない）
+    const keys = jobs.map((job) =>
+      hashString(
+        `${css}\n${job.skeleton.replace(/ data-src="[^"]*"/g, '')}\n${job.atoms.join('\0')}\n${job.heads.join('\0')}`,
+      ),
+    );
+    const missing = jobs.filter((_, i) => !this.measured.has(keys[i]!));
+    if (missing.length > 0) {
+      const chars = visibleText(
+        missing.flatMap((j) => [j.skeleton, ...j.atoms, ...j.heads]).join(' '),
+      );
+      await this.sendFonts(this.measure, this.measureFonts, [
+        ...facesFor(chars, this.families),
+        ...(math ? katexFaces(math) : []),
+      ]);
+      const reply = await this.measure.request<{
+        id: number;
+        type: string;
+        results: Measurement[];
+      }>({
+        type: 'measure',
+        jobs: missing,
+      });
+      let r = 0;
+      jobs.forEach((_, i) => {
+        if (!this.measured.has(keys[i]!)) this.measured.set(keys[i]!, reply.results[r++]!);
+      });
+    }
+    return keys.map((key) => this.measured.get(key)!);
   }
 
   private async setMeasurePage(page: string): Promise<void> {

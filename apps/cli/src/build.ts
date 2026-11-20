@@ -1,21 +1,13 @@
 import {
-  applySplit,
-  archDiagnostics,
-  buildSlides,
-  checkMediaFiles,
-  collectArch,
   collectMedia,
-  hashString,
   isLocalPath,
-  parseDeck,
-  planSplit,
   renderDeckHtml,
-  type Deck,
-  type DiagramResult,
   decodePath,
+  type Deck,
   type Diagnostic,
   type RenderOptions,
   type SlideDeck,
+  type MeasureJob,
 } from '@mdhs/core';
 import { ARCH_SCRIPT, RUNTIME_SCRIPT } from '@mdhs/runtime';
 import { SERIF_FAMILY, themeFonts } from '@mdhs/themes';
@@ -32,14 +24,14 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createAssets, registerDeckAssets, type Assets } from './assets.js';
 import { FONT_HOST, codeText, linkedFontCss, subsetFontCss, visibleText } from './fonts.js';
-import { collectMermaid, diagramDiagnostic, normalizeCode } from '@mdhs/embeds';
+import { prepareDeck, type ArchItem } from '@mdhs/embeds';
 import { codeHighlighter, codeLanguages } from '@mdhs/embeds/highlight';
 import {
   linkedMathFontCss,
-  mathDiagnostics,
   mathEngine,
   mathLayoutCss,
   subsetMathFontCss,
+  type MathEngine,
 } from './math.js';
 import { ChromiumMeasurer } from './measurer.js';
 
@@ -81,138 +73,48 @@ export async function renderFile(
 ): Promise<Rendered> {
   const { fonts, embed, ...htmlOptions } = options;
   const source = readFileSync(mdFile, 'utf8');
-  const deck = parseDeck(source);
-  let slides = buildSlides(deck);
   const assets = createAssets(mdFile);
-  const diagnostics = [...deck.diagnostics, ...checkMediaFiles(deck, (src) => assets.probe(src))];
-  // 動く構成図（#106）：書き間違い・存在しないシナリオ・1つのスライドに2つ以上
   const readText = (src: string) => {
     const file = resolve(assets.root, src);
     return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
   };
-  const archSources = collectArch(slides, readText);
-  diagnostics.push(...archDiagnostics(archSources));
-
-  // css: で指定したファイルを、デッキの中だけに効かせて埋め込む
-  let customCss: string | undefined;
-  let cssFile: string | undefined;
-  if (deck.meta.css) {
-    cssFile = resolve(assets.root, deck.meta.css);
-    if (existsSync(cssFile)) {
-      customCss = readFileSync(cssFile, 'utf8');
-    } else {
-      const index = source.split('\n').findIndex((line) => /^css\s*:/.test(line));
-      diagnostics.push({
-        severity: 'warning',
-        code: 'frontmatter/css-not-found',
-        message: `CSS ファイルが見つかりません：${deck.meta.css}`,
-        line: index >= 0 ? index + 1 : (deck.frontmatter?.start ?? 1),
-      });
-    }
-  }
-  registerDeckAssets(deck, assets);
-
-  // 背景の明るさを測る（全面の背景の上の文字色を選ぶため）
-  const luminance = new Map<string, number>();
-  if (measurer) {
-    const backgrounds = collectMedia(deck)
-      .filter((m) => m.attrs?.values.bg !== undefined && isLocalPath(m.src))
-      .map((m) => decodePath(m.src));
-    const measured = await measurer.luminance(backgrounds.map((src) => resolve(assets.root, src)));
-    for (const src of backgrounds) {
-      const value = measured.get(resolve(assets.root, src));
-      if (value !== undefined) luminance.set(src, value);
-    }
-  }
-  // コードの色分け（#68）：資料で使っている言語の文法だけを読み込む
-  const highlight = await codeHighlighter(codeLanguages(source));
-  const renderOptions: RenderOptions = {
-    highlight,
-    probe: (src) => {
-      const info = assets.probe(src);
-      const value = luminance.get(src);
-      return info && value !== undefined ? { ...info, luminance: value } : info;
-    },
-    assetUrl: (src) => assets.url(src),
-    ...(customCss !== undefined ? { customCss } : {}),
-  };
-
   // 数式（#72）：KaTeX は、資料に数式があるときだけ読み込む。CSS とフォントも、そのときだけ入れる
-  const math = deck.math ? await mathEngine() : undefined;
-  if (math) {
-    renderOptions.math = math.render;
-    renderOptions.libraryCss = mathLayoutCss();
-    diagnostics.push(...mathDiagnostics(deck, math.render));
-  }
+  let math: MathEngine | undefined;
   const linkedFonts = (prefix: string) =>
     linkedFontCss(prefix) + (math ? `\n${linkedMathFontCss(prefix)}` : '');
 
-  // スライドを空にしたデッキ：計測と図の描画に使う（テーマ・カスタム CSS・同じフォント）
-  const emptyPage = () =>
-    renderDeckHtml(
-      { ...slides, slides: [] },
-      { ...renderOptions, fit: false, ...(fonts ? { fontCss: linkedFonts(FONT_HOST) } : {}) },
-    );
-
-  // Mermaid の図（#71）：ヘッドレス Chromium で SVG にしておき、描画では結果を返すだけにする
-  if (measurer) {
-    const found = collectMermaid(source, deck, readText);
-    if (found.length > 0) {
-      const results = await measurer.diagrams(
-        emptyPage(),
-        found.map((d) => d.code),
-      );
-      if (results) {
-        const byCode = new Map<string, DiagramResult>();
-        const bySrc = new Map<string, DiagramResult>();
-        for (const item of found) {
-          const result = results.get(item.code)!;
-          if (item.src !== undefined) bySrc.set(item.src, result);
-          else byCode.set(normalizeCode(item.code), result);
-          if ('error' in result) diagnostics.push(diagramDiagnostic(item, result.error));
+  // 資料の処理の流れは、エディタと共通（#170）。計測・図はヘッドレス Chromium で行う
+  const prepared = await prepareDeck(source, {
+    readText: async (src) => readText(src),
+    probe: (src) => assets.probe(src),
+    assetUrl: (src) => assets.url(src),
+    parsed: (deck) => registerDeckAssets(deck, assets),
+    // コードの色分け（#68）：資料で使っている言語の文法だけを読み込む
+    highlighter: (text) => codeHighlighter(codeLanguages(text)),
+    math: async () => {
+      math = await mathEngine();
+      return { render: math.render, layoutCss: mathLayoutCss() };
+    },
+    ...(fonts ? { pageFontCss: () => linkedFonts(FONT_HOST) } : {}),
+    ...(measurer
+      ? {
+          luminance: async (srcs: string[]) => {
+            const measured = await measurer.luminance(srcs.map((src) => resolve(assets.root, src)));
+            const luminance = new Map<string, number>();
+            for (const src of srcs) {
+              const value = measured.get(resolve(assets.root, src));
+              if (value !== undefined) luminance.set(src, value);
+            }
+            return luminance;
+          },
+          mermaid: (page: string, codes: string[]) => measurer.diagrams(page, codes),
+          archs: (page: string, items: ArchItem[]) => measurer.archs(page, items),
+          measure: (page: string, jobs: MeasureJob[]) => measurer.measure(page, jobs),
         }
-        renderOptions.diagram = (input) =>
-          'src' in input ? bySrc.get(input.src) : byCode.get(normalizeCode(input.code));
-      }
-    }
-  }
-
-  // 動く構成図（#107）：ELK で配置して SVG にしておく。説明のリストと再生のため、シナリオも渡す
-  if (measurer && archSources.length > 0) {
-    const results = await measurer.archs(
-      emptyPage(),
-      archSources.map((s) => ({ id: `mds-a-${hashString(s.code)}`, diagram: s.diagram })),
-    );
-    if (results) {
-      const byCode = new Map<string, DiagramResult>();
-      const bySrc = new Map<string, DiagramResult>();
-      archSources.forEach((s, i) => {
-        const drawn = results[i]!;
-        const result = 'error' in drawn ? drawn : { ...drawn, scenarios: s.diagram.scenarios };
-        if (s.src !== undefined) bySrc.set(s.src, result);
-        else byCode.set(normalizeCode(s.code), result);
-      });
-      const mermaid = renderOptions.diagram;
-      renderOptions.diagram = (input) =>
-        input.lang !== 'arch'
-          ? mermaid?.(input)
-          : 'src' in input
-            ? bySrc.get(input.src)
-            : byCode.get(normalizeCode(input.code));
-    }
-  }
-
-  // 自動分割：スライドを空にしたデッキの上で原子の高さを測り、節ごとに区切る
-  if (measurer) {
-    const plan = planSplit(slides, {
-      ...(renderOptions.diagram ? { diagram: renderOptions.diagram } : {}),
-      ...(renderOptions.math ? { math: renderOptions.math } : {}),
-    });
-    if (plan.jobs.length > 0) {
-      const measurements = await measurer.measure(emptyPage(), plan.jobs);
-      if (measurements) slides = applySplit(slides, plan, measurements);
-    }
-  }
+      : {}),
+  });
+  const { deck, slides, diagnostics, archSources, options: renderOptions } = prepared;
+  const cssFile = deck.meta.css ? resolve(assets.root, deck.meta.css) : undefined;
 
   // 動く構成図の再生（#108）：構成図があり、発表用の runtime を入れるときだけ、その前に入れる
   const scripts =

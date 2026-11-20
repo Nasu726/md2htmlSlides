@@ -1,4 +1,4 @@
-import { decodePath, isLocalPath, mediaSize, type MediaInfo } from '@mdhs/core';
+import { isLocalPath, mediaSize, normalizePath, type MediaInfo } from '@mdhs/core';
 
 /**
  * 資料が参照する素材（画像・動画・ロゴ・CSS）をどこから読むか（#73、設計プラン §9.1）。
@@ -14,20 +14,8 @@ export interface AssetSource {
 
 export const noAssets: AssetSource = { read: async () => undefined };
 
-/**
- * パスを、資料のフォルダからの相対パスにそろえる（`./a.png` → `a.png`、`img/../a.png` → `a.png`）。
- * 資料のフォルダより上（`../assets/a.png`）は、`..` を残す（URL から開いたときは、その先を読む。#90）
- */
-export function normalizePath(src: string): string {
-  const path = decodePath(src.split(/[?#]/)[0]!);
-  const parts: string[] = [];
-  for (const part of path.split('/')) {
-    if (part === '' || part === '.') continue;
-    if (part === '..' && parts.length > 0 && parts.at(-1) !== '..') parts.pop();
-    else parts.push(part);
-  }
-  return parts.join('/');
-}
+/** パスを、資料のフォルダからの相対パスにそろえる（core に移した。#170） */
+export { normalizePath };
 
 /** HTML の中で素材を指す印（iframe の中で、その iframe が作った Blob の URL に置き換える） */
 export const assetMark = (key: string) => `data:text/plain,mds-asset=${assetKey(key)}`;

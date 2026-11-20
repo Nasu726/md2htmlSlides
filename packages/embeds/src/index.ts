@@ -17,3 +17,4 @@ export {
   type MathUsage,
 } from './math.js';
 export { collectMermaid, diagramDiagnostic, normalizeCode, type MermaidSource } from './mermaid.js';
+export { prepareDeck, type ArchItem, type PipelineHost, type Prepared } from './pipeline.js';
