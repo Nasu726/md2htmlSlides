@@ -324,7 +324,7 @@ function archCompletions(context: CompletionContext): CompletionResult | null {
     };
   }
   const inScenario = /^scenario\s/m.test(block);
-  // シナリオの中（#180）：`pay: ` の後に止める・戻す、`worker -` の後に動きの記号
+  // シナリオの中（#180・#181）：`pay: ` の後に止める・戻す、`worker -`・`queue +` の後に動きの記号
   const power = /^\s*([\w-]+)\s*:\s*(\w*)$/.exec(before);
   if (inScenario && power && power[1] !== 'note') {
     return {
@@ -336,7 +336,7 @@ function archCompletions(context: CompletionContext): CompletionResult | null {
       validFor: /^\w*$/,
     };
   }
-  const arrow = /^\s*[\w-]+\s+(-[-x/>]*)$/.exec(before);
+  const arrow = /^\s*[\w-]+\s+([-+][-x/>=]*)$/.exec(before);
   if (inScenario && arrow) {
     return {
       from: context.pos - arrow[1]!.length,
@@ -345,8 +345,10 @@ function archCompletions(context: CompletionContext): CompletionResult | null {
         { label: '-->', detail: '応答（破線で戻る）', type: 'keyword' },
         { label: '-x', detail: '届かない移動（手前で × になる）', type: 'keyword' },
         { label: '-/-', detail: 'つながりを切る（`: -` で戻す）', type: 'keyword' },
+        { label: '+=', detail: '中身に足す（`queue += 注文1`）', type: 'keyword' },
+        { label: '-=', detail: '中身から除く', type: 'keyword' },
       ],
-      validFor: /^-[-x/>]*$/,
+      validFor: /^[-+][-x/>=]*$/,
     };
   }
   const { diagram } = parseArch(block);

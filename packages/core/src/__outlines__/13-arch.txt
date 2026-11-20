@@ -4,7 +4,7 @@ meta
 diagnostics
   (なし)
 sections
-  (先頭)  L6-L119
+  (先頭)  L6-L182
     - comment  L7-L10
     ## ファイル参照（正常時）  L12-L14  #ファイル参照正常時
       - paragraph  L14
@@ -36,3 +36,7 @@ sections
           arch ./assets/order-system.arch alt="注文処理の構成" {scenario=存在しないシナリオ}
     ## 障害と回復  L88-L119  #障害と回復
       - code[arch] {captions=below}  L90-L119
+    ## キューが詰まる  L121-L149  #キューが詰まる
+      - code[arch] {captions=below}  L123-L149
+    ## キャッシュのヒットとミス  L151-L182  #キャッシュのヒットとミス
+      - code[arch] {captions=below}  L153-L182

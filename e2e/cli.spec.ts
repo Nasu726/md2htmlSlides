@@ -426,13 +426,13 @@ test('動く構成図の PDF：既定はまとめの1枚（すべての番号・
 }) => {
   const out = mkdtempSync(join(tmpdir(), 'mds-pdf-'));
   const final = await pdf(join(fixtures, '13-arch.md'), { out: join(out, 'final.pdf') });
-  expect(final.pages).toBe(9);
-  // 9 枚 + ステップ（4・4・4・0・4・3・6・2・4）
+  expect(final.pages).toBe(11);
+  // 11 枚 + ステップ（4・4・4・0・4・3・6・2・4・4・4）
   const steps = await pdf(join(fixtures, '13-arch.md'), {
     out: join(out, 'steps.pdf'),
     steps: true,
   });
-  expect(steps.pages).toBe(40);
+  expect(steps.pages).toBe(50);
   // まとめの中身は、書き出した HTML で印刷の準備をして確かめる
   const result = await build(join(fixtures, '13-arch.md'), { outDir: join(out, 'html') });
   await page.goto(pathToFileURL(result.index).href);
@@ -521,6 +521,90 @@ test('動く構成図の障害と回復：止める・届かない移動・切�
   expect(summary).toEqual({ down: 0, cut: 0, failed: ['タイムアウト'], badges: ['復旧'] });
 });
 
+test('動く構成図のノードの中身：表・上限・入らない中身・キーと値。戻る操作とまとめでも同じ（13-arch。#181）', async ({
+  page,
+}) => {
+  const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
+  const result = await build(join(fixtures, '13-arch.md'), { outDir: out });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(`${pathToFileURL(result.index).href}#/10`);
+  const slide = page.locator('.mds-slide.is-current');
+  const queue = () =>
+    slide.evaluate((el) => {
+      const t = el.querySelector('.arch-table[data-for="queue"]');
+      return {
+        count: t?.querySelector('.arch-table-count')?.textContent ?? null,
+        chips: Array.from(t?.querySelectorAll('.arch-chip text') ?? [], (c) => c.textContent),
+        full: t?.classList.contains('is-full') ?? false,
+        slots: t?.querySelectorAll('.arch-slot').length ?? 0,
+      };
+    });
+  // 上限があるので、最初から空の枠5つ
+  expect(await queue()).toEqual({ count: '0 / 5', chips: [], full: false, slots: 5 });
+  // 表は配置で場所を取っている（ノードと重ならない）
+  const overlap = await slide.evaluate((el) => {
+    const box = el.querySelector('.arch-table-box')!.getBoundingClientRect();
+    return Array.from(el.querySelectorAll('.arch-node .shape'), (n) =>
+      n.getBoundingClientRect(),
+    ).some(
+      (b) => b.left < box.right && box.left < b.right && b.top < box.bottom && box.top < b.bottom,
+    );
+  });
+  expect(overlap).toBe(false);
+  await page.keyboard.press('ArrowRight');
+  await expect
+    .poll(async () => (await queue()).chips, { timeout: 6000 })
+    .toEqual(['注文1', '注文2', '注文3']);
+  expect((await queue()).count).toBe('3 / 5');
+  await page.keyboard.press('ArrowRight');
+  await expect
+    .poll(async () => (await queue()).chips, { timeout: 6000 })
+    .toEqual(['注文2', '注文3']);
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await queue()).full, { timeout: 6000 }).toBe(true);
+  expect((await queue()).chips).toEqual(['注文2', '注文3', '注文4', '注文5', '注文6']);
+  // 4：入らない中身は、赤い札と × で消える
+  await page.keyboard.press('ArrowRight');
+  await expect
+    .poll(() => slide.locator('.arch-rejected .arch-chip text').allTextContents(), {
+      timeout: 6000,
+    })
+    .toEqual(['注文7']);
+  await expect(slide.locator('.arch-rejected')).toHaveCount(0, { timeout: 6000 });
+  expect(await queue()).toMatchObject({ count: '5 / 5', full: true });
+  // 戻る・番号で開く：動かさずに、その時点の中身
+  await page.keyboard.press('ArrowLeft');
+  expect((await queue()).chips).toHaveLength(5);
+  await page.evaluate(() => (location.hash = '#/10/1'));
+  await expect.poll(async () => (await queue()).chips).toEqual(['注文1', '注文2', '注文3']);
+
+  // キーと値：2 で表が出て、4 で消える
+  const cache = () =>
+    slide.evaluate((el) =>
+      Array.from(el.querySelectorAll('.arch-table[data-for="cache"] text'), (t) => t.textContent),
+    );
+  await page.evaluate(() => (location.hash = '#/11/2'));
+  await expect.poll(cache).toEqual(['item:42', '本']);
+  await page.evaluate(() => (location.hash = '#/11/4'));
+  await expect.poll(cache).toEqual([]);
+
+  // まとめ（一覧・PDF）：最後の中身
+  await page.evaluate(preparePrint, { steps: 'final' as const });
+  const summary = await page
+    .locator('.mds-deck > .mds-slide')
+    .evaluateAll((els) =>
+      els
+        .slice(9, 11)
+        .map((el) =>
+          Array.from(
+            el.querySelectorAll('.arch-table .arch-chip text, .arch-table-key'),
+            (t) => t.textContent,
+          ),
+        ),
+    );
+  expect(summary).toEqual([['注文2', '注文3', '注文4', '注文5', '注文6'], []]);
+});
+
 test('mdhs build：動く構成図の書き間違いを、行番号付きで警告する（13-arch。#106）', async () => {
   const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
   const result = await build(join(fixtures, '13-arch.md'), { outDir: out, measure: false });
@@ -532,6 +616,7 @@ test('mdhs build：動く構成図の書き間違いを、行番号付きで警�
     ['arch/unknown-route', at('    b -> a')],
     ['arch/unknown-scenario', at('存在しないシナリオ')],
     ['arch/multiple', at('存在しないシナリオ')],
+    ['arch/full', at('    queue += 注文7')],
   ]);
   // .arch のファイルは画像として扱わない（見つからない画像の警告を出さない）
   expect(result.diagnostics.filter((d) => d.code === 'media/not-found')).toEqual([]);

@@ -63,6 +63,12 @@ const BASICS: Record<string, Snippet> = {
     text: '```arch\napi 注文API\npay 決済 [external]\napi -> pay\n\nscenario 障害\n  step 決済が止まる\n    pay: down\n  step 届かない\n    api -x pay : タイムアウト\n  step 戻る\n    pay: up 復旧\n```',
     cursor: 8,
   },
+  archState: {
+    label: '動く構成図：ノードの中身',
+    hint: 'max=5・queue += 注文1・db.件数 = 3',
+    text: '```arch\napi 注文API\nqueue キュー [queue] max=5\napi -> queue\n\nscenario 中身\n  step 注文が届く\n    api -> queue : 注文1\n    queue += 注文1\n  step 取り出す\n    queue -= 注文1\n```',
+    cursor: 8,
+  },
 };
 
 /** 属性の値の候補（サジェストと早見表で使う） */
@@ -217,6 +223,7 @@ export const CHEAT_SECTIONS: ReadonlyArray<{
       { snippet: '図（Mermaid）' },
       { basic: 'arch' },
       { basic: 'archFailure' },
+      { basic: 'archState' },
       { snippet: '数式' },
       { basic: 'inlineMath' },
       { basic: 'code' },

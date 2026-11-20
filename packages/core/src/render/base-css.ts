@@ -298,6 +298,17 @@ body { margin: 0; background: #d1d5db; }
 .mds-arch-svg .arch-edge.is-cut .arch-head { fill: #dc2626; }
 .mds-arch-svg .arch-cross path { fill: none; stroke: #dc2626; stroke-width: 4; stroke-linecap: round; }
 .mds-arch-svg .arch-cross text { fill: #dc2626; font-size: 14px; font-weight: 700; paint-order: stroke; stroke: var(--mds-bg); stroke-width: 5px; }
+/* ノードの中身の表（#181）：件数・札の枠・札、キーと値。満杯なら赤 */
+.mds-arch-svg .arch-table-box { fill: var(--mds-bg); stroke: var(--mds-border); stroke-width: 1.5; }
+.mds-arch-svg .arch-table.is-full .arch-table-box { fill: color-mix(in srgb, #dc2626 8%, var(--mds-bg)); stroke: #dc2626; stroke-width: 2.5; }
+.mds-arch-svg .arch-table-count { fill: var(--mds-muted); font-size: 14px; font-weight: 600; }
+.mds-arch-svg .arch-table.is-full .arch-table-count { fill: #dc2626; }
+.mds-arch-svg .arch-slot { fill: none; stroke: var(--mds-border); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.mds-arch-svg .arch-chip rect { fill: color-mix(in srgb, var(--mds-accent) 14%, var(--mds-bg)); stroke: var(--mds-accent); stroke-width: 1.5; }
+.mds-arch-svg .arch-chip text { fill: var(--mds-fg); font-size: 14px; font-weight: 700; }
+.mds-arch-svg .arch-chip.is-rejected rect { fill: color-mix(in srgb, #dc2626 12%, var(--mds-bg)); stroke: #dc2626; }
+.mds-arch-svg .arch-table-key { text-anchor: start; fill: var(--mds-muted); font-size: 14px; font-weight: 600; }
+.mds-arch-svg .arch-table-value { text-anchor: end; fill: var(--mds-fg); font-size: 14px; font-weight: 700; }
 /*
  * カメラ（#109）：寄っている間は図の枠で切り、図の右下の外にミニマップ（構成だけと、見ている範囲の枠）。
  * カメラが働くのは、図が幅で縮んだとき（上下に空きがある）なので、図に重ねずに下に出す

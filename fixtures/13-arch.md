@@ -117,3 +117,66 @@ scenario 決済の障害
     worker -> pay : 決済ジョブ
     pay --> worker : OK
 ```
+
+## キューが詰まる
+
+```arch {captions=below}
+direction: right
+
+user   ユーザー [user]
+api    注文API
+queue  キュー   [queue] max=5
+worker ワーカー
+db     注文DB   [database]
+
+user -> api -> queue -> worker -> db
+
+scenario 注文の集中
+  step 注文が3件届き、キューに入る
+    user -> api -> queue : 注文 x3
+    queue += 注文1 注文2 注文3
+  step ワーカーが1件取り出す。処理には時間がかかる
+    queue -> worker : 注文1
+    queue -= 注文1
+    worker: 注文1 を処理中
+  step 注文が急増して、キューが満杯になる
+    user -> api -> queue : 注文 x3
+    queue += 注文4 注文5 注文6
+  step 入らない注文は 503 で断る
+    user -> api -x queue : 満杯
+    queue += 注文7
+    api --> user : 503
+```
+
+## キャッシュのヒットとミス
+
+```arch {captions=below}
+direction: right
+
+user  ユーザー   [user]
+api   商品API
+cache キャッシュ [storage]
+db    商品DB     [database]
+
+user -> api
+api -> cache
+api -> db
+
+scenario キャッシュ
+  step 1回目：キャッシュにない
+    user -> api -> cache : GET item:42
+    cache: ミス !
+  step DB から読み、キャッシュに入れる
+    api -> db : SELECT
+    db --> api : 本
+    api -> cache : SET
+    cache.item:42 = 本
+    cache: -
+  step 2回目：キャッシュから返す
+    user -> api -> cache : GET item:42
+    cache: ヒット
+    cache --> api --> user : 本
+  step 60秒で期限が切れる
+    cache.item:42 = -
+    cache: 期限切れ
+```

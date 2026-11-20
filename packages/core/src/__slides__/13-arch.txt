@@ -1,5 +1,5 @@
 slideLevel: 2
-slides: 9
+slides: 11
   1. [content] ## ファイル参照（正常時）  L12-L14  #ファイル参照正常時
        image×1
   2. [content] ## ファイル参照（決済の障害）  L16-L18  #ファイル参照決済の障害
@@ -17,4 +17,8 @@ slides: 9
   8. [content] ## 書き間違い  L71-L86  #書き間違い
        code[arch], image×1
   9. [content] ## 障害と回復  L88-L119  #障害と回復
+       code[arch]
+ 10. [content] ## キューが詰まる  L121-L149  #キューが詰まる
+       code[arch]
+ 11. [content] ## キャッシュのヒットとミス  L151-L182  #キャッシュのヒットとミス
        code[arch]
