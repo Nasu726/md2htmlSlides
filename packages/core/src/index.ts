@@ -24,6 +24,7 @@ export {
   isLocalPath,
   mediaMime,
   mediaSize,
+  normalizePath,
   type MediaInfo,
   type MediaKind,
   type MediaProbe,

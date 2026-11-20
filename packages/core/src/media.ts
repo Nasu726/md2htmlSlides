@@ -80,6 +80,22 @@ export function decodePath(src: string): string {
   }
 }
 
+/**
+ * パスを、資料のフォルダからの相対パスにそろえる（`./a.png` → `a.png`、`img/../a.png` → `a.png`）。
+ * 資料のフォルダより上（`../assets/a.png`）は、`..` を残す（URL から開いたときは、その先を読む。#90）。
+ * 同じファイルを指す書き方の違いを1つのキーにする（#170 で Web エディタから移した）
+ */
+export function normalizePath(src: string): string {
+  const path = decodePath(src.split(/[?#]/)[0]!);
+  const parts: string[] = [];
+  for (const part of path.split('/')) {
+    if (part === '' || part === '.') continue;
+    if (part === '..' && parts.length > 0 && parts.at(-1) !== '..') parts.pop();
+    else parts.push(part);
+  }
+  return parts.join('/');
+}
+
 /** ファイルを調べた結果。width と height は画像の縦横の画素数（わかれば）。 */
 export interface MediaInfo {
   exists: boolean;
