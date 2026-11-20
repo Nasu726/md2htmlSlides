@@ -171,27 +171,36 @@ test('mdhs build：動く構成図を配置して SVG にし、fixtures/README �
     '3回リトライして失敗する',
     '失敗を通知する',
   ]);
-  // ノードの重なりがない（どの図でも）
+  // ノードの重なりがない（どの図でも。別の構成のある図は、構成ごとに。#183）
   const overlaps = await page.locator('.mds-arch-svg').evaluateAll((svgs) =>
-    svgs.map((svg) => {
-      const boxes = Array.from(svg.querySelectorAll('.arch-node .shape'), (n) =>
-        (n as SVGGraphicsElement).getBBox(),
-      );
-      let count = 0;
-      for (let i = 0; i < boxes.length; i++)
-        for (let j = i + 1; j < boxes.length; j++) {
-          const a = boxes[i]!;
-          const b = boxes[j]!;
-          if (
-            a.x < b.x + b.width &&
-            b.x < a.x + a.width &&
-            a.y < b.y + b.height &&
-            b.y < a.y + a.height
-          )
-            count++;
-        }
-      return count;
-    }),
+    svgs
+      .flatMap((svg) => {
+        const layouts = Array.from(svg.querySelectorAll('.arch-layout'));
+        return layouts.length > 0 ? layouts : [svg];
+      })
+      .map((scope) => {
+        const boxes = Array.from(scope.querySelectorAll('.arch-node[data-box]'), (n) => {
+          const [x = 0, y = 0, width = 0, height = 0] = n
+            .getAttribute('data-box')!
+            .split(' ')
+            .map(Number);
+          return { x, y, width, height };
+        });
+        let count = 0;
+        for (let i = 0; i < boxes.length; i++)
+          for (let j = i + 1; j < boxes.length; j++) {
+            const a = boxes[i]!;
+            const b = boxes[j]!;
+            if (
+              a.x < b.x + b.width &&
+              b.x < a.x + a.width &&
+              a.y < b.y + b.height &&
+              b.y < a.y + a.height
+            )
+              count++;
+          }
+        return count;
+      }),
   );
   expect(overlaps.every((n) => n === 0)).toBe(true);
 });
@@ -426,13 +435,13 @@ test('動く構成図の PDF：既定はまとめの1枚（すべての番号・
 }) => {
   const out = mkdtempSync(join(tmpdir(), 'mds-pdf-'));
   const final = await pdf(join(fixtures, '13-arch.md'), { out: join(out, 'final.pdf') });
-  expect(final.pages).toBe(13);
-  // 13 枚 + ステップ（4・4・4・0・4・3・6・2・4・4・4・4・4）
+  expect(final.pages).toBe(15);
+  // 15 枚 + ステップ（4・4・4・0・4・3・6・2・4・4・4・4・4・3・3）
   const steps = await pdf(join(fixtures, '13-arch.md'), {
     out: join(out, 'steps.pdf'),
     steps: true,
   });
-  expect(steps.pages).toBe(60);
+  expect(steps.pages).toBe(68);
   // まとめの中身は、書き出した HTML で印刷の準備をして確かめる
   const result = await build(join(fixtures, '13-arch.md'), { outDir: join(out, 'html') });
   await page.goto(pathToFileURL(result.index).href);
@@ -658,6 +667,67 @@ test('動く構成図の view=both・sequence：シーケンス図の矢印が�
       total: el.querySelectorAll('.seq-row').length,
     }));
   expect(summary).toEqual({ hidden: 0, total: 8 });
+});
+
+test('動く構成図の構成の変化：layout で切り替えると動きでつなぎ、戻る・まとめはその時点の構成（13-arch。#183）', async ({
+  page,
+}) => {
+  const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
+  const result = await build(join(fixtures, '13-arch.md'), { outDir: out });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(`${pathToFileURL(result.index).href}#/14`);
+  const slide = page.locator('.mds-slide.is-current');
+  const state = () =>
+    slide.evaluate((el) => {
+      const shown = Array.from(el.querySelectorAll('.arch-layout:not(.is-hidden)'));
+      return {
+        shown: shown.map((g) => g.getAttribute('data-layout')),
+        layouts: el.querySelectorAll('.arch-layout').length,
+        nodes: shown.flatMap((g) =>
+          Array.from(g.querySelectorAll('.arch-node'), (n) => n.getAttribute('data-node')),
+        ),
+        fit:
+          el.querySelector('svg.mds-arch-svg')!.getAttribute('viewBox') ===
+          shown[0]?.getAttribute('data-bounds'),
+      };
+    });
+  // 最初の構成だけを出し、範囲は最初の構成
+  expect(await state()).toEqual({
+    shown: [''],
+    layouts: 2,
+    nodes: ['user', 'app', 'db'],
+    fit: true,
+  });
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  // 切り替えのあいだは、前後の構成を両方出して動かす
+  await expect.poll(async () => (await state()).shown.length, { timeout: 4000 }).toBe(2);
+  await expect.poll(async () => (await state()).shown, { timeout: 4000 }).toEqual(['分割後']);
+  expect(await state()).toMatchObject({ fit: true });
+  expect((await state()).nodes.sort()).toEqual(['db', 'gw', 'order', 'pay', 'stock', 'user']);
+  // 戻る：動かさずに、最初の構成
+  await page.keyboard.press('ArrowLeft');
+  expect(await state()).toMatchObject({ shown: [''], fit: true });
+  await page.evaluate(() => (location.hash = '#/14/3'));
+  await expect.poll(async () => (await state()).shown).toEqual(['分割後']);
+  // スケールアウト：API は「API 1」になり、API 2・3 が分かれる
+  await page.evaluate(() => (location.hash = '#/15/2'));
+  await expect.poll(async () => (await state()).shown).toEqual(['3台']);
+  const api = await slide
+    .locator('.arch-layout:not(.is-hidden) .arch-node[data-node="api"] text')
+    .textContent();
+  expect(api).toBe('API 1');
+
+  // まとめ（一覧・PDF）：最後の構成
+  await page.evaluate(preparePrint, { steps: 'final' as const });
+  const last = await page
+    .locator('.mds-deck > .mds-slide')
+    .evaluateAll((els) =>
+      els
+        .slice(13, 15)
+        .map((el) => el.querySelector('.arch-layout:not(.is-hidden)')?.getAttribute('data-layout')),
+    );
+  expect(last).toEqual(['分割後', '3台']);
 });
 
 test('mdhs build：動く構成図の書き間違いを、行番号付きで警告する（13-arch。#106）', async () => {

@@ -63,6 +63,12 @@ const BASICS: Record<string, Snippet> = {
     text: '```arch\napi 注文API\npay 決済 [external]\napi -> pay\n\nscenario 障害\n  step 決済が止まる\n    pay: down\n  step 届かない\n    api -x pay : タイムアウト\n  step 戻る\n    pay: up 復旧\n```',
     cursor: 8,
   },
+  archLayout: {
+    label: '動く構成図：構成の変化',
+    hint: 'layout 名前・order 注文 < app',
+    text: '```arch\nuser ユーザー [user]\napp アプリ\nuser -> app\n\nlayout 分割後\n  user ユーザー [user]\n  order 注文 < app\n  pay 決済 < app\n  user -> order\n  user -> pay\n\nscenario 分割\n  step 分ける\n    layout 分割後\n```',
+    cursor: 8,
+  },
   archState: {
     label: '動く構成図：ノードの中身',
     hint: 'max=5・queue += 注文1・db.件数 = 3',
@@ -224,6 +230,7 @@ export const CHEAT_SECTIONS: ReadonlyArray<{
       { basic: 'arch' },
       { basic: 'archFailure' },
       { basic: 'archState' },
+      { basic: 'archLayout' },
       { snippet: '数式' },
       { basic: 'inlineMath' },
       { basic: 'code' },

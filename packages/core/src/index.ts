@@ -90,6 +90,8 @@ export {
   type ArchEdge,
   type ArchGroup,
   type ArchItems,
+  type ArchLayout,
+  type ArchLayoutSwitch,
   type ArchMove,
   type ArchNode,
   type ArchNodeKind,

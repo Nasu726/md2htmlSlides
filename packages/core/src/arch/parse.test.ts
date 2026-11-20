@@ -251,6 +251,88 @@ describe('parseArch（#106）', () => {
     expect(diagnostics[1]!.message).toContain('`#` から後はコメント');
   });
 
+  it('構成の変化：別の構成（layout）・分かれる元（<）・ステップで切り替える（#183）', () => {
+    const { diagram, diagnostics } = parseArch(
+      [
+        'user [user]',
+        'app アプリ',
+        'user -> app',
+        'layout 分割後',
+        '  user [user]',
+        '  group サービス',
+        '    order 注文 < app',
+        '    pay 決済 < app max=3',
+        '  user -> order',
+        '  user -> pay',
+        'scenario s',
+        '  step 前',
+        '    user -> app',
+        '  step 分ける',
+        '    layout 分割後',
+        '    user -> order',
+        '  step 戻す',
+        '    layout -',
+      ].join('\n'),
+    );
+    expect(diagnostics).toEqual([]);
+    expect(diagram.nodes.map((n) => n.id)).toEqual(['user', 'app']);
+    expect(diagram.layouts).toHaveLength(1);
+    const after = diagram.layouts![0]!;
+    expect(after).toMatchObject({ name: '分割後', line: 4 });
+    expect(after.groups).toEqual([{ id: 'l1-g1', label: 'サービス', line: 6 }]);
+    expect(
+      after.nodes.map((n) => [n.id, n.label, n.group ?? '-', n.from ?? '-', n.max ?? '-']),
+    ).toEqual([
+      ['user', 'user', '-', '-', '-'],
+      ['order', '注文', 'l1-g1', 'app', '-'],
+      ['pay', '決済', 'l1-g1', 'app', 3],
+    ]);
+    expect(after.edges.map((e) => `${e.from}>${e.to}`)).toEqual(['user>order', 'user>pay']);
+    expect(diagram.scenarios[0]!.steps.map((st) => st.actions.map((a) => a.type))).toEqual([
+      ['move'],
+      ['layout', 'move'],
+      ['layout'],
+    ]);
+    expect(diagram.scenarios[0]!.steps[1]!.actions[0]).toEqual({
+      type: 'layout',
+      name: '分割後',
+      line: 15,
+    });
+    expect(diagram.scenarios[0]!.steps[2]!.actions[0]).toEqual({
+      type: 'layout',
+      name: null,
+      line: 18,
+    });
+  });
+
+  it('構成の変化の書き間違い：ない構成、今の構成にないノード、分かれる元がない（#183）', () => {
+    const { diagnostics } = parseArch(
+      [
+        'a',
+        'b',
+        'a -> b',
+        'layout 後',
+        '  a',
+        '  c < zz',
+        '  a -> c',
+        'scenario s',
+        '  step 1',
+        '    a -> c',
+        '    layout ない',
+        '    layout 後',
+        '    a -> b',
+      ].join('\n'),
+    );
+    expect(diagnostics.map((d) => [d.code, d.line])).toEqual([
+      ['arch/unknown-node', 6],
+      ['arch/unknown-node', 10],
+      ['arch/unknown-layout', 11],
+      ['arch/unknown-node', 13],
+    ]);
+    expect(diagnostics[1]!.message).toContain('今の構成（最初の構成）にはありません');
+    expect(diagnostics[3]!.message).toContain('今の構成（後）にはありません');
+  });
+
   it('書き間違い：未定義のノード、構成にない経路、使われていないノード、種類の候補、インデント', () => {
     const { diagnostics } = parseArch(
       [
@@ -307,6 +389,8 @@ describe('collectArch・archDiagnostics（#106）', () => {
       'code',
       'code',
       './assets/order-system.arch',
+      'code',
+      'code',
     ]);
     // 「書き間違い」のスライドには、図が2つある
     expect(sources[7]!.slideId).toBe(sources[8]!.slideId);
@@ -327,6 +411,8 @@ describe('collectArch・archDiagnostics（#106）', () => {
       'キャッシュ',
       '注文',
       '決済の障害',
+      '分割',
+      'スケールアウト',
     ]);
     expect(sources[5]!.diagram.direction).toBe('down');
   });
