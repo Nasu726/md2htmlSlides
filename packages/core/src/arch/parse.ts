@@ -64,6 +64,8 @@ export interface ArchNode {
   kind: ArchNodeKind;
   /** 入っているグループ（いちばん内側）の ID */
   group?: string;
+  /** 中身の数の上限（`max=5`、#181） */
+  max?: number;
   line: number;
 }
 
@@ -124,7 +126,26 @@ export interface ArchCut {
   line: number;
 }
 
-export type ArchAction = ArchMove | ArchState | ArchCut;
+/** ノードの中身に足す（`queue += 注文1 注文2`）・除く（`queue -= 注文1`）（#181） */
+export interface ArchItems {
+  type: 'items';
+  node: string;
+  op: 'add' | 'remove';
+  items: string[];
+  line: number;
+}
+
+/** ノードのキーと値（`db.注文 = 3件`、`db.注文 = -` で消す）（#181） */
+export interface ArchValue {
+  type: 'value';
+  node: string;
+  key: string;
+  /** null は「消す」 */
+  value: string | null;
+  line: number;
+}
+
+export type ArchAction = ArchMove | ArchState | ArchCut | ArchItems | ArchValue;
 
 export interface ArchStep {
   title: string;
@@ -281,8 +302,19 @@ export function parseArch(source: string): {
       parseEdges(text, line);
       return;
     }
+    // 中身の数の上限（行末の `max=5`、#181）
+    let max: number | undefined;
+    const maxText = /\s+max=(\S*)$/.exec(text);
+    const nodeText = maxText ? text.slice(0, maxText.index) : text;
+    if (maxText) {
+      const n = Number(maxText[1]);
+      if (Number.isInteger(n) && n >= 1 && n <= 20) max = n;
+      else {
+        warn(line, 'arch/invalid-max', '`max=` は 1〜20 の整数で書きます', { found: maxText[1]! });
+      }
+    }
     // ノード：<ID> <表示名> [<種類>]
-    const node = /^([^\s[\]]+)(?:\s+(.*?))?(?:\s*\[([^\]]*)\])?$/.exec(text);
+    const node = /^([^\s[\]]+)(?:\s+(.*?))?(?:\s*\[([^\]]*)\])?$/.exec(nodeText);
     if (!node || !ID.test(node[1]!)) {
       warn(line, 'arch/syntax', `読めない行です：${text}`);
       return;
@@ -313,6 +345,7 @@ export function parseArch(source: string): {
       label: label || id,
       kind,
       ...(parent ? { group: parent } : {}),
+      ...(max !== undefined ? { max } : {}),
       line,
     });
   };
@@ -339,6 +372,39 @@ export function parseArch(source: string): {
     const note = /^note\s*:\s*(.*)$/.exec(text);
     if (note) {
       step.step.notes.push(note[1]!);
+      return;
+    }
+    // ノードの中身（#181）：`queue += 注文1 注文2`・`queue -= 注文1`・`db.注文 = 3件`
+    const items = /^([A-Za-z0-9_-]+)\s*(\+=|-=)\s*(.*)$/.exec(text);
+    if (items) {
+      const names = items[3]!.split(/\s+/).filter(Boolean);
+      if (names.length === 0) {
+        warn(
+          line,
+          'arch/syntax',
+          `${items[2] === '+=' ? '足す' : '除く'}中身を書きます（\`#\` から後はコメントになるので、中身の名前には使えません）`,
+        );
+        return;
+      }
+      step.step.actions.push({
+        type: 'items',
+        node: items[1]!,
+        op: items[2] === '+=' ? 'add' : 'remove',
+        items: names,
+        line,
+      });
+      return;
+    }
+    const value = /^([A-Za-z0-9_-]+)\.([^\s=]+)\s*=\s*(.*)$/.exec(text);
+    if (value) {
+      const v = value[3]!.trim();
+      step.step.actions.push({
+        type: 'value',
+        node: value[1]!,
+        key: value[2]!,
+        value: v === '-' || v === '' ? null : v,
+        line,
+      });
       return;
     }
     const cut = CUT.exec(text);
@@ -498,6 +564,9 @@ function checkReferences(diagram: ArchDiagram, diagnostics: ArchDiagnostic[]): v
     // 止めたノードと切ったつながり（シナリオの中で、書いた順にたどる。#180）
     const down = new Set<string>();
     const cuts = new Set<string>();
+    // ノードの中身（#181）
+    const held = new Map<string, string[]>();
+    const maxOf = new Map(diagram.nodes.map((n) => [n.id, n.max]));
     for (const st of s.steps) {
       for (const action of st.actions) {
         if (action.type === 'state') {
@@ -509,6 +578,35 @@ function checkReferences(diagram: ArchDiagram, diagnostics: ArchDiagnostic[]): v
               `ノード ${action.node} は止まっていません（\`${action.node}: down\` の後に書きます）`,
               action.line,
             );
+          }
+          continue;
+        }
+        if (action.type === 'value') {
+          used.add(action.node);
+          unknown(action.node, action.line);
+          continue;
+        }
+        if (action.type === 'items') {
+          used.add(action.node);
+          if (unknown(action.node, action.line)) continue;
+          const list = held.get(action.node) ?? [];
+          held.set(action.node, list);
+          const max = maxOf.get(action.node);
+          for (const item of action.items) {
+            if (action.op === 'add') {
+              if (max !== undefined && list.length >= max) {
+                diagnostics.push({
+                  severity: 'info',
+                  code: 'arch/full',
+                  message: `ノード ${action.node} は満杯です（max=${max}）。${item} は入らず、× で消えます`,
+                  line: action.line,
+                });
+              } else list.push(item);
+            } else {
+              const at = list.indexOf(item);
+              if (at >= 0) list.splice(at, 1);
+              else noEffect(`ノード ${action.node} に ${item} は入っていません`, action.line);
+            }
           }
           continue;
         }

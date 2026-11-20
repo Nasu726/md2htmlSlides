@@ -78,7 +78,8 @@ export function selectArchScenario(
  * 図の要素に付ける、再生（#108）のための属性。シナリオのステップの数だけ内部ステップを取り、
  * ステップごとの動き（移動・状態のバッジ）を JSON で持たせる（runtime が読む）。
  * 移動 `{m, r, b?, l?, c?, x?}`（b は届かない区間、#180）、状態 `{s, t, e?, p?}`（p は止める `d`・
- * 戻す `u`）、つながりを切る `{k: [a, b], u?}`（u は戻す）
+ * 戻す `u`）、つながりを切る `{k: [a, b], u?}`（u は戻す）、ノードの中身 `{q, a | d}`（足す・除く）と
+ * キーと値 `{v, n, t}`（n はキー、t が null なら消す。#181）
  */
 export function archEmbedAttrs(
   scenario: ArchScenario | undefined,
@@ -101,6 +102,8 @@ export function archEmbedAttrs(
         };
       }
       if (a.type === 'cut') return { k: [a.from, a.to], ...(a.restore ? { u: 1 } : {}) };
+      if (a.type === 'items') return { q: a.node, [a.op === 'add' ? 'a' : 'd']: a.items };
+      if (a.type === 'value') return { v: a.node, n: a.key, t: a.value };
       return {
         s: a.node,
         t: a.text,

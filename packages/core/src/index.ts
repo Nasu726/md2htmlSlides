@@ -89,12 +89,14 @@ export {
   type ArchDiagram,
   type ArchEdge,
   type ArchGroup,
+  type ArchItems,
   type ArchMove,
   type ArchNode,
   type ArchNodeKind,
   type ArchScenario,
   type ArchState,
   type ArchStep,
+  type ArchValue,
 } from './arch/parse.js';
 export { archDiagnostics, collectArch, type ArchSource } from './arch/collect.js';
 export { FIT_MARGIN, fitSlides } from './render/fit.js';

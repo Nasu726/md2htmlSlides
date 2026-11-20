@@ -18,7 +18,12 @@ export function startArch(doc: Document): void {
   type Move = { m: string[]; r: boolean[]; b?: boolean[]; l?: string; c?: string[]; x?: number };
   type State = { s: string; t: string | null; e?: number; p?: 'd' | 'u' };
   type Cut = { k: [string, string]; u?: number };
-  type Action = Move | State | Cut;
+  // q：中身に足す（a）・除く（d）、v：キー（n）と値（t）（#181）
+  type Items = { q: string; a?: string[]; d?: string[] };
+  type Value = { v: string; n: string; t: string | null };
+  type Change = State | Cut | Items | Value;
+  type Action = Move | Change;
+  const isMove = (a: Action): a is Move => 'm' in a;
   const isState = (a: Action): a is State => 's' in a;
   const isCut = (a: Action): a is Cut => 'k' in a;
   const NS = 'http://www.w3.org/2000/svg';
@@ -167,22 +172,106 @@ export function startArch(doc: Document): void {
     badges: Map<string, { t: string; e: boolean }>;
     down: Set<string>;
     cuts: Map<string, string>;
+    /** ノードの中身と、キーと値（#181）。max は中身の上限（ノードの data-max） */
+    items: Map<string, string[]>;
+    values: Map<string, Map<string, string>>;
+    max: Map<string, number>;
   };
-  const newWorld = (): World => ({ badges: new Map(), down: new Set(), cuts: new Map() });
+  const newWorld = (svg: Element): World => ({
+    badges: new Map(),
+    down: new Set(),
+    cuts: new Map(),
+    items: new Map(),
+    values: new Map(),
+    max: new Map(
+      Array.from(svg.querySelectorAll<SVGElement>('.arch-node[data-max]'), (n) => [
+        n.dataset.node ?? '',
+        Number(n.dataset.max),
+      ]),
+    ),
+  });
   const pairKey = (a: string, b: string) => [a, b].sort().join('\u0000');
   const downText = /^ja\b/i.test(doc.documentElement.lang || 'ja') ? '停止' : 'Down';
-  const apply = (world: World, a: State | Cut) => {
+  /** 状態の動きを当てはめる。上限で入らなかった中身を返す（#181） */
+  const apply = (world: World, a: Change): string[] => {
+    if ('q' in a) {
+      const list = world.items.get(a.q) ?? [];
+      world.items.set(a.q, list);
+      const max = world.max.get(a.q);
+      const rejected: string[] = [];
+      for (const item of a.a ?? []) {
+        if (max !== undefined && list.length >= max) rejected.push(item);
+        else list.push(item);
+      }
+      for (const item of a.d ?? []) if (list.includes(item)) list.splice(list.indexOf(item), 1);
+      return rejected;
+    }
+    if ('v' in a) {
+      const kv = world.values.get(a.v) ?? new Map<string, string>();
+      world.values.set(a.v, kv);
+      if (a.t === null) kv.delete(a.n);
+      else kv.set(a.n, a.t);
+      return [];
+    }
     if (isCut(a)) {
       const key = pairKey(a.k[0], a.k[1]);
       if (a.u) world.cuts.delete(key);
       else world.cuts.set(key, a.k[0]);
-      return;
+      return [];
     }
     if (a.p === 'd') world.down.add(a.s);
     if (a.p === 'u') world.down.delete(a.s);
     const text = a.p === 'd' ? (a.t ?? downText) : a.t;
     if (text === null) world.badges.delete(a.s);
     else world.badges.set(a.s, { t: text, e: a.p === 'd' || (a.p !== 'u' && Boolean(a.e)) });
+    return [];
+  };
+  const boxIn = (text: string | undefined) => (text ?? '').split(' ').map(Number);
+  /**
+   * ノードの中身の表（#181）：renderArch が取った場所（data-table）に、件数・札の枠・札、キーと値。
+   * fresh は今足した中身（ふわっと出す）
+   */
+  const table = (g: Element, node: SVGElement, world: World, fresh: Set<string>) => {
+    const id = node.dataset.node ?? '';
+    const [x = 0, y = 0, w = 0, h = 0] = boxIn(node.dataset.table);
+    const [slots = 0, perRow = 1, chipW = 36] = boxIn(node.dataset.chips);
+    const list = world.items.get(id) ?? [];
+    const values = world.values.get(id) ?? new Map<string, string>();
+    const max = world.max.get(id);
+    if (max === undefined && list.length === 0 && values.size === 0) return;
+    const full = max !== undefined && list.length >= max;
+    const t = make('g', { class: `arch-table${full ? ' is-full' : ''}`, 'data-for': id }, g);
+    make('rect', { class: 'arch-table-box', x, y, width: w, height: h, rx: 8 }, t);
+    let top = y + 8;
+    if (slots > 0) {
+      make('text', { class: 'arch-table-count', x: x + w / 2, y: top + 10 }, t).textContent =
+        max !== undefined ? `${list.length} / ${max}` : String(list.length);
+      top += 24;
+      const x0 = x + (w - (perRow * chipW + (perRow - 1) * 6)) / 2;
+      for (let i = 0; i < Math.max(slots, list.length); i++) {
+        const cx = x0 + (i % perRow) * (chipW + 6);
+        const cy = top + Math.floor(i / perRow) * 32;
+        if (max !== undefined && i < max) {
+          make('rect', { class: 'arch-slot', x: cx, y: cy, width: chipW, height: 26, rx: 6 }, t);
+        }
+        const item = list[i];
+        if (item === undefined) continue;
+        const at = make('g', { transform: `translate(${cx} ${cy})` }, t);
+        const chip = make('g', { class: 'arch-chip' }, at);
+        make('rect', { width: chipW, height: 26, rx: 6 }, chip);
+        make('text', { x: chipW / 2, y: 13 }, chip).textContent = item;
+        if (fresh.has(item)) {
+          chip.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 250, easing: 'ease-out' });
+        }
+      }
+      top += Math.ceil(slots / perRow) * 32;
+    }
+    for (const [key, value] of values) {
+      make('text', { class: 'arch-table-key', x: x + 10, y: top + 12 }, t).textContent = key;
+      make('text', { class: 'arch-table-value', x: x + w - 10, y: top + 12 }, t).textContent =
+        value;
+      top += 24;
+    }
   };
   /** 区間 i が届かないか：`-x`、行き先が止まっている、つながりが切れている */
   const blockedAt = (world: World, a: Move, i: number) =>
@@ -200,8 +289,8 @@ export function startArch(doc: Document): void {
     if (label) make('text', { y: 24 }, g).textContent = label;
     return g;
   };
-  /** 止めたノード・切ったつながり・バッジを描き直す（.arch-fx の中の .arch-state） */
-  const paint = (svg: SVGSVGElement, world: World) => {
+  /** 止めたノード・切ったつながり・中身の表・バッジを描き直す（.arch-fx の中の .arch-state） */
+  const paint = (svg: SVGSVGElement, world: World, fresh = new Set<string>()) => {
     svg.querySelector('.arch-state')?.remove();
     const fx = svg.querySelector('.arch-fx') ?? make('g', { class: 'arch-fx' }, svg);
     const g = make('g', { class: 'arch-state' }, fx);
@@ -219,7 +308,30 @@ export function startArch(doc: Document): void {
       const len = lengthOf(pts);
       cross(g, pointAt(pts, Math.min(Math.max(60, len * 0.35), len * 0.5)));
     }
+    for (const n of Array.from(svg.querySelectorAll<SVGElement>('.arch-node[data-table]'))) {
+      table(g, n, world, fresh);
+    }
     for (const [id, b] of world.badges) badge(g, svg, id, b.t, b.e);
+  };
+  /** 上限で入らなかった中身：表の右上に赤い札と × を出して消す（#181） */
+  const reject = async (svg: SVGSVGElement, id: string, items: string[]) => {
+    const node = nodeOf(svg, id) as SVGElement | null;
+    const fx = svg.querySelector('.arch-fx');
+    if (!node || !fx || items.length === 0) return;
+    const [x = 0, y = 0, w = 0] = boxIn(node.dataset.table);
+    const [, , chipW = 36] = boxIn(node.dataset.chips);
+    const g = make('g', { class: 'arch-rejected' }, fx);
+    items.forEach((item, i) => {
+      const at = make('g', { transform: `translate(${x + w + 8 + i * (chipW + 6)} ${y})` }, g);
+      const chip = make('g', { class: 'arch-chip is-rejected' }, at);
+      make('rect', { width: chipW, height: 26, rx: 6 }, chip);
+      make('text', { x: chipW / 2, y: 13 }, chip).textContent = item;
+      cross(at, { x: chipW / 2, y: 13 });
+    });
+    await g
+      .animate([{ opacity: 1 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }], 900)
+      .finished.catch(() => undefined);
+    g.remove();
   };
 
   /** 今のステップに関係するノードと線を強調し、ほかを薄くする */
@@ -235,6 +347,10 @@ export function startArch(doc: Document): void {
         a.k.forEach((id) => nodes.add(id));
         const edge = edgeOf(svg, a.k[0], a.k[1]) ?? edgeOf(svg, a.k[1], a.k[0]);
         if (edge) edges.add(edge);
+        continue;
+      }
+      if (!isMove(a)) {
+        nodes.add('q' in a ? a.q : a.v);
         continue;
       }
       a.m.forEach((id) => nodes.add(id));
@@ -305,7 +421,8 @@ export function startArch(doc: Document): void {
     let x1 = -Infinity;
     let y1 = -Infinity;
     for (const a of step) {
-      for (const id of isState(a) ? [a.s] : isCut(a) ? a.k : a.m) {
+      const ids = isMove(a) ? a.m : isState(a) ? [a.s] : isCut(a) ? a.k : ['q' in a ? a.q : a.v];
+      for (const id of ids) {
         const node = nodeOf(svg, id);
         if (!node) continue;
         const b = boxOf(node);
@@ -313,6 +430,15 @@ export function startArch(doc: Document): void {
         y0 = Math.min(y0, b.y);
         x1 = Math.max(x1, b.x + b.width);
         y1 = Math.max(y1, b.y + b.height);
+        // 中身の表も入れる（#181）
+        const t = node.getAttribute('data-table');
+        if (t) {
+          const [tx = 0, ty = 0, tw = 0, th = 0] = boxIn(t);
+          x0 = Math.min(x0, tx);
+          y0 = Math.min(y0, ty);
+          x1 = Math.max(x1, tx + tw);
+          y1 = Math.max(y1, ty + th);
+        }
       }
     }
     if (!Number.isFinite(x0)) return;
@@ -404,13 +530,13 @@ export function startArch(doc: Document): void {
     const fx = make('g', { class: 'arch-fx' }, svg);
     const steps = stepsOf(figure);
     const done = Math.min(stage, steps.length);
-    const world = newWorld();
+    const world = newWorld(svg);
     const used = new Map<Element | string, number>();
     for (let k = 0; k < done; k++) {
       // 構成にない経路と届かない移動の ×は、そのステップのあいだだけ描く（まとめではすべて）
       const now = summary || k === done - 1;
       for (const a of steps[k]!) {
-        if (isState(a) || isCut(a)) {
+        if (!isMove(a)) {
           apply(world, a);
           continue;
         }
@@ -461,14 +587,22 @@ export function startArch(doc: Document): void {
       old.remove();
     }
     // このステップの初めの状態（止めたノード・切ったつながり・バッジ）から、書いた順に進める
-    const world = newWorld();
+    const world = newWorld(svg);
     for (const before of stepsOf(figure).slice(0, stage - 1)) {
-      for (const a of before) if (isState(a) || isCut(a)) apply(world, a);
+      for (const a of before) if (!isMove(a)) apply(world, a);
     }
     for (const a of step) {
-      if (isState(a) || isCut(a)) {
-        apply(world, a);
-        paint(svg, world);
+      if (!isMove(a)) {
+        const rejected = apply(world, a);
+        paint(
+          svg,
+          world,
+          new Set('q' in a ? (a.a ?? []).filter((i) => !rejected.includes(i)) : []),
+        );
+        if ('q' in a && rejected.length > 0) {
+          await reject(svg, a.q, rejected);
+          if (runs.get(figure) !== run) return;
+        }
         continue;
       }
       const times = a.x ?? 1;

@@ -190,6 +190,67 @@ describe('parseArch（#106）', () => {
     });
   });
 
+  it('ノードの中身：上限（max=）・足す・除く・キーと値（#181）', () => {
+    const { diagram, diagnostics } = parseArch(
+      [
+        'api',
+        'queue キュー [queue] max=3',
+        'cache キャッシュ max=2',
+        'api -> queue',
+        'api -> cache',
+        'scenario s',
+        '  step 足す',
+        '    queue += 注文1 注文2',
+        '    cache.item:42 = 本',
+        '  step 除く',
+        '    queue -= 注文1',
+        '    cache.item:42 = -',
+      ].join('\n'),
+    );
+    expect(diagnostics).toEqual([]);
+    expect(diagram.nodes.map((n) => [n.id, n.label, n.kind, n.max ?? '-'])).toEqual([
+      ['api', 'api', 'server', '-'],
+      ['queue', 'キュー', 'queue', 3],
+      ['cache', 'キャッシュ', 'server', 2],
+    ]);
+    expect(diagram.scenarios[0]!.steps.map((s) => s.actions)).toEqual([
+      [
+        { type: 'items', node: 'queue', op: 'add', items: ['注文1', '注文2'], line: 8 },
+        { type: 'value', node: 'cache', key: 'item:42', value: '本', line: 9 },
+      ],
+      [
+        { type: 'items', node: 'queue', op: 'remove', items: ['注文1'], line: 11 },
+        { type: 'value', node: 'cache', key: 'item:42', value: null, line: 12 },
+      ],
+    ]);
+  });
+
+  it('ノードの中身の書き間違い：max の値、満杯、入っていない中身、# の名前（#181）', () => {
+    const { diagnostics } = parseArch(
+      [
+        'a',
+        'q [queue] max=0',
+        'r [queue] max=2',
+        'a -> q',
+        'a -> r',
+        'scenario s',
+        '  step 1',
+        '    r += x y z',
+        '    r -= w',
+        '    r += #1',
+        '    zz += x',
+      ].join('\n'),
+    );
+    expect(diagnostics.map((d) => [d.code, d.line, d.severity])).toEqual([
+      ['arch/invalid-max', 2, 'warning'],
+      ['arch/syntax', 10, 'warning'],
+      ['arch/full', 8, 'info'],
+      ['arch/no-effect', 9, 'info'],
+      ['arch/unknown-node', 11, 'warning'],
+    ]);
+    expect(diagnostics[1]!.message).toContain('`#` から後はコメント');
+  });
+
   it('書き間違い：未定義のノード、構成にない経路、使われていないノード、種類の候補、インデント', () => {
     const { diagnostics } = parseArch(
       [
@@ -242,6 +303,8 @@ describe('collectArch・archDiagnostics（#106）', () => {
       'code',
       './assets/order-system.arch',
       'code',
+      'code',
+      'code',
     ]);
     // 「書き間違い」のスライドには、図が2つある
     expect(sources[7]!.slideId).toBe(sources[8]!.slideId);
@@ -258,6 +321,8 @@ describe('collectArch・archDiagnostics（#106）', () => {
       '確認',
       '-',
       '決済の障害',
+      '注文の集中',
+      'キャッシュ',
     ]);
     expect(sources[5]!.diagram.direction).toBe('down');
   });
@@ -273,6 +338,8 @@ describe('collectArch・archDiagnostics（#106）', () => {
       ['arch/unknown-route', lineOf('    b -> a', start)],
       ['arch/unknown-scenario', lineOf('存在しないシナリオ', start)],
       ['arch/multiple', lineOf('存在しないシナリオ', start)],
+      // 「キューが詰まる」：上限を超えて足す（情報。#181）
+      ['arch/full', lineOf('    queue += 注文7', start)],
     ]);
     expect(diagnostics[2]!.message).toContain('正常時・決済の障害');
   });
