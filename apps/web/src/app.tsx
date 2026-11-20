@@ -1168,12 +1168,13 @@ export function App() {
                     <li>
                       Repository access は「Only select repositories」で、そのリポジトリだけを選ぶ
                     </li>
-                    <li>Permissions の「Contents」を「Read and write」にする</li>
+                    <li>Permissions は「Contents」の「Read and write」だけにする</li>
                     <li>作ったトークンを、ここに貼る</li>
                   </ol>
                   <p class="muted">
                     トークンはこのブラウザにだけ保存し、api.github.com
-                    にだけ送ります。ほかのリポジトリには書けません。
+                    にだけ送ります。エディタが書くのは、つないだリポジトリだけです。
+                    上のようにリポジトリと権限を絞っておくと、万一漏れても被害がそのリポジトリだけで済みます。
                   </p>
                 </details>
                 {githubError.value && <p class="error">{githubError.value}</p>}
