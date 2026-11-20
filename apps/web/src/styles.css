@@ -640,3 +640,103 @@ button.active {
   color: inherit;
   opacity: 0.85;
 }
+
+/* GitHub の画面（#147） */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8vh 12px 12px;
+  background: rgb(15 23 42 / 0.35);
+}
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(520px, 100%);
+  max-height: 84vh;
+  overflow: auto;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.2);
+}
+.dialog header {
+  display: flex;
+  align-items: center;
+}
+.dialog h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.dialog .close {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  font-size: 18px;
+}
+.dialog p {
+  margin: 0;
+}
+.dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.dialog input {
+  font: inherit;
+  color: var(--fg);
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+.dialog details {
+  font-size: 13px;
+}
+.dialog details ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.dialog .error {
+  color: #b91c1c;
+}
+.dialog-actions {
+  display: flex;
+  gap: 8px;
+}
+.github-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 40vh;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.github-files button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  text-align: left;
+  padding: 8px 10px;
+}
+.github-files li + li {
+  border-top: 1px solid var(--line);
+}
+.github-files button:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
