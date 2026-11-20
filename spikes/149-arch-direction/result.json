@@ -1,0 +1,58 @@
+[
+  {
+    "name": "01-state",
+    "slide": 1,
+    "seconds": 12.6,
+    "frames": 127,
+    "gifKB": 151,
+    "gridKB": 236
+  },
+  {
+    "name": "02-failure",
+    "slide": 2,
+    "seconds": 14.4,
+    "frames": 145,
+    "gifKB": 124,
+    "gridKB": 224
+  },
+  {
+    "name": "03-morph",
+    "slide": 3,
+    "seconds": 9.6,
+    "frames": 97,
+    "gifKB": 265,
+    "gridKB": 220
+  },
+  {
+    "name": "04-concurrent",
+    "slide": 4,
+    "seconds": 10.6,
+    "frames": 107,
+    "gifKB": 158,
+    "gridKB": 259
+  },
+  {
+    "name": "05-two-views",
+    "slide": 5,
+    "seconds": 10.9,
+    "frames": 110,
+    "gifKB": 140,
+    "gridKB": 212
+  },
+  {
+    "name": "06-drill-down",
+    "slide": 6,
+    "seconds": 11.8,
+    "frames": 119,
+    "gifKB": 504,
+    "gridKB": 221
+  },
+  {
+    "name": "07-volume",
+    "slide": 7,
+    "seconds": 13,
+    "frames": 131,
+    "gifKB": 327,
+    "gridKB": 243
+  }
+]
