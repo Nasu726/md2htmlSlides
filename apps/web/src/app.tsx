@@ -733,7 +733,20 @@ export function App() {
     });
     void start();
     const keydown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') breakMenu.value = null;
+      if (event.key === 'Escape') {
+        breakMenu.value = null;
+        // 早見表・GitHub の画面・警告の一覧を閉じて、そのまま書けるようにする（#164）。
+        // エディタの補完の候補を閉じた Esc（defaultPrevented）では閉じない
+        if (
+          !event.defaultPrevented &&
+          (cheatOpen.value || githubOpen.value || showWarnings.value)
+        ) {
+          cheatOpen.value = false;
+          githubOpen.value = false;
+          showWarnings.value = false;
+          editor.view.focus();
+        }
+      }
       if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         event.preventDefault();
         void save();

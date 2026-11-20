@@ -791,6 +791,28 @@ test('挿入メニュー（空の行で /）・構文ヒント・修正の候補
   await expect(sheet.locator('h3')).toHaveText(['発表者ノート']);
   await sheet.getByRole('button', { name: '挿入' }).first().click();
   await expect(lineWith(page, ':::notes')).toHaveCount(1);
+
+  // Esc で閉じて、そのまま書ける（#164）
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await page.keyboard.type('Esc で閉じた');
+  await expect(lineWith(page, 'Esc で閉じた')).toHaveCount(1);
+  // 検索欄にいるときも閉じる
+  await page.keyboard.press('Control+/');
+  await sheet.getByRole('searchbox').fill('背景');
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  // 補完の候補が出ているときの Esc は、候補だけを閉じる
+  await page.keyboard.press('Control+/');
+  await expect(sheet).toBeVisible();
+  await page.keyboard.press('End');
+  await page.keyboard.type('\n\n/');
+  await expect(page.locator('.cm-tooltip-autocomplete')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.cm-tooltip-autocomplete')).toHaveCount(0);
+  await expect(sheet).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
 });
 
 test.describe('スマホ（#154）', () => {
