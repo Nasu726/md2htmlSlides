@@ -20,6 +20,7 @@ export interface ArchRenderInput {
     edges: Array<{ from: string; to: string; type: string; label?: string }>;
     /** シナリオ（ノードの中身の表の大きさを決めるため。#181） */
     scenarios?: Array<{
+      name?: string;
       steps: Array<{
         actions: Array<{
           type: string;
@@ -28,15 +29,35 @@ export interface ArchRenderInput {
           items?: string[];
           key?: string;
           value?: string | null;
+          // 移動・状態・つながりを切る（シーケンス図を描くため。#182）
+          path?: string[];
+          replies?: boolean[];
+          blocked?: boolean[];
+          label?: string;
+          repeat?: number;
+          text?: string | null;
+          error?: boolean;
+          power?: string;
+          from?: string;
+          to?: string;
+          restore?: boolean;
         }>;
       }>;
     }>;
   };
 }
 
+/** 描いた構成図：SVG と大きさ。シナリオの名前ごとのシーケンス図（#182。中身の SVG と大きさ） */
+export interface ArchDrawn {
+  svg: string;
+  width: number;
+  height: number;
+  sequences?: Record<string, { body: string; width: number; height: number }>;
+}
+
 export async function renderArch(input: {
   items: ArchRenderInput[];
-}): Promise<Array<{ svg: string; width: number; height: number } | { error: string }>> {
+}): Promise<Array<ArchDrawn | { error: string }>> {
   type ElkNode = {
     id: string;
     x?: number;
@@ -79,7 +100,174 @@ export async function renderArch(input: {
   const ICON = 30;
   const CHIP_FONT = 14;
 
-  const results: Array<{ svg: string; width: number; height: number } | { error: string }> = [];
+  const results: Array<ArchDrawn | { error: string }> = [];
+  const lang =
+    deck.closest('[lang]')?.getAttribute('lang') ?? document.documentElement.lang ?? 'ja';
+  const ja = /^ja\b/i.test(lang || 'ja');
+
+  /**
+   * シーケンス図（#182、docs/arch-diagram.md §11.3）：シナリオに出てくる順にノードを並べ、移動の区間ごとに
+   * 矢印（応答は破線、届かないものは手前で ×）、状態・中身の変化は注記、つながりを切るのは赤い破線。
+   * 行には data-k（ステップ）・data-a（動きの番号）・data-s（区間）を付け、再生で1行ずつ出す
+   */
+  type Scenario = NonNullable<ArchRenderInput['diagram']['scenarios']>[number];
+  const sequenceOf = (sc: Scenario) => {
+    const labelOf = new Map<string, string>();
+    for (const item of input.items) for (const n of item.diagram.nodes) labelOf.set(n.id, n.label);
+    const who: string[] = [];
+    const see = (id: string | undefined) => {
+      if (id !== undefined && !who.includes(id)) who.push(id);
+    };
+    type Row = {
+      k: number;
+      a: number;
+      s?: number;
+      kind: 'msg' | 'note' | 'cut';
+      from?: string;
+      to?: string;
+      node?: string;
+      text?: string;
+      tone?: string;
+      reply?: boolean;
+      blocked?: boolean;
+      restore?: boolean;
+    };
+    const rows: Row[] = [];
+    const down = new Set<string>();
+    const cuts = new Set<string>();
+    const pair = (a: string, b: string) => [a, b].sort().join('\u0000');
+    sc.steps.forEach((st, k) =>
+      st.actions.forEach((a, ai) => {
+        if (a.type === 'move' && a.path) {
+          const times = a.repeat ?? 1;
+          const label = `${a.label ?? ''}${times > 1 ? ` ×${times}` : ''}`.trim();
+          for (let i = 0; i + 1 < a.path.length; i++) {
+            const from = a.path[i]!;
+            const to = a.path[i + 1]!;
+            see(from);
+            see(to);
+            const blocked = Boolean(a.blocked?.[i]) || down.has(to) || cuts.has(pair(from, to));
+            rows.push({
+              k,
+              a: ai,
+              s: i,
+              kind: 'msg',
+              from,
+              to,
+              reply: Boolean(a.replies?.[i]),
+              blocked,
+              ...(label ? { text: label } : {}),
+            });
+            if (blocked) break;
+          }
+        } else if (a.type === 'state' && a.node) {
+          see(a.node);
+          if (a.power === 'down') down.add(a.node);
+          if (a.power === 'up') down.delete(a.node);
+          const text =
+            a.power === 'down'
+              ? (a.text ?? (ja ? '停止' : 'Down'))
+              : a.power === 'up'
+                ? (a.text ?? (ja ? '復旧' : 'Up'))
+                : a.text;
+          if (text) {
+            const tone = a.power === 'up' ? 'ok' : a.power === 'down' || a.error ? 'error' : '';
+            rows.push({ k, a: ai, kind: 'note', node: a.node, text, tone });
+          }
+        } else if (a.type === 'cut' && a.from && a.to) {
+          see(a.from);
+          see(a.to);
+          if (a.restore) cuts.delete(pair(a.from, a.to));
+          else cuts.add(pair(a.from, a.to));
+          rows.push({ k, a: ai, kind: 'cut', from: a.from, to: a.to, restore: Boolean(a.restore) });
+        } else if (a.type === 'items' && a.node && a.items) {
+          see(a.node);
+          const text = `${a.op === 'add' ? '+' : '−'} ${a.items.join(' ')}`;
+          rows.push({ k, a: ai, kind: 'note', node: a.node, text });
+        } else if (a.type === 'value' && a.node && a.key) {
+          see(a.node);
+          const text =
+            a.value === null || a.value === undefined
+              ? `${a.key} ${ja ? 'を消す' : 'removed'}`
+              : `${a.key} = ${a.value}`;
+          rows.push({ k, a: ai, kind: 'note', node: a.node, text });
+        }
+      }),
+    );
+    // 列：名前の幅に合わせて同じ幅。左にステップの番号の場所
+    const name = (id: string) => labelOf.get(id) ?? id;
+    const col = Math.max(120, ...who.map((id) => Math.ceil(textWidth(name(id), 16, 600) + 36)));
+    const LEFT = 36;
+    const xOf = (id: string) => LEFT + col * who.indexOf(id) + col / 2;
+    const HEAD = 40;
+    const parts: string[] = [];
+    let y = HEAD + 14;
+    const stepTop = new Map<number, number>();
+    const body: string[] = [];
+    for (const row of rows) {
+      const attrs = `data-k="${row.k}" data-a="${row.a}"${row.s !== undefined ? ` data-s="${row.s}"` : ''}`;
+      if (row.kind === 'msg') {
+        const top = y;
+        y += 40;
+        const ay = top + 28;
+        if (!stepTop.has(row.k)) stepTop.set(row.k, ay);
+        const x1 = xOf(row.from!);
+        const x2 = xOf(row.to!);
+        const dir = x2 >= x1 ? 1 : -1;
+        const end = row.blocked ? x2 - dir * 26 : x2;
+        const lineEnd = row.blocked ? end : x2 - dir * 10;
+        const cls = `seq-line${row.reply ? ' is-reply' : ''}`;
+        const tip = row.blocked
+          ? `<g class="arch-cross" transform="translate(${r1(end)} ${r1(ay)})"><path d="M-7 -7L7 7M7 -7L-7 7"/></g>`
+          : `<path class="seq-arrow" d="M${r1(x2)} ${r1(ay)}l${-dir * 11} -6v12z"/>`;
+        const label = row.text
+          ? `<text class="seq-label" x="${r1((x1 + end) / 2)}" y="${r1(ay - 13)}">${esc(row.text)}</text>`
+          : '';
+        body.push(
+          `<g class="seq-row${row.blocked ? ' is-blocked' : ''}" ${attrs} data-x1="${r1(x1)}" data-x2="${r1(end)}" data-y="${r1(ay)}"><path class="${cls}" d="M${r1(x1)} ${r1(ay)}H${r1(lineEnd)}"/>${tip}${label}</g>`,
+        );
+      } else if (row.kind === 'note') {
+        const top = y;
+        y += 34;
+        const cy = top + 18;
+        if (!stepTop.has(row.k)) stepTop.set(row.k, cy);
+        const w = Math.ceil(textWidth(row.text!, 13, 700) + 18);
+        const x = xOf(row.node!);
+        body.push(
+          `<g class="seq-row seq-note${row.tone ? ` is-${row.tone}` : ''}" ${attrs}><rect x="${r1(x - w / 2)}" y="${r1(cy - 12)}" width="${w}" height="24" rx="6"/><text x="${r1(x)}" y="${r1(cy)}">${esc(row.text!)}</text></g>`,
+        );
+      } else {
+        const top = y;
+        y += 34;
+        const cy = top + 18;
+        if (!stepTop.has(row.k)) stepTop.set(row.k, cy);
+        const x1 = xOf(row.from!);
+        const x2 = xOf(row.to!);
+        const mid = (x1 + x2) / 2;
+        const mark = row.restore
+          ? `<text class="seq-label" x="${r1(mid)}" y="${r1(cy - 12)}">${ja ? 'つなぎ直す' : 'reconnect'}</text>`
+          : `<g class="arch-cross" transform="translate(${r1(mid)} ${r1(cy)})"><path d="M-7 -7L7 7M7 -7L-7 7"/></g>`;
+        body.push(
+          `<g class="seq-row" ${attrs}><path class="seq-cut${row.restore ? ' is-restore' : ''}" d="M${r1(x1)} ${r1(cy)}H${r1(x2)}"/>${mark}</g>`,
+        );
+      }
+    }
+    const height = y + 10;
+    const width = LEFT + col * who.length + 6;
+    for (const id of who) {
+      const x = xOf(id);
+      const w = col - 16;
+      parts.push(
+        `<path class="seq-life" d="M${r1(x)} ${HEAD}V${r1(height)}"/><rect class="seq-box" x="${r1(x - w / 2)}" y="0" width="${w}" height="${HEAD}" rx="8"/><text class="seq-name" x="${r1(x)}" y="${HEAD / 2}">${esc(name(id))}</text>`,
+      );
+    }
+    for (const [k, at] of stepTop) {
+      parts.push(
+        `<g class="seq-step" data-k="${k}" transform="translate(14 ${r1(at)})"><circle r="11"/><text>${k + 1}</text></g>`,
+      );
+    }
+    return { body: parts.join('') + body.join(''), width, height };
+  };
   for (const { id, diagram } of input.items) {
     try {
       const sizes = new Map<string, { w: number; h: number; icon: number }>();
@@ -360,7 +548,17 @@ export async function renderArch(input: {
         `<svg xmlns="http://www.w3.org/2000/svg" class="mds-arch-svg" viewBox="-4 -4 ${width + 8} ${height + 8}" data-arch="${esc(id)}">` +
         parts.join('') +
         '</svg>';
-      results.push({ svg, width: width + 8, height: height + 8 });
+      // シーケンス図（#182）：シナリオごとに描いておく（view=both・sequence のときだけ core が使う）
+      const sequences: Record<string, { body: string; width: number; height: number }> = {};
+      for (const sc of diagram.scenarios ?? []) {
+        if (sc.name !== undefined && sc.steps.length > 0) sequences[sc.name] = sequenceOf(sc);
+      }
+      results.push({
+        svg,
+        width: width + 8,
+        height: height + 8,
+        ...(Object.keys(sequences).length > 0 ? { sequences } : {}),
+      });
     } catch (error) {
       results.push({ error: String(error) });
     }

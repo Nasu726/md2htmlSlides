@@ -180,3 +180,35 @@ scenario キャッシュ
     cache.item:42 = -
     cache: 期限切れ
 ```
+
+## 構成図とシーケンス図（view=both）
+
+```arch {view=both}
+direction: down
+
+user ユーザー     [user]
+web  Webサーバー
+api  注文API
+db   注文DB       [database]
+pay  決済サービス [external]
+
+user -> web -> api
+api -> db
+api -> pay
+
+scenario 注文
+  step 注文を送る
+    user -> web -> api : POST /orders
+  step 注文を保存する
+    api -> db : INSERT
+    db: 保存済み
+  step 決済する
+    api -> pay : 請求
+    pay --> api : OK
+  step 結果を返す
+    api --> web --> user : 201 Created
+```
+
+## シーケンス図だけ（view=sequence）
+
+![注文処理の構成](./assets/order-system.arch){scenario=決済の障害 view=sequence}

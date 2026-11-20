@@ -4,7 +4,7 @@ meta
 diagnostics
   (なし)
 sections
-  (先頭)  L6-L182
+  (先頭)  L6-L214
     - comment  L7-L10
     ## ファイル参照（正常時）  L12-L14  #ファイル参照正常時
       - paragraph  L14
@@ -40,3 +40,8 @@ sections
       - code[arch] {captions=below}  L123-L149
     ## キャッシュのヒットとミス  L151-L182  #キャッシュのヒットとミス
       - code[arch] {captions=below}  L153-L182
+    ## 構成図とシーケンス図（view=both）  L184-L210  #構成図とシーケンス図viewboth
+      - code[arch] {view=both}  L186-L210
+    ## シーケンス図だけ（view=sequence）  L212-L214  #シーケンス図だけviewsequence
+      - paragraph  L214
+          arch ./assets/order-system.arch alt="注文処理の構成" {scenario=決済の障害 view=sequence}

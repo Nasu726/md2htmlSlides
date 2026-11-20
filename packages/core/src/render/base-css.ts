@@ -309,6 +309,28 @@ body { margin: 0; background: #d1d5db; }
 .mds-arch-svg .arch-chip.is-rejected rect { fill: color-mix(in srgb, #dc2626 12%, var(--mds-bg)); stroke: #dc2626; }
 .mds-arch-svg .arch-table-key { text-anchor: start; fill: var(--mds-muted); font-size: 14px; font-weight: 600; }
 .mds-arch-svg .arch-table-value { text-anchor: end; fill: var(--mds-fg); font-size: 14px; font-weight: 700; }
+/* シーケンス図（#182）：名前の箱と縦の線、矢印（応答は破線）、注記、切ったつながり、ステップの番号 */
+.mds-arch-svg .seq-box { fill: var(--mds-bg); stroke: var(--mds-border); stroke-width: 1.5; }
+.mds-arch-svg .seq-name { fill: var(--mds-fg); font-size: 16px; font-weight: 600; }
+.mds-arch-svg .seq-life { fill: none; stroke: var(--mds-border); stroke-width: 1.5; stroke-dasharray: 5 5; }
+.mds-arch-svg .seq-line { fill: none; stroke: var(--mds-accent); stroke-width: 2.5; }
+.mds-arch-svg .seq-line.is-reply { stroke-dasharray: 6 5; }
+.mds-arch-svg .seq-row.is-blocked .seq-line { stroke: #dc2626; }
+.mds-arch-svg .seq-arrow { fill: var(--mds-accent); }
+.mds-arch-svg .seq-label { fill: var(--mds-fg); font-size: 14px; font-weight: 600; paint-order: stroke; stroke: var(--mds-bg); stroke-width: 4px; }
+.mds-arch-svg .seq-row.is-blocked .seq-label { fill: #dc2626; }
+.mds-arch-svg .seq-note rect { fill: color-mix(in srgb, var(--mds-surface) 70%, var(--mds-bg)); stroke: var(--mds-border); stroke-width: 1.5; }
+.mds-arch-svg .seq-note.is-error rect { fill: color-mix(in srgb, #dc2626 12%, var(--mds-bg)); stroke: #dc2626; }
+.mds-arch-svg .seq-note.is-ok rect { fill: color-mix(in srgb, #16a34a 12%, var(--mds-bg)); stroke: #16a34a; }
+.mds-arch-svg .seq-note text { fill: var(--mds-fg); font-size: 13px; font-weight: 700; }
+.mds-arch-svg .seq-cut { fill: none; stroke: #dc2626; stroke-width: 2.5; stroke-dasharray: 8 6; }
+.mds-arch-svg .seq-cut.is-restore { stroke: var(--mds-muted); }
+.mds-arch-svg .seq-step circle { fill: var(--mds-accent); }
+.mds-arch-svg .seq-step text { fill: var(--mds-bg); font-size: 13px; font-weight: 700; }
+.mds-arch-svg .seq-dot circle { fill: var(--mds-accent); stroke: var(--mds-bg); stroke-width: 2; }
+/* 再生：まだのステップは隠し、終わったステップは薄くする */
+.mds-arch-svg :is(.seq-row, .seq-step).is-future { visibility: hidden; }
+.mds-arch-svg :is(.seq-row, .seq-step).is-past { opacity: 0.45; }
 /*
  * カメラ（#109）：寄っている間は図の枠で切り、図の右下の外にミニマップ（構成だけと、見ている範囲の枠）。
  * カメラが働くのは、図が幅で縮んだとき（上下に空きがある）なので、図に重ねずに下に出す

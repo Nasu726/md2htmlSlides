@@ -346,6 +346,34 @@ describe('動く構成図の説明のリスト（#107）', () => {
     );
   });
 
+  it('view=both・sequence（#182）：シーケンス図を同じ SVG に並べ、縦横比が 2:1 に近い並べ方にする', () => {
+    const drawn = (width: number, height: number) => ({
+      ...result(width, height),
+      svg: `<svg class="mds-arch-svg" viewBox="-4 -4 ${width} ${height}"><g class="topo"/></svg>`,
+      sequences: { 正常時: { body: '<g class="seq"/>', width: 400, height: 300 } },
+    });
+    const slideWith = (md: string, width: number, height: number) =>
+      renderDeckHtml(buildSlides(parseDeck(md)), {
+        fit: false,
+        diagram: () => drawn(width, height),
+      }).match(/<section [^>]*>[\s\S]*?<\/section>/)![0];
+    // 縦長の構成図（300×500）：横に並べる（748×500）
+    const side = slideWith('## A\n\n![](a.arch){view=both}\n', 300, 500);
+    expect(side).toContain('viewBox="-4 -4 748 500"');
+    expect(side).toContain('<g class="topo"/><g class="arch-seq" transform="translate(344 96)">');
+    // 横長の構成図（1000×200）：下に置く（1000×548）
+    const below = slideWith('## A\n\n![](a.arch){view=both}\n', 1000, 200);
+    expect(below).toContain('viewBox="-4 -4 1000 548"');
+    expect(below).toContain('<g class="arch-seq" transform="translate(296 244)">');
+    // シーケンス図だけ。どちらもカメラは使わない
+    const only = slideWith('## A\n\n![](a.arch){view=sequence}\n', 1000, 200);
+    expect(only).toContain('viewBox="0 0 400 300"');
+    expect(only).not.toContain('class="topo"');
+    expect(only).toContain('data-arch-focus="none"');
+    // view がなければ、今までどおり
+    expect(slideWith('## A\n\n![](a.arch)\n', 1000, 200)).not.toContain('arch-seq');
+  });
+
   it('captions=none・scenario=none では、説明を出さない', () => {
     expect(slideOf('## A\n\n![](a.arch){captions=none}\n', 300, 500)).not.toContain(
       'mds-arch-captions',

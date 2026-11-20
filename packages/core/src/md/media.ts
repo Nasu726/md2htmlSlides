@@ -1,5 +1,5 @@
 import type { ArchScenario } from '../arch/parse.js';
-import { archEmbedAttrs, selectArchScenario } from '../render/arch.js';
+import { archEmbedAttrs, archView, selectArchScenario } from '../render/arch.js';
 import type { MarkdownIt, Renderer, StateCore, Token } from 'markdown-it';
 import { cssPosition, isPosition, type Attrs } from '../attrs.js';
 import {
@@ -49,7 +49,15 @@ export type DiagramInput = { lang: string; code: string } | { lang: string; src:
  * 動く構成図（#107）は、説明のリストと再生のために、読んだシナリオも持つ
  */
 export type DiagramResult =
-  { svg: string; width: number; height: number; scenarios?: ArchScenario[] } | { error: string };
+  | {
+      svg: string;
+      width: number;
+      height: number;
+      scenarios?: ArchScenario[];
+      /** シナリオごとのシーケンス図（#182）。中身の SVG（原点から）と大きさ */
+      sequences?: Record<string, { body: string; width: number; height: number }>;
+    }
+  | { error: string };
 /**
  * 図を描く関数（#71）。CLI が書き出しの前にヘッドレス Chromium で描いておき、ここでは結果を返すだけ。
  * 描けないとき（Chromium がないなど）は undefined を返す。
@@ -199,7 +207,12 @@ function mediaElement(
   if (kind === 'diagram' || kind === 'arch') {
     if (diagram) {
       const title = kind === 'arch' ? '動く構成図を描けません' : undefined;
-      return diagramHtml(esc, diagram, alt || src, title);
+      return diagramHtml(
+        esc,
+        kind === 'arch' ? archView(diagram, attrs) : diagram,
+        alt || src,
+        title,
+      );
     }
     const label = alt || decodePath(src).split('/').pop() || src;
     return `<span class="mds-media-placeholder" role="img" aria-label="${esc(label)}">${esc(label)}</span>`;

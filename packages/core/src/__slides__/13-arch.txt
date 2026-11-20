@@ -1,5 +1,5 @@
 slideLevel: 2
-slides: 11
+slides: 13
   1. [content] ## ファイル参照（正常時）  L12-L14  #ファイル参照正常時
        image×1
   2. [content] ## ファイル参照（決済の障害）  L16-L18  #ファイル参照決済の障害
@@ -22,3 +22,7 @@ slides: 11
        code[arch]
  11. [content] ## キャッシュのヒットとミス  L151-L182  #キャッシュのヒットとミス
        code[arch]
+ 12. [content] ## 構成図とシーケンス図（view=both）  L184-L210  #構成図とシーケンス図viewboth
+       code[arch]
+ 13. [content] ## シーケンス図だけ（view=sequence）  L212-L214  #シーケンス図だけviewsequence
+       image×1
