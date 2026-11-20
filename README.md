@@ -106,10 +106,11 @@ scenario 正常時
 サーバーを使わず、エディタから自分の GitHub のリポジトリに直接保存する。同じリポジトリにつなげば、パソコンでもスマホでも同じ資料の続きを編集できる。
 
 1. 資料を置くリポジトリを作る（非公開でもよい）
-2. GitHub で [Fine-grained token](https://github.com/settings/personal-access-tokens/new) を作る。Repository access は「Only select repositories」でそのリポジトリだけ、Permissions の「Contents」は「Read and write」にする
+2. GitHub で [Fine-grained token](https://github.com/settings/personal-access-tokens/new) を作る。Repository access は「Only select repositories」でそのリポジトリだけ、Permissions は「Contents」の「Read and write」だけにしておくと安全
 3. エディタの「GitHub」で、リポジトリ（`owner/name`）とトークンを入れてつなぎ、一覧から資料を開く
 
-- トークンはそのブラウザにだけ保存し、api.github.com にだけ送る。ほかのリポジトリには書けない
+- トークンはそのブラウザにだけ保存し、api.github.com にだけ送る。エディタが書くのは、つないだリポジトリだけ
+- トークンの使えるリポジトリと権限を絞っておくと、万一漏れても被害がそのリポジトリだけで済む（有効期限を付けておくとなお安全）
 - ほかの端末で先に保存されていたら、上書きせずに知らせる（「GitHub の内容を開く」か「上書きする」を選ぶ）
 - 資料の中の相対パスの画像・動画も、リポジトリから読む
 
