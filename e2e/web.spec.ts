@@ -823,6 +823,50 @@ test.describe('スマホ（#154）', () => {
     await expect(page.locator('.cm-content')).toBeVisible();
   });
 
+  test('キーボードが出たらカーソルを見える位置に動かし、フォーカスが外れたらすぐに高さを戻す（#159）', async ({
+    page,
+  }) => {
+    // ソフトウェアキーボードを真似る：visualViewport の高さを、window.__keyboard の分だけ低くする
+    await page.addInitScript(() => {
+      const w = window as unknown as { __keyboard: number };
+      w.__keyboard = 0;
+      const fake = new EventTarget();
+      Object.defineProperties(fake, {
+        width: { get: () => window.innerWidth },
+        height: { get: () => window.innerHeight - w.__keyboard },
+        offsetTop: { get: () => 0 },
+        offsetLeft: { get: () => 0 },
+        scale: { get: () => 1 },
+      });
+      Object.defineProperty(window, 'visualViewport', { value: fake, configurable: true });
+    });
+    const keyboard = (height: number) =>
+      page.evaluate((h) => {
+        (window as unknown as { __keyboard: number }).__keyboard = h;
+        window.visualViewport!.dispatchEvent(new Event('resize'));
+      }, height);
+    await page.goto(origin);
+    await expect(slideCount(page)).toHaveText(/\d+ 枚/);
+    const full = await page.evaluate(() => window.innerHeight);
+    const appHeight = async () => (await page.locator('.app').boundingBox())!.height;
+
+    // 画面の下のほう（キーボードが出るところ）の行をタップしてから、キーボードが出る
+    const line = page.locator('.cm-line', { hasText: '書いている内容は' });
+    await line.tap();
+    await keyboard(320);
+    expect(Math.round(await appHeight())).toBe(full - 320);
+    await expect(page.locator('.status')).toBeHidden();
+    // カーソルのある行は、キーボードの上（見えている範囲）にある
+    await expect
+      .poll(async () => (await page.locator('.cm-activeLine').boundingBox())!.y)
+      .toBeLessThan(full - 320 - 20);
+
+    // キーボードを閉じる（フォーカスが外れる）：resize を待たずに、すぐ元の高さに戻す
+    await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+    expect(Math.round(await appHeight())).toBe(full);
+    await expect(page.locator('.status')).toBeVisible();
+  });
+
   test('発表の画面はタップで「一覧」「終える」を出し、「終える」でエディタに戻る（#157）', async ({
     page,
   }) => {
