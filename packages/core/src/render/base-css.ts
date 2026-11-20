@@ -289,6 +289,15 @@ body { margin: 0; background: #d1d5db; }
 .mds-arch-svg .arch-badge text { fill: #ffffff; font-size: 13px; font-weight: 700; }
 .mds-arch-svg .arch-mark circle { fill: var(--mds-accent); stroke: var(--mds-bg); stroke-width: 2; }
 .mds-arch-svg .arch-mark text { fill: var(--mds-bg); font-size: 12px; font-weight: 700; }
+/* 障害と回復（#180）：止めたノードは灰色、切ったつながりは赤い破線、届かない移動は ×（強調より後に書く） */
+.mds-arch-svg .arch-node.is-down .shape { fill: color-mix(in srgb, var(--mds-muted) 16%, var(--mds-bg)); stroke: var(--mds-muted); }
+.mds-arch-svg .arch-node.is-down :is(.rim, .icon-line) { stroke: var(--mds-muted); }
+.mds-arch-svg .arch-node.is-down :is(.icon, .dot) { fill: var(--mds-muted); }
+.mds-arch-svg .arch-node.is-down text { fill: var(--mds-muted); }
+.mds-arch-svg .arch-edge.is-cut path { stroke: #dc2626; stroke-dasharray: 9 7; }
+.mds-arch-svg .arch-edge.is-cut .arch-head { fill: #dc2626; }
+.mds-arch-svg .arch-cross path { fill: none; stroke: #dc2626; stroke-width: 4; stroke-linecap: round; }
+.mds-arch-svg .arch-cross text { fill: #dc2626; font-size: 14px; font-weight: 700; paint-order: stroke; stroke: var(--mds-bg); stroke-width: 5px; }
 /*
  * カメラ（#109）：寄っている間は図の枠で切り、図の右下の外にミニマップ（構成だけと、見ている範囲の枠）。
  * カメラが働くのは、図が幅で縮んだとき（上下に空きがある）なので、図に重ねずに下に出す

@@ -1,5 +1,5 @@
 slideLevel: 2
-slides: 8
+slides: 9
   1. [content] ## ファイル参照（正常時）  L12-L14  #ファイル参照正常時
        image×1
   2. [content] ## ファイル参照（決済の障害）  L16-L18  #ファイル参照決済の障害
@@ -16,3 +16,5 @@ slides: 8
        paragraph, pause, image×1, pause, paragraph
   8. [content] ## 書き間違い  L71-L86  #書き間違い
        code[arch], image×1
+  9. [content] ## 障害と回復  L88-L119  #障害と回復
+       code[arch]

@@ -84,12 +84,14 @@ export interface ArchEdge {
   line: number;
 }
 
-/** パケットの移動（`a -> b -> c : ラベル x3`、応答は `-->`） */
+/** パケットの移動（`a -> b -> c : ラベル x3`、応答は `-->`、届かないのは `-x`） */
 export interface ArchMove {
   type: 'move';
   path: string[];
   /** 区間ごとの「応答か」（`-->`）。長さは path.length - 1 */
   replies: boolean[];
+  /** 区間ごとの「届かないか」（`-x`、#180）。届かない区間があるときだけ持つ */
+  blocked?: boolean[];
   label?: string;
   /** コードの吹き出し（次の行からの `| …`） */
   code?: string[];
@@ -98,17 +100,31 @@ export interface ArchMove {
   line: number;
 }
 
-/** 状態のバッジ（`b: 処理中`・`b: 障害 !`・`b: -`） */
+/**
+ * 状態のバッジ（`b: 処理中`・`b: 障害 !`・`b: -`）。
+ * `b: down`・`b: up` はノードを止める・戻す（#180）。down の文言がなければ、runtime が「停止」を出す
+ */
 export interface ArchState {
   type: 'state';
   node: string;
   /** null は「消す」 */
   text: string | null;
   error: boolean;
+  /** 止める（`down`）・戻す（`up`）。止めたノードは灰色になり、届く移動も届かなくなる */
+  power?: 'down' | 'up';
   line: number;
 }
 
-export type ArchAction = ArchMove | ArchState;
+/** つながりを切る（`a -/- b`）・戻す（`a -/- b : -`）（#180）。切った線を通る移動は届かない */
+export interface ArchCut {
+  type: 'cut';
+  from: string;
+  to: string;
+  restore: boolean;
+  line: number;
+}
+
+export type ArchAction = ArchMove | ArchState | ArchCut;
 
 export interface ArchStep {
   title: string;
@@ -145,6 +161,10 @@ export interface ArchDiagnostic {
 const ID = /^[A-Za-z0-9_-]+$/;
 /** つながり・動きの記号（長いものから） */
 const ARROWS = /\s*(<->|-->|->|--)\s*/;
+/** 動きの記号。届かない移動 `-x` は前後に空白が要る（ID に `-` と `x` を使えるため。#180） */
+const MOVE_ARROWS = /\s*(<->|-->|->|--|(?<=\s)-x(?=\s))\s*/;
+/** つながりを切る・戻す：`a -/- b`・`a -/- b : -`（#180） */
+const CUT = /^([A-Za-z0-9_-]+)\s*-\/-\s*([A-Za-z0-9_-]+)\s*(?::\s*(.*))?$/;
 
 /** `"…"` で囲んだ文字列を外す */
 const unquote = (s: string) => {
@@ -242,6 +262,14 @@ export function parseArch(source: string): {
       }
       return;
     }
+    if (/^[A-Za-z0-9_-]+(?:\s+-x\s|\s*-\/-)/.test(text)) {
+      warn(
+        line,
+        'arch/syntax',
+        '`-x`（届かない移動）と `-/-`（つながりを切る）は、シナリオの中で使います',
+      );
+      return;
+    }
     const group = /^group\s+(.+)$/.exec(text);
     if (group) {
       const id = `g${diagram.groups.length + 1}`;
@@ -313,22 +341,44 @@ export function parseArch(source: string): {
       step.step.notes.push(note[1]!);
       return;
     }
-    if (ARROWS.test(text)) {
+    const cut = CUT.exec(text);
+    if (cut) {
+      const rest = cut[3]?.trim();
+      if (rest !== undefined && rest !== '-') {
+        warn(
+          line,
+          'arch/syntax',
+          `切ったつながりを戻すときは \`${cut[1]} -/- ${cut[2]} : -\` と書きます`,
+        );
+        return;
+      }
+      step.step.actions.push({
+        type: 'cut',
+        from: cut[1]!,
+        to: cut[2]!,
+        restore: rest === '-',
+        line,
+      });
+      return;
+    }
+    if (MOVE_ARROWS.test(text)) {
       const [pathText, label] = splitLabel(text);
       const times = /\s+x(\d+)$/.exec(pathText);
       const path = times ? pathText.slice(0, times.index) : pathText;
       const repeat = times ? Math.max(1, Math.min(20, Number(times[1]))) : 1;
-      const parts = path.split(ARROWS);
+      const parts = path.split(MOVE_ARROWS);
       const ids = parts.filter((_, k) => k % 2 === 0).map((s) => s.trim());
       const arrows = parts.filter((_, k) => k % 2 === 1);
       if (ids.length < 2 || ids.some((id) => !ID.test(id)) || arrows.includes('<->')) {
         warn(line, 'arch/syntax', `移動を読めません：${text}`);
         return;
       }
+      const blocked = arrows.map((a) => a === '-x');
       const move: ArchMove = {
         type: 'move',
         path: ids,
         replies: arrows.map((a) => a === '-->'),
+        ...(blocked.some(Boolean) ? { blocked } : {}),
         ...(label ? { label } : {}),
         repeat,
         line,
@@ -342,6 +392,20 @@ export function parseArch(source: string): {
       const value = state[2]!.trim();
       const error = /\s*!$/.test(value);
       const stateText = value.replace(/\s*!$/, '');
+      // 止める・戻す（#180）：`b: down 応答なし`・`b: up 復旧`
+      const power = /^(down|up)(?:\s+(.+))?$/.exec(stateText);
+      if (power) {
+        const down = power[1] === 'down';
+        step.step.actions.push({
+          type: 'state',
+          node: state[1]!,
+          text: power[2]?.trim() ?? null,
+          error: down,
+          power: down ? 'down' : 'up',
+          line,
+        });
+        return;
+      }
       step.step.actions.push({
         type: 'state',
         node: state[1]!,
@@ -428,12 +492,43 @@ function checkReferences(diagram: ArchDiagram, diagnostics: ArchDiagnostic[]): v
         (e.from === a && e.to === b) ||
         ((reply || e.type !== 'arrow') && e.from === b && e.to === a),
     );
+  const noEffect = (message: string, line: number) =>
+    diagnostics.push({ severity: 'info', code: 'arch/no-effect', message, line });
   for (const s of diagram.scenarios) {
+    // 止めたノードと切ったつながり（シナリオの中で、書いた順にたどる。#180）
+    const down = new Set<string>();
+    const cuts = new Set<string>();
     for (const st of s.steps) {
       for (const action of st.actions) {
         if (action.type === 'state') {
           used.add(action.node);
           unknown(action.node, action.line);
+          if (action.power === 'down') down.add(action.node);
+          if (action.power === 'up' && !down.delete(action.node)) {
+            noEffect(
+              `ノード ${action.node} は止まっていません（\`${action.node}: down\` の後に書きます）`,
+              action.line,
+            );
+          }
+          continue;
+        }
+        if (action.type === 'cut') {
+          const { from: a, to: b } = action;
+          used.add(a).add(b);
+          const missing = [unknown(a, action.line), unknown(b, action.line)].some(Boolean);
+          const key = [a, b].sort().join('\u0000');
+          if (!missing && !connected(a, b, true)) {
+            diagnostics.push({
+              severity: 'warning',
+              code: 'arch/unknown-route',
+              message: `構成にないつながりは切れません：${a} -/- ${b}`,
+              line: action.line,
+            });
+          } else if (action.restore && !cuts.delete(key)) {
+            noEffect(`つながり ${a} -/- ${b} は切られていません`, action.line);
+          } else if (!action.restore) {
+            cuts.add(key);
+          }
           continue;
         }
         for (let k = 0; k + 1 < action.path.length; k++) {
