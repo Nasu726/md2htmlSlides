@@ -31,14 +31,21 @@ import {
   toSourceUrl,
   type SourceUrl,
 } from './source-url.js';
-import { getItem, setItem, type Draft, type LastDocument } from './storage.js';
+import {
+  GitHubConflict,
+  GitHubRepo,
+  githubSource,
+  parseRepo,
+  type GitHubSettings,
+} from './github.js';
+import { getItem, removeItem, setItem, type Draft, type LastDocument } from './storage.js';
 
 /** 開いている資料。key は下書きを保存する名前 */
 interface DocInfo {
-  kind: 'sample' | 'draft' | 'folder' | 'file' | 'url';
+  kind: 'sample' | 'draft' | 'folder' | 'file' | 'url' | 'github';
   name: string;
   key: string;
-  /** フォルダの中のパス（フォルダを開いたとき） */
+  /** フォルダ・GitHub のリポジトリの中のパス */
   path?: string;
 }
 
@@ -50,7 +57,7 @@ interface Folder {
 
 interface Notice {
   text: string;
-  action?: { label: string; run: () => void };
+  actions?: Array<{ label: string; run: () => void }>;
 }
 
 const doc = signal<DocInfo>({ kind: 'sample', name: 'はじめに.md', key: 'sample' });
@@ -79,6 +86,15 @@ const pane = signal<'edit' | 'preview'>('edit');
 const menuOpen = signal(false);
 /** ソフトウェアキーボードが出ている（狭い画面では、下の状態の行を隠す） */
 const keyboard = signal(false);
+
+/** GitHub（#147）：つないだリポジトリ、その画面、資料の一覧（読み込む前は null） */
+const github = signal<GitHubRepo | null>(null);
+const githubOpen = signal(false);
+const githubDocs = signal<string[] | null>(null);
+const githubBusy = signal(false);
+const githubError = signal('');
+/** 開いている GitHub の資料の、読み込んだとき（保存したとき）の sha。保存するときに、変わっていないかを確かめる */
+let githubSha: string | undefined;
 
 /** 狭い画面で、編集とスライドを切り替える。スライドにするときはキーボードを閉じ、カーソルのスライドを見せる */
 function showPane(next: 'edit' | 'preview'): void {
@@ -274,16 +290,18 @@ async function openText(info: DocInfo, content: string, source: AssetSource): Pr
   if (draft && draft.text !== content && doc.value.key === info.key) {
     notice.value = {
       text: `「${info.name}」には、保存していない下書きがあります（${new Date(draft.time).toLocaleString()}）。`,
-      action: {
-        label: '下書きを開く',
-        run: () => {
-          text = draft.text;
-          editor.setText(draft.text);
-          dirty.value = true;
-          notice.value = null;
-          scheduleRender();
+      actions: [
+        {
+          label: '下書きを開く',
+          run: () => {
+            text = draft.text;
+            editor.setText(draft.text);
+            dirty.value = true;
+            notice.value = null;
+            scheduleRender();
+          },
         },
-      },
+      ],
     };
   }
 }
@@ -368,6 +386,143 @@ async function openUrl(input: string): Promise<boolean> {
   return true;
 }
 
+// ---- GitHub のリポジトリに置く（#147、設計プラン §9.1） ----
+const githubKey = (repo: GitHubRepo, path: string) => `github:${repo.settings.repo}/${path}`;
+
+/** 開いている資料を「前回の資料」として残す（GitHub の資料は、編集しなくても起動したときに開き直す） */
+function rememberLast(): void {
+  const { key, name } = doc.value;
+  void setItem('last', { key, name, text, time: Date.now() } satisfies LastDocument);
+}
+
+/** GitHub の画面を開く。つないでいれば、資料の一覧を読み込む */
+function openGitHub(): void {
+  githubOpen.value = true;
+  githubError.value = '';
+  if (github.value) void listGitHub(github.value);
+}
+
+async function listGitHub(repo: GitHubRepo): Promise<boolean> {
+  githubBusy.value = true;
+  try {
+    githubDocs.value = GitHubRepo.documents(await repo.files());
+    githubError.value = '';
+    return true;
+  } catch (error) {
+    githubError.value = (error as Error).message;
+    return false;
+  } finally {
+    githubBusy.value = false;
+  }
+}
+
+/** リポジトリにつなぐ。一覧を読めたら、設定をこのブラウザに保存する */
+async function connectGitHub(form: HTMLFormElement): Promise<void> {
+  const data = new FormData(form);
+  const repoName = parseRepo(String(data.get('repo') ?? ''));
+  const token = String(data.get('token') ?? '').trim();
+  if (!repoName) {
+    githubError.value = 'リポジトリは「owner/name」の形で入れてください';
+    return;
+  }
+  const branch = String(data.get('branch') ?? '').trim();
+  const settings: GitHubSettings = { repo: repoName, token, ...(branch ? { branch } : {}) };
+  const repo = new GitHubRepo(settings);
+  if (await listGitHub(repo)) {
+    github.value = repo;
+    await setItem('github', settings);
+  }
+}
+
+/** つなぎを外す（トークンをこのブラウザから消す） */
+function disconnectGitHub(): void {
+  github.value = null;
+  githubDocs.value = null;
+  void removeItem('github');
+  if (doc.value.kind === 'github') doc.value = { ...doc.value, kind: 'draft' };
+}
+
+async function openGitHubFile(path: string): Promise<boolean> {
+  const repo = github.value;
+  if (!repo) return false;
+  try {
+    const file = await repo.read(path);
+    githubSha = file.sha;
+    folder.value = null;
+    githubOpen.value = false;
+    await openText(
+      { kind: 'github', name: path, key: githubKey(repo, path), path },
+      file.text,
+      githubSource(repo, path),
+    );
+    rememberLast();
+    return true;
+  } catch (error) {
+    notice.value = { text: `GitHub から開けませんでした：${(error as Error).message}` };
+    return false;
+  }
+}
+
+/**
+ * GitHub に保存する（commit する）。読み込んだ後にほかの端末で保存されていたら、上書きせずに知らせる。
+ * force なら、今の GitHub の内容に上書きする
+ */
+async function saveToGitHub(force = false): Promise<void> {
+  const repo = github.value;
+  const info = doc.value;
+  if (!repo || info.kind !== 'github' || !info.path) return;
+  const path = info.path;
+  const saving = text;
+  try {
+    const sha = force ? await repo.currentSha(path) : githubSha;
+    githubSha = await repo.write(path, saving, sha, `mdhs: ${path} を保存`);
+    if (text === saving) dirty.value = false;
+    rememberLast();
+    notice.value = { text: `「${path}」を GitHub（${repo.settings.repo}）に保存しました。` };
+  } catch (error) {
+    if (!(error instanceof GitHubConflict)) {
+      notice.value = { text: `GitHub に保存できませんでした：${(error as Error).message}` };
+      return;
+    }
+    // 書いている内容は下書きに残っているので、GitHub の内容を開いても「下書きを開く」で戻せる
+    notice.value = {
+      text: `「${path}」は、ほかの端末で先に保存されています。`,
+      actions: [
+        { label: 'GitHub の内容を開く', run: () => void openGitHubFile(path) },
+        { label: '上書きする', run: () => void saveToGitHub(true) },
+      ],
+    };
+  }
+}
+
+/** 今の資料を、リポジトリに新しいファイルとして保存する */
+async function saveAsGitHub(): Promise<void> {
+  const repo = github.value;
+  if (!repo) return;
+  const suggested = doc.value.name
+    .split('/')
+    .pop()!
+    .replace(/(\.md)?$/i, '.md');
+  const input = window.prompt('リポジトリの中のパス（例：talks/2026-12.md）', suggested);
+  const path = input?.trim().replace(/^\/+/, '');
+  if (!path) return;
+  try {
+    githubSha = await repo.write(path, text, undefined, `mdhs: ${path} を追加`);
+  } catch (error) {
+    githubError.value =
+      error instanceof GitHubConflict
+        ? `「${path}」はもうあります。別の名前にするか、一覧から開いてください`
+        : (error as Error).message;
+    return;
+  }
+  // 素材はそのまま（このあと開き直すと、リポジトリから読む）
+  doc.value = { kind: 'github', name: path, key: githubKey(repo, path), path };
+  dirty.value = false;
+  githubOpen.value = false;
+  notice.value = { text: `「${path}」を GitHub（${repo.settings.repo}）に保存しました。` };
+  rememberLast();
+}
+
 function askUrl(): void {
   const value = window.prompt('Markdown の URL（GitHub・Gist の画面の URL も、そのまま使えます）');
   if (!value?.trim()) return;
@@ -381,6 +536,10 @@ function askUrl(): void {
 // ---- 保存：フォルダを開いていれば上書き、それ以外はダウンロード ----
 async function save(): Promise<void> {
   const info = doc.value;
+  if (info.kind === 'github') {
+    await saveToGitHub();
+    return;
+  }
   const handle =
     info.kind === 'folder' && info.path ? folder.value?.files.get(info.path) : undefined;
   if (handle) {
@@ -493,7 +652,19 @@ async function start(): Promise<void> {
   if (src && (await openUrl(new URL(src, location.href).href))) return;
   // ?src= を読み込めなかったときも、前回の下書きか説明の資料を開く（読み込めなかった理由は残す）
   const failure = src ? notice.value : null;
+  const settings = await getItem<GitHubSettings>('github');
+  if (settings) github.value = new GitHubRepo(settings);
   const last = await getItem<LastDocument>('last');
+  // 前回 GitHub の資料を開いていたら、GitHub から開き直す（つながらなければ、下書きを開く）
+  const repo = github.value;
+  if (!src && repo && last?.key.startsWith(`github:${repo.settings.repo}/`)) {
+    if (await openGitHubFile(last.key.slice(`github:${repo.settings.repo}/`.length))) return;
+    await openText({ kind: 'draft', name: last.name, key: last.key }, last.text, noAssets);
+    notice.value = {
+      text: `GitHub につながらないため、前回の下書き「${last.name}」を開きました。`,
+    };
+    return;
+  }
   if (last && last.text !== SAMPLE) {
     await openText({ kind: 'draft', name: last.name, key: last.key }, last.text, noAssets);
     notice.value = failure ?? { text: `前回の下書き「${last.name}」を開きました。` };
@@ -595,6 +766,9 @@ export function App() {
         <button type="button" class="wide-only" onClick={askUrl}>
           URL を開く
         </button>
+        <button type="button" class="wide-only" onClick={openGitHub}>
+          GitHub
+        </button>
         <input
           ref={fileRef}
           type="file"
@@ -619,7 +793,7 @@ export function App() {
           )}
         </span>
         <button type="button" class="wide-only" onClick={() => void save()} title="Ctrl+S">
-          {doc.value.kind === 'folder' ? '保存' : 'ダウンロード'}
+          {doc.value.kind === 'folder' || doc.value.kind === 'github' ? '保存' : 'ダウンロード'}
         </button>
         <button
           type="button"
@@ -683,8 +857,11 @@ export function App() {
           <button type="button" role="menuitem" onClick={askUrl}>
             URL を開く
           </button>
+          <button type="button" role="menuitem" onClick={openGitHub}>
+            GitHub
+          </button>
           <button type="button" role="menuitem" onClick={() => void save()}>
-            {doc.value.kind === 'folder' ? '保存' : 'ダウンロード'}
+            {doc.value.kind === 'folder' || doc.value.kind === 'github' ? '保存' : 'ダウンロード'}
           </button>
           <button type="button" role="menuitem" onClick={() => void exportHtml()}>
             HTML を書き出す
@@ -705,11 +882,11 @@ export function App() {
       {notice.value && (
         <div class="notice" role="status">
           <span>{notice.value.text}</span>
-          {notice.value.action && (
-            <button type="button" onClick={notice.value.action.run}>
-              {notice.value.action.label}
+          {notice.value.actions?.map((action) => (
+            <button key={action.label} type="button" onClick={action.run}>
+              {action.label}
             </button>
-          )}
+          ))}
           <button
             type="button"
             class="close"
@@ -816,11 +993,13 @@ export function App() {
         <span class="muted wide-only">
           {doc.value.kind === 'folder'
             ? 'フォルダ'
-            : doc.value.kind === 'url'
-              ? 'URL（読み込みだけ）'
-              : doc.value.kind === 'file'
-                ? 'ファイル（読み込みだけ）'
-                : '下書き'}
+            : doc.value.kind === 'github'
+              ? `GitHub（${github.value?.settings.repo ?? ''}）`
+              : doc.value.kind === 'url'
+                ? 'URL（読み込みだけ）'
+                : doc.value.kind === 'file'
+                  ? 'ファイル（読み込みだけ）'
+                  : '下書き'}
           ・自動で下書きを保存
         </span>
         <a
@@ -876,6 +1055,113 @@ export function App() {
           <button type="button" class="cancel" onClick={() => (breakMenu.value = null)}>
             閉じる
           </button>
+        </div>
+      )}
+      {githubOpen.value && (
+        <div
+          class="dialog-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) githubOpen.value = false;
+          }}
+        >
+          <div class="dialog" role="dialog" aria-label="GitHub">
+            <header>
+              <h2>GitHub のリポジトリ</h2>
+              <button
+                type="button"
+                class="close"
+                aria-label="閉じる"
+                onClick={() => (githubOpen.value = false)}
+              >
+                ×
+              </button>
+            </header>
+            {github.value ? (
+              <>
+                <p>
+                  <b>{github.value.settings.repo}</b> の資料。保存すると、そのファイルを commit
+                  します（どの端末からでも、同じ資料を開いて続きを編集できる）。
+                </p>
+                {githubDocs.value === null ? (
+                  <p class="muted">{githubBusy.value ? '読み込み中…' : ''}</p>
+                ) : githubDocs.value.length === 0 ? (
+                  <p class="muted">.md のファイルはまだありません。</p>
+                ) : (
+                  <ul class="github-files" aria-label="資料">
+                    {githubDocs.value.map((path) => (
+                      <li key={path}>
+                        <button type="button" onClick={() => void openGitHubFile(path)}>
+                          {path}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {githubError.value && <p class="error">{githubError.value}</p>}
+                <div class="dialog-actions">
+                  <button type="button" class="primary" onClick={() => void saveAsGitHub()}>
+                    今の資料を新しく保存
+                  </button>
+                  <span class="spacer" />
+                  <button type="button" onClick={disconnectGitHub}>
+                    つなぎを外す
+                  </button>
+                </div>
+              </>
+            ) : (
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void connectGitHub(event.currentTarget);
+                }}
+              >
+                <label>
+                  リポジトリ
+                  <input name="repo" placeholder="owner/name" required autoComplete="off" />
+                </label>
+                <label>
+                  ブランチ（空なら既定のブランチ）
+                  <input name="branch" autoComplete="off" />
+                </label>
+                <label>
+                  トークン
+                  <input name="token" type="password" required autoComplete="off" />
+                </label>
+                <details>
+                  <summary>トークンの作り方</summary>
+                  <ol>
+                    <li>資料を置くリポジトリを作る（非公開でもよい）</li>
+                    <li>
+                      GitHub の
+                      <a
+                        href="https://github.com/settings/personal-access-tokens/new"
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        Fine-grained token を作る画面
+                      </a>
+                      を開く
+                    </li>
+                    <li>
+                      Repository access は「Only select repositories」で、そのリポジトリだけを選ぶ
+                    </li>
+                    <li>Permissions の「Contents」を「Read and write」にする</li>
+                    <li>作ったトークンを、ここに貼る</li>
+                  </ol>
+                  <p class="muted">
+                    トークンはこのブラウザにだけ保存し、api.github.com
+                    にだけ送ります。ほかのリポジトリには書けません。
+                  </p>
+                </details>
+                {githubError.value && <p class="error">{githubError.value}</p>}
+                <div class="dialog-actions">
+                  <button type="submit" class="primary" disabled={githubBusy.value}>
+                    {githubBusy.value ? 'つないでいます…' : 'つなぐ'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       )}
       {dragging.value && <div class="drop">ここに落とすと開きます（.md と画像・動画）</div>}
