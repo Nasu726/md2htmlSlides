@@ -57,6 +57,12 @@ const BASICS: Record<string, Snippet> = {
     text: '```arch\nuser ユーザー [user]\nweb Webサーバー\nuser -> web\n\nscenario 例\n  step リクエストを送る\n    user -> web : GET /\n```',
     cursor: 8,
   },
+  archFailure: {
+    label: '動く構成図：障害と回復',
+    hint: 'pay: down・a -x b・a -/- b',
+    text: '```arch\napi 注文API\npay 決済 [external]\napi -> pay\n\nscenario 障害\n  step 決済が止まる\n    pay: down\n  step 届かない\n    api -x pay : タイムアウト\n  step 戻る\n    pay: up 復旧\n```',
+    cursor: 8,
+  },
 };
 
 /** 属性の値の候補（サジェストと早見表で使う） */
@@ -210,6 +216,7 @@ export const CHEAT_SECTIONS: ReadonlyArray<{
     entries: [
       { snippet: '図（Mermaid）' },
       { basic: 'arch' },
+      { basic: 'archFailure' },
       { snippet: '数式' },
       { basic: 'inlineMath' },
       { basic: 'code' },

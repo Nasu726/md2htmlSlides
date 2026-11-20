@@ -323,15 +323,40 @@ function archCompletions(context: CompletionContext): CompletionResult | null {
       validFor: /^\w*$/,
     };
   }
+  const inScenario = /^scenario\s/m.test(block);
+  // シナリオの中（#180）：`pay: ` の後に止める・戻す、`worker -` の後に動きの記号
+  const power = /^\s*([\w-]+)\s*:\s*(\w*)$/.exec(before);
+  if (inScenario && power && power[1] !== 'note') {
+    return {
+      from: context.pos - power[2]!.length,
+      options: [
+        { label: 'down', detail: 'ノードを止める（灰色・「停止」）', type: 'enum' },
+        { label: 'up', detail: '止めたノードを戻す', type: 'enum' },
+      ],
+      validFor: /^\w*$/,
+    };
+  }
+  const arrow = /^\s*[\w-]+\s+(-[-x/>]*)$/.exec(before);
+  if (inScenario && arrow) {
+    return {
+      from: context.pos - arrow[1]!.length,
+      options: [
+        { label: '->', detail: '移動', type: 'keyword' },
+        { label: '-->', detail: '応答（破線で戻る）', type: 'keyword' },
+        { label: '-x', detail: '届かない移動（手前で × になる）', type: 'keyword' },
+        { label: '-/-', detail: 'つながりを切る（`: -` で戻す）', type: 'keyword' },
+      ],
+      validFor: /^-[-x/>]*$/,
+    };
+  }
   const { diagram } = parseArch(block);
   const nodes = diagram.nodes.map((n) => ({ label: n.id, detail: n.label, type: 'variable' }));
-  const target = /(?:<->|-->|->|--)\s*([\w-]*)$/.exec(before);
+  const target = /(?:<->|-->|->|--|-\/-|\s-x\s)\s*([\w-]*)$/.exec(before);
   if (target) {
     return { from: context.pos - target[1]!.length, options: nodes, validFor: /^[\w-]*$/ };
   }
   const head = /^(\s*)([\w-]*)$/.exec(before);
   if (!head || (!context.explicit && head[2]!.length === 0)) return null;
-  const inScenario = /^scenario\s/m.test(block);
   return {
     from: context.pos - head[2]!.length,
     options: [

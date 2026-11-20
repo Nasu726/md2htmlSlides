@@ -115,7 +115,16 @@ test('動く構成図：```arch の中の候補と、書き間違いの警告（
   await page.keyboard.type('db\nscenario 例\n  st');
   await expect(page.locator('.cm-tooltip-autocomplete li[aria-selected]')).toContainText('step');
   await page.keyboard.press('Escape');
-  await page.keyboard.type('ep 読む\n    db -> cache\n```');
+  await page.keyboard.type('ep 読む\n    db: ');
+  // 状態の後は、止める・戻す（#180）
+  await expect(completions(page)).toHaveText([/^down/, /^up/]);
+  await page.keyboard.press('Escape');
+  await page.keyboard.type('down\n    web -');
+  // ID の後の - は、動きの記号（届かない移動・つながりを切る）
+  await expect(completions(page).filter({ hasText: /^-x/ })).toHaveCount(1);
+  await expect(completions(page).filter({ hasText: /^-\/-/ })).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await page.keyboard.type('x db\n    db -> cache\n```');
   // 未定義のノード（cache）を警告する
   await page.getByRole('button', { name: /^警告 \d+ 件$/ }).click();
   await expect(page.locator('.warnings')).toContainText('ノード cache は定義されていません');

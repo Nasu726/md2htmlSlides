@@ -84,6 +84,7 @@ export {
   ARCH_NODE_KINDS,
   parseArch,
   type ArchAction,
+  type ArchCut,
   type ArchDiagnostic,
   type ArchDiagram,
   type ArchEdge,

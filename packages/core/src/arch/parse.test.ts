@@ -106,6 +106,90 @@ describe('parseArch（#106）', () => {
     expect(diagram.scenarios[0]!.steps[0]!.actions[1]).toMatchObject({ node: 'b', text: null });
   });
 
+  it('障害と回復：止める・戻す・届かない移動・つながりを切る・戻す（#180）', () => {
+    const { diagram, diagnostics } = parseArch(
+      [
+        'worker ワーカー',
+        'pay 決済',
+        'pay2 予備',
+        'worker -> pay',
+        'worker -> pay2',
+        'scenario 障害',
+        '  step 止まる',
+        '    pay: down',
+        '  step 再試行',
+        '    worker -x pay x3 : タイムアウト',
+        '  step 切り替える',
+        '    worker -/- pay',
+        '    worker -> pay2',
+        '  step 戻す',
+        '    pay: up 復旧',
+        '    worker -/- pay : -',
+        '    pay: down 応答なし !',
+      ].join('\n'),
+    );
+    expect(diagnostics).toEqual([]);
+    expect(diagram.scenarios[0]!.steps.map((s) => s.actions)).toEqual([
+      [{ type: 'state', node: 'pay', text: null, error: true, power: 'down', line: 8 }],
+      [
+        {
+          type: 'move',
+          path: ['worker', 'pay'],
+          replies: [false],
+          blocked: [true],
+          label: 'タイムアウト',
+          repeat: 3,
+          line: 10,
+        },
+      ],
+      [
+        { type: 'cut', from: 'worker', to: 'pay', restore: false, line: 12 },
+        { type: 'move', path: ['worker', 'pay2'], replies: [false], repeat: 1, line: 13 },
+      ],
+      [
+        { type: 'state', node: 'pay', text: '復旧', error: false, power: 'up', line: 15 },
+        { type: 'cut', from: 'worker', to: 'pay', restore: true, line: 16 },
+        { type: 'state', node: 'pay', text: '応答なし', error: true, power: 'down', line: 17 },
+      ],
+    ]);
+  });
+
+  it('障害と回復の書き間違い：構成の中の -x、止まっていないノードの up、構成にない線を切る（#180）', () => {
+    const { diagram, diagnostics } = parseArch(
+      [
+        'a',
+        'b',
+        'c',
+        'a-x 名前に -x を含む',
+        'a -> b',
+        'a-x -> b',
+        'a -x b',
+        'scenario s',
+        '  step 1',
+        '    b: up',
+        '    a -/- c',
+        '    a -/- b : -',
+        '    a -/- b : 戻す',
+        '    a-x -> b',
+      ].join('\n'),
+    );
+    expect(diagnostics.map((d) => [d.code, d.line, d.severity])).toEqual([
+      ['arch/syntax', 7, 'warning'],
+      ['arch/syntax', 13, 'warning'],
+      ['arch/no-effect', 10, 'info'],
+      ['arch/unknown-route', 11, 'warning'],
+      ['arch/no-effect', 12, 'info'],
+    ]);
+    // 前後に空白のない -x は ID の一部（届かない移動ではない）
+    expect(diagram.scenarios[0]!.steps[0]!.actions.at(-1)).toEqual({
+      type: 'move',
+      path: ['a-x', 'b'],
+      replies: [false],
+      repeat: 1,
+      line: 14,
+    });
+  });
+
   it('書き間違い：未定義のノード、構成にない経路、使われていないノード、種類の候補、インデント', () => {
     const { diagnostics } = parseArch(
       [
@@ -157,10 +241,12 @@ describe('collectArch・archDiagnostics（#106）', () => {
       './assets/order-system.arch',
       'code',
       './assets/order-system.arch',
+      'code',
     ]);
     // 「書き間違い」のスライドには、図が2つある
     expect(sources[7]!.slideId).toBe(sources[8]!.slideId);
     expect(new Set(sources.slice(0, 8).map((s) => s.slideId)).size).toBe(8);
+    expect(sources[9]!.slideId).not.toBe(sources[8]!.slideId);
     expect(sources.map((s) => selectScenario(s)?.name ?? '-')).toEqual([
       '正常時',
       '決済の障害',
@@ -171,6 +257,7 @@ describe('collectArch・archDiagnostics（#106）', () => {
       '決済の障害',
       '確認',
       '-',
+      '決済の障害',
     ]);
     expect(sources[5]!.diagram.direction).toBe('down');
   });

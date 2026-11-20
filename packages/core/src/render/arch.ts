@@ -76,7 +76,9 @@ export function selectArchScenario(
 
 /**
  * 図の要素に付ける、再生（#108）のための属性。シナリオのステップの数だけ内部ステップを取り、
- * ステップごとの動き（移動・状態のバッジ）を JSON で持たせる（runtime が読む）
+ * ステップごとの動き（移動・状態のバッジ）を JSON で持たせる（runtime が読む）。
+ * 移動 `{m, r, b?, l?, c?, x?}`（b は届かない区間、#180）、状態 `{s, t, e?, p?}`（p は止める `d`・
+ * 戻す `u`）、つながりを切る `{k: [a, b], u?}`（u は戻す）
  */
 export function archEmbedAttrs(
   scenario: ArchScenario | undefined,
@@ -87,17 +89,25 @@ export function archEmbedAttrs(
   // カメラ（#109、§6.2）を使わない
   const focus = attrs?.values.focus === 'none' ? ' data-arch-focus="none"' : '';
   const steps = scenario.steps.map((step) =>
-    step.actions.map((a) =>
-      a.type === 'move'
-        ? {
-            m: a.path,
-            r: a.replies,
-            ...(a.label ? { l: a.label } : {}),
-            ...(a.code ? { c: a.code } : {}),
-            ...(a.repeat > 1 ? { x: a.repeat } : {}),
-          }
-        : { s: a.node, t: a.text, ...(a.error ? { e: 1 } : {}) },
-    ),
+    step.actions.map((a) => {
+      if (a.type === 'move') {
+        return {
+          m: a.path,
+          r: a.replies,
+          ...(a.blocked ? { b: a.blocked } : {}),
+          ...(a.label ? { l: a.label } : {}),
+          ...(a.code ? { c: a.code } : {}),
+          ...(a.repeat > 1 ? { x: a.repeat } : {}),
+        };
+      }
+      if (a.type === 'cut') return { k: [a.from, a.to], ...(a.restore ? { u: 1 } : {}) };
+      return {
+        s: a.node,
+        t: a.text,
+        ...(a.error ? { e: 1 } : {}),
+        ...(a.power ? { p: a.power === 'down' ? 'd' : 'u' } : {}),
+      };
+    }),
   );
   return ` data-embed="arch" data-mds-substeps="${scenario.steps.length}" data-arch-steps="${esc(JSON.stringify(steps))}"${focus}`;
 }

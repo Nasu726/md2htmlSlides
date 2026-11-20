@@ -426,13 +426,13 @@ test('動く構成図の PDF：既定はまとめの1枚（すべての番号・
 }) => {
   const out = mkdtempSync(join(tmpdir(), 'mds-pdf-'));
   const final = await pdf(join(fixtures, '13-arch.md'), { out: join(out, 'final.pdf') });
-  expect(final.pages).toBe(8);
-  // 8 枚 + ステップ（4・4・4・0・4・3・6・2）
+  expect(final.pages).toBe(9);
+  // 9 枚 + ステップ（4・4・4・0・4・3・6・2・4）
   const steps = await pdf(join(fixtures, '13-arch.md'), {
     out: join(out, 'steps.pdf'),
     steps: true,
   });
-  expect(steps.pages).toBe(35);
+  expect(steps.pages).toBe(40);
   // まとめの中身は、書き出した HTML で印刷の準備をして確かめる
   const result = await build(join(fixtures, '13-arch.md'), { outDir: join(out, 'html') });
   await page.goto(pathToFileURL(result.index).href);
@@ -453,6 +453,72 @@ test('動く構成図の PDF：既定はまとめの1枚（すべての番号・
     { marks: 0, badges: [], dim: 0, current: 0, zoomed: 0 }, // 動きのない構成図
     { marks: 9, badges: ['保存済み'], dim: 0, current: 0, zoomed: 0 }, // カメラも使わない
   ]);
+});
+
+test('動く構成図の障害と回復：止める・届かない移動・切る・戻す。戻る操作とまとめでも同じ状態（13-arch。#180）', async ({
+  page,
+}) => {
+  const out = mkdtempSync(join(tmpdir(), 'mds-arch-'));
+  const result = await build(join(fixtures, '13-arch.md'), { outDir: out });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(`${pathToFileURL(result.index).href}#/9`);
+  const slide = page.locator('.mds-slide.is-current');
+  const state = () =>
+    slide.evaluate((el) => ({
+      down: Array.from(el.querySelectorAll('.arch-node.is-down'), (n) =>
+        n.getAttribute('data-node'),
+      ),
+      cut: Array.from(
+        el.querySelectorAll('.arch-edge.is-cut'),
+        (e) => `${e.getAttribute('data-from')}>${e.getAttribute('data-to')}`,
+      ),
+      cutMarks: el.querySelectorAll('.arch-state .arch-cross').length,
+      failed: Array.from(el.querySelectorAll('.arch-fx > .arch-cross'), (c) => c.textContent),
+      badges: Array.from(
+        el.querySelectorAll('.arch-badge'),
+        (b) => `${b.textContent}${b.classList.contains('is-error') ? '!' : ''}`,
+      ).sort(),
+    }));
+  expect(await state()).toEqual({ down: [], cut: [], cutMarks: 0, failed: [], badges: [] });
+
+  // 1：決済サービスを止める（灰色・赤い「停止」）
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await state()).down).toEqual(['pay']);
+  expect((await state()).badges).toEqual(['停止!']);
+  // 2：届かない移動を3回。パケットには回数、手前で × と「タイムアウト」
+  await page.keyboard.press('ArrowRight');
+  await expect
+    .poll(() => slide.locator('.arch-packet-label').first().textContent())
+    .toMatch(/^[123]\/3$/);
+  await expect
+    .poll(async () => (await state()).badges, { timeout: 8000 })
+    .toEqual(['3回とも失敗!', '停止!']);
+  expect((await state()).failed).toEqual(['タイムアウト']);
+  // 3：つながりを切る（赤い破線と ×）。パケットは予備へ
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await state()).cut).toEqual(['worker>pay']);
+  // 前のステップの × は、このステップを動かす前に消える
+  expect(await state()).toMatchObject({ down: ['pay'], cutMarks: 1, failed: [] });
+  // 戻る：動かさずに、前のステップの状態（切る前）
+  await page.keyboard.press('ArrowLeft');
+  expect(await state()).toMatchObject({ down: ['pay'], cut: [], cutMarks: 0 });
+  // 4：復旧（元の色・緑の「復旧」）、つながりも戻る
+  await page.evaluate(() => (location.hash = '#/9/4'));
+  await expect.poll(async () => (await state()).down).toEqual([]);
+  expect(await state()).toMatchObject({ cut: [], cutMarks: 0, badges: ['復旧'] });
+
+  // まとめ（一覧・PDF）：最後の状態と、すべての届かない移動の ×
+  await page.evaluate(preparePrint, { steps: 'final' as const });
+  const summary = await page
+    .locator('.mds-deck > .mds-slide')
+    .nth(8)
+    .evaluate((el) => ({
+      down: el.querySelectorAll('.arch-node.is-down').length,
+      cut: el.querySelectorAll('.arch-edge.is-cut').length,
+      failed: Array.from(el.querySelectorAll('.arch-fx > .arch-cross'), (c) => c.textContent),
+      badges: Array.from(el.querySelectorAll('.arch-badge'), (b) => b.textContent),
+    }));
+  expect(summary).toEqual({ down: 0, cut: 0, failed: ['タイムアウト'], badges: ['復旧'] });
 });
 
 test('mdhs build：動く構成図の書き間違いを、行番号付きで警告する（13-arch。#106）', async () => {

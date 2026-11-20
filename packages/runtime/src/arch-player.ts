@@ -14,9 +14,13 @@ export function startArch(doc: Document): void {
   const win = doc.defaultView;
   if (!win) return;
   type Point = { x: number; y: number };
-  type Move = { m: string[]; r: boolean[]; l?: string; c?: string[]; x?: number };
-  type State = { s: string; t: string | null; e?: number };
-  type Action = Move | State;
+  // b：届かない区間（`-x`）、p：止める `d`・戻す `u`、k：つながりを切る（u なら戻す）（#180）
+  type Move = { m: string[]; r: boolean[]; b?: boolean[]; l?: string; c?: string[]; x?: number };
+  type State = { s: string; t: string | null; e?: number; p?: 'd' | 'u' };
+  type Cut = { k: [string, string]; u?: number };
+  type Action = Move | State | Cut;
+  const isState = (a: Action): a is State => 's' in a;
+  const isCut = (a: Action): a is Cut => 'k' in a;
   const NS = 'http://www.w3.org/2000/svg';
   const data = new WeakMap<Element, Action[][]>();
   const runs = new WeakMap<Element, number>();
@@ -155,13 +159,82 @@ export function startArch(doc: Document): void {
     make('rect', { width: w, height: 22, rx: 11 }, g);
     make('text', { x: w / 2, y: 11 }, g).textContent = text;
   };
+  /**
+   * 障害と回復（#180）：バッジ・止めたノード・切ったつながり。ステップの動きを書いた順に当てはめる。
+   * 切ったつながりは、両端の組（順は問わない）から、切ったときに先に書いた端（× を寄せる側）へ
+   */
+  type World = {
+    badges: Map<string, { t: string; e: boolean }>;
+    down: Set<string>;
+    cuts: Map<string, string>;
+  };
+  const newWorld = (): World => ({ badges: new Map(), down: new Set(), cuts: new Map() });
+  const pairKey = (a: string, b: string) => [a, b].sort().join('\u0000');
+  const downText = /^ja\b/i.test(doc.documentElement.lang || 'ja') ? '停止' : 'Down';
+  const apply = (world: World, a: State | Cut) => {
+    if (isCut(a)) {
+      const key = pairKey(a.k[0], a.k[1]);
+      if (a.u) world.cuts.delete(key);
+      else world.cuts.set(key, a.k[0]);
+      return;
+    }
+    if (a.p === 'd') world.down.add(a.s);
+    if (a.p === 'u') world.down.delete(a.s);
+    const text = a.p === 'd' ? (a.t ?? downText) : a.t;
+    if (text === null) world.badges.delete(a.s);
+    else world.badges.set(a.s, { t: text, e: a.p === 'd' || (a.p !== 'u' && Boolean(a.e)) });
+  };
+  /** 区間 i が届かないか：`-x`、行き先が止まっている、つながりが切れている */
+  const blockedAt = (world: World, a: Move, i: number) =>
+    Boolean(a.b?.[i]) ||
+    world.down.has(a.m[i + 1]!) ||
+    world.cuts.has(pairKey(a.m[i]!, a.m[i + 1]!));
+  /** 届かないパケットが止まる位置：行き先の少し手前 */
+  const stopAt = (pts: Point[]) => {
+    const len = lengthOf(pts);
+    return Math.max(0, len - Math.min(44, len * 0.35)) / (len || 1);
+  };
+  const cross = (parent: Element, at: Point, label?: string) => {
+    const g = make('g', { class: 'arch-cross', transform: `translate(${at.x} ${at.y})` }, parent);
+    make('path', { d: 'M-8 -8L8 8M8 -8L-8 8' }, g);
+    if (label) make('text', { y: 24 }, g).textContent = label;
+    return g;
+  };
+  /** 止めたノード・切ったつながり・バッジを描き直す（.arch-fx の中の .arch-state） */
+  const paint = (svg: SVGSVGElement, world: World) => {
+    svg.querySelector('.arch-state')?.remove();
+    const fx = svg.querySelector('.arch-fx') ?? make('g', { class: 'arch-fx' }, svg);
+    const g = make('g', { class: 'arch-state' }, fx);
+    for (const n of Array.from(svg.querySelectorAll<SVGElement>('.arch-node'))) {
+      n.classList.toggle('is-down', world.down.has(n.dataset.node ?? ''));
+    }
+    for (const e of Array.from(svg.querySelectorAll<SVGElement>('.arch-edge'))) {
+      const from = e.dataset.from ?? '';
+      const to = e.dataset.to ?? '';
+      const side = world.cuts.get(pairKey(from, to));
+      e.classList.toggle('is-cut', side !== undefined);
+      if (side === undefined) continue;
+      const pts = side === from ? pointsOf(e) : pointsOf(e).reverse();
+      // 番号の印（線の始め）とラベル（真ん中）を避けて、切った側から 3 分の 1 あたり
+      const len = lengthOf(pts);
+      cross(g, pointAt(pts, Math.min(Math.max(60, len * 0.35), len * 0.5)));
+    }
+    for (const [id, b] of world.badges) badge(g, svg, id, b.t, b.e);
+  };
+
   /** 今のステップに関係するノードと線を強調し、ほかを薄くする */
   const highlight = (svg: Element, step: Action[] | undefined) => {
     const nodes = new Set<string>();
     const edges = new Set<Element>();
     for (const a of step ?? []) {
-      if ('s' in a) {
+      if (isState(a)) {
         nodes.add(a.s);
+        continue;
+      }
+      if (isCut(a)) {
+        a.k.forEach((id) => nodes.add(id));
+        const edge = edgeOf(svg, a.k[0], a.k[1]) ?? edgeOf(svg, a.k[1], a.k[0]);
+        if (edge) edges.add(edge);
         continue;
       }
       a.m.forEach((id) => nodes.add(id));
@@ -232,7 +305,7 @@ export function startArch(doc: Document): void {
     let x1 = -Infinity;
     let y1 = -Infinity;
     for (const a of step) {
-      for (const id of 's' in a ? [a.s] : a.m) {
+      for (const id of isState(a) ? [a.s] : isCut(a) ? a.k : a.m) {
         const node = nodeOf(svg, id);
         if (!node) continue;
         const b = boxOf(node);
@@ -331,30 +404,33 @@ export function startArch(doc: Document): void {
     const fx = make('g', { class: 'arch-fx' }, svg);
     const steps = stepsOf(figure);
     const done = Math.min(stage, steps.length);
-    const badges = new Map<string, { t: string; e: boolean }>();
+    const world = newWorld();
     const used = new Map<Element | string, number>();
     for (let k = 0; k < done; k++) {
+      // 構成にない経路と届かない移動の ×は、そのステップのあいだだけ描く（まとめではすべて）
+      const now = summary || k === done - 1;
       for (const a of steps[k]!) {
-        if ('s' in a) {
-          if (a.t === null) badges.delete(a.s);
-          else badges.set(a.s, { t: a.t, e: Boolean(a.e) });
+        if (isState(a) || isCut(a)) {
+          apply(world, a);
           continue;
         }
         for (let i = 0; i + 1 < a.m.length; i++) {
           const seg = segment(svg, a.m[i]!, a.m[i + 1]!, Boolean(a.r[i]));
           if (!seg) continue;
-          // 構成にない経路は、そのステップのあいだだけ点線で描く（まとめではすべて）
-          if (seg.temp && (summary || k === done - 1)) {
-            make('path', { class: 'arch-temp', d: pathOf(seg.pts) }, fx);
-          }
+          if (seg.temp && now) make('path', { class: 'arch-temp', d: pathOf(seg.pts) }, fx);
           const key = seg.edge ?? `${a.m[i]}>${a.m[i + 1]}`;
           const nth = used.get(key) ?? 0;
           used.set(key, nth + 1);
           mark(fx, seg.pts, k + 1, nth);
+          // 届かない区間（#180）：行き先の手前に ×。その先へは進まない
+          if (blockedAt(world, a, i)) {
+            if (now) cross(fx, pointAt(seg.pts, lengthOf(seg.pts) * stopAt(seg.pts)), a.l);
+            break;
+          }
         }
       }
     }
-    for (const [id, b] of badges) badge(fx, svg, id, b.t, b.e);
+    paint(svg, world);
     const last = done > 0 && !summary ? steps[done - 1] : undefined;
     highlight(svg, last);
     captions(figure, done, summary);
@@ -378,16 +454,38 @@ export function startArch(doc: Document): void {
     await moveView(figure, svg, focusOf(figure, svg, step), run);
     if (runs.get(figure) !== run) return;
     const fx = svg.querySelector('.arch-fx')!;
+    // 前のステップだけの印（構成にない経路の点線・届かない移動の ×）は消してから動かす
+    for (const old of Array.from(
+      fx.querySelectorAll(':scope > .arch-temp, :scope > .arch-cross'),
+    )) {
+      old.remove();
+    }
+    // このステップの初めの状態（止めたノード・切ったつながり・バッジ）から、書いた順に進める
+    const world = newWorld();
+    for (const before of stepsOf(figure).slice(0, stage - 1)) {
+      for (const a of before) if (isState(a) || isCut(a)) apply(world, a);
+    }
     for (const a of step) {
-      if ('s' in a) continue;
-      for (let rep = 0; rep < (a.x ?? 1); rep++) {
+      if (isState(a) || isCut(a)) {
+        apply(world, a);
+        paint(svg, world);
+        continue;
+      }
+      const times = a.x ?? 1;
+      for (let rep = 0; rep < times; rep++) {
         for (let i = 0; i + 1 < a.m.length; i++) {
           const seg = segment(svg, a.m[i]!, a.m[i + 1]!, Boolean(a.r[i]));
           if (!seg) continue;
           if (seg.temp) make('path', { class: 'arch-temp', d: pathOf(seg.pts) }, fx);
+          const blocked = blockedAt(world, a, i);
           const packet = make('g', { class: `arch-packet${a.r[i] ? ' is-reply' : ''}` }, fx);
           make('circle', { r: 9 }, packet);
-          const label = `${a.l ?? ''}${(a.x ?? 1) > 1 ? ` ×${a.x}` : ''}`.trim();
+          // 届かない移動のラベルは × の横に出し、パケットには回数（1/3）だけ付ける
+          const label = blocked
+            ? times > 1
+              ? `${rep + 1}/${times}`
+              : ''
+            : `${a.l ?? ''}${times > 1 ? ` ×${times}` : ''}`.trim();
           if (label)
             make('text', { class: 'arch-packet-label', y: -20 }, packet).textContent = label;
           if (a.c?.length) {
@@ -404,14 +502,22 @@ export function startArch(doc: Document): void {
           }
           packet.style.setProperty('offset-path', `path('${pathOf(seg.pts)}')`);
           packet.style.setProperty('offset-rotate', '0deg');
-          const anim = packet.animate([{ offsetDistance: '0%' }, { offsetDistance: '100%' }], {
-            duration: 600,
-            easing: 'ease-in-out',
-            fill: 'forwards',
-          });
+          const stop = blocked ? stopAt(seg.pts) : 1;
+          const anim = packet.animate(
+            [{ offsetDistance: '0%' }, { offsetDistance: `${stop * 100}%` }],
+            { duration: 600 * Math.max(0.5, stop), easing: 'ease-in-out', fill: 'forwards' },
+          );
           await anim.finished.catch(() => undefined);
           packet.remove();
           if (runs.get(figure) !== run) return;
+          if (blocked) {
+            // 届かない（#180）：手前で × とラベルを出して消える。その先へは進まない
+            const failed = cross(fx, pointAt(seg.pts, lengthOf(seg.pts) * stop), a.l);
+            await new Promise((done) => win.setTimeout(done, 450));
+            failed.remove();
+            if (runs.get(figure) !== run) return;
+            break;
+          }
           // 着いたノードを光らせる（パケットはノードの中を通さない）
           const target = nodeOf(svg, a.m[i + 1]!);
           target?.classList.add('is-flash');

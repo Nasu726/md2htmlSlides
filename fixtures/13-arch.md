@@ -84,3 +84,36 @@ scenario 確認
 ```
 
 ![注文処理の構成](./assets/order-system.arch){scenario=存在しないシナリオ}
+
+## 障害と回復
+
+```arch {captions=below}
+direction: right
+
+user   ユーザー     [user]
+api    注文API
+worker ワーカー
+pay    決済サービス [external]
+pay2   予備の決済   [external]
+
+user -> api -> worker
+worker -> pay : 決済の依頼
+worker -> pay2 : 決済の依頼
+
+scenario 決済の障害
+  step 決済サービスが止まる
+    pay: down
+  step タイムアウトして、3回再試行する
+    worker -x pay x3 : タイムアウト
+    worker: 3回とも失敗 !
+  step 予備の決済サービスに切り替える
+    worker -/- pay
+    worker: -
+    worker -> pay2 : 決済ジョブ
+    pay2 --> worker : OK
+  step 元のサービスが復旧して、戻す
+    pay: up 復旧
+    worker -/- pay : -
+    worker -> pay : 決済ジョブ
+    pay --> worker : OK
+```
