@@ -62,6 +62,8 @@ export function startPlayer(doc: Document): void {
         clock: '時刻',
         end: '最後のスライドです',
         exit: ['Esc', 'スライドショーを終える（プレビューに戻る）'],
+        touchOverview: '一覧',
+        touchExit: '× 終える',
       }
     : {
         help: 'Keyboard shortcuts',
@@ -103,6 +105,8 @@ export function startPlayer(doc: Document): void {
         clock: 'Clock',
         end: 'This is the last slide',
         exit: ['Esc', 'End the slideshow (back to preview)'],
+        touchOverview: 'Overview',
+        touchExit: '× Exit',
       };
   // スライドショーを終えて戻る先（mdhs dev のプレビュー）。書き出した HTML にはないので、
   // そのときは Esc で終える動きもない（#60）
@@ -170,7 +174,7 @@ html[data-mds-transition='slide'][data-mds-direction='back']::view-transition-ne
 @keyframes mds-slide-out-back { to { transform: translateX(100%); } }
 @keyframes mds-slide-in-back { from { transform: translateX(-100%); } }
 /* 読み上げ用の要素（1px）も隠す。最後のスライドの下にはみ出し、白いページができるため（#69） */
-@media print { .mds-player-progress, .mds-player-layer, .mds-player-jump, .mds-player-sr { display: none !important; } }
+@media print { .mds-player-progress, .mds-player-layer, .mds-player-jump, .mds-player-sr, .mds-player-touch { display: none !important; } }
 .mds-player-progress {
   position: fixed;
   left: 0;
@@ -218,6 +222,26 @@ html[data-mds-transition='slide'][data-mds-direction='back']::view-transition-ne
   zoom: var(--mds-ui-scale, 1);
 }
 .mds-player-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+/* キーボードのない端末（スマホ）の操作（#157）：タップすると右上に数秒出す */
+.mds-player-touch {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 4;
+  display: flex;
+  gap: 8px;
+}
+.mds-player-touch[hidden] { display: none; }
+.mds-player-touch button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 22px;
+  background: rgb(15 23 42 / 0.82);
+  color: #fff;
+  font: 600 15px/1 system-ui, sans-serif;
+}
 `;
   doc.head.append(style);
 
@@ -249,6 +273,29 @@ html[data-mds-transition='slide'][data-mds-direction='back']::view-transition-ne
   note.textContent = text.close;
   box.append(title, table, note);
   help.append(box);
+
+  // キーボードのない端末（スマホ）の操作（#157）：スライドをタップすると、右上に「一覧」と
+  // 「終える」（戻る先があるときだけ）を数秒出す。次・前はスワイプ
+  const touchBar = make('mds-player-touch');
+  let touchTimer = 0;
+  const showTouchBar = () => {
+    touchBar.hidden = false;
+    win.clearTimeout(touchTimer);
+    touchTimer = win.setTimeout(() => (touchBar.hidden = true), 3000);
+  };
+  const touchButton = (label: string, run: () => void) => {
+    const button = doc.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      run();
+      showTouchBar();
+    });
+    touchBar.append(button);
+  };
+  touchButton(text.touchOverview, () => setOverview(!overview));
+  if (canExit) touchButton(text.touchExit, () => exitShow());
 
   // 論理キャンバスの大きさ（--mds-w / --mds-h）。なければ1枚目の大きさ
   const css = win.getComputedStyle(deck);
@@ -1003,6 +1050,9 @@ html, body { height: 100%; margin: 0; background: #0f172a; color: #e2e8f0; font-
       if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
         if (dx < 0) forward();
         else back();
+      } else if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+        // タップ：「一覧」「終える」を出す（#157）
+        showTouchBar();
       }
     },
     { passive: true },
