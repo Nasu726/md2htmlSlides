@@ -355,3 +355,11 @@ describe('動く構成図の説明のリスト（#107）', () => {
     );
   });
 });
+
+describe('iOS の Safari（#159）', () => {
+  it('縮めて表示した文字を自動で大きくしない（text-size-adjust）', () => {
+    const html = renderDeckHtml(buildSlides(parseDeck('## A\n\n本文\n')));
+    expect(html).toContain('-webkit-text-size-adjust: 100%');
+    expect(html).toContain(' text-size-adjust: 100%');
+  });
+});

@@ -33,6 +33,11 @@
 * {
   box-sizing: border-box;
 }
+/* iOS の Safari の、文字の自動拡大を止める（#159） */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 html,
 body,
 #app {

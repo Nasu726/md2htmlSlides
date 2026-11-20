@@ -5,6 +5,9 @@
  */
 export const BASE_CSS = `
 *, *::before, *::after { box-sizing: border-box; }
+/* iOS の Safari が、縮めて表示した文字を自動で大きくしないようにする（プレビューで文字が大きくなり、
+   収まる判定がずれていた。#159） */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { margin: 0; background: #d1d5db; }
 
 .mds-deck {
