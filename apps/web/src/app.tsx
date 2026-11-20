@@ -792,7 +792,7 @@ export function App() {
             </span>
           )}
         </span>
-        <button type="button" class="wide-only" onClick={() => void save()} title="Ctrl+S">
+        <button type="button" class="save" onClick={() => void save()} title="Ctrl+S">
           {doc.value.kind === 'folder' || doc.value.kind === 'github' ? '保存' : 'ダウンロード'}
         </button>
         <button
@@ -804,6 +804,8 @@ export function App() {
           HTML を書き出す
         </button>
         <span class="spacer" />
+        {/* 狭い画面では、ここで2段目にする（#157） */}
+        <span class="narrow-only row-break" />
         <div class="narrow-only pane-switch" role="group" aria-label="表示">
           <button
             type="button"
@@ -822,7 +824,7 @@ export function App() {
         </div>
         <button
           type="button"
-          class={`wide-only${cheatOpen.value ? ' active' : ''}`}
+          class={cheatOpen.value ? 'active' : ''}
           title="Ctrl+/"
           onClick={toggleCheatSheet}
         >
@@ -860,14 +862,8 @@ export function App() {
           <button type="button" role="menuitem" onClick={openGitHub}>
             GitHub
           </button>
-          <button type="button" role="menuitem" onClick={() => void save()}>
-            {doc.value.kind === 'folder' || doc.value.kind === 'github' ? '保存' : 'ダウンロード'}
-          </button>
           <button type="button" role="menuitem" onClick={() => void exportHtml()}>
             HTML を書き出す
-          </button>
-          <button type="button" role="menuitem" onClick={toggleCheatSheet}>
-            ? 早見表
           </button>
           <a
             role="menuitem"
