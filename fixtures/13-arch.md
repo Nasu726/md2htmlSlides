@@ -212,3 +212,78 @@ scenario 注文
 ## シーケンス図だけ（view=sequence）
 
 ![注文処理の構成](./assets/order-system.arch){scenario=決済の障害 view=sequence}
+
+## モノリスを分ける
+
+```arch {captions=below}
+direction: right
+
+user ユーザー [user]
+app  アプリ（注文・決済・在庫）
+db   DB [database]
+
+user -> app -> db
+
+layout 分割後
+  user  ユーザー [user]
+  gw    ゲートウェイ
+  group サービス
+    order 注文 < app
+    pay   決済 < app
+    stock 在庫 < app
+  db    DB [database]
+  user -> gw
+  gw -> order
+  gw -> pay
+  gw -> stock
+  order -> db
+  pay -> db
+  stock -> db
+
+scenario 分割
+  step 今の構成：1つのアプリが全部を受け持つ
+    user -> app -> db : 注文
+  step 機能ごとのサービスに分ける
+    layout 分割後
+  step 注文は、注文サービスだけを通る
+    user -> gw -> order -> db : 注文
+```
+
+## スケールアウト
+
+```arch {captions=below}
+direction: right
+
+user ユーザー [user]
+lb   ロードバランサ
+api  API
+db   DB [database]
+
+user -> lb -> api -> db
+
+layout 3台
+  user ユーザー [user]
+  lb   ロードバランサ
+  api  API 1
+  api2 API 2 < api
+  api3 API 3 < api
+  db   DB [database]
+  user -> lb
+  lb -> api
+  lb -> api2
+  lb -> api3
+  api -> db
+  api2 -> db
+  api3 -> db
+
+scenario スケールアウト
+  step 1台で受ける
+    user -> lb -> api -> db
+    api: 負荷 90% !
+  step 3台に増やす
+    layout 3台
+    api: -
+  step 負荷を分ける
+    user -> lb -> api2 -> db
+    user -> lb -> api3 -> db
+```

@@ -54,7 +54,19 @@ export const ARCH_KEYWORDS: ReadonlyArray<{
     summary: 'シナリオ（正常時・障害時など）',
     scenario: false,
   },
+  {
+    name: 'layout',
+    insert: 'layout ',
+    summary: '別の構成（下に字下げして、構成を全部書く）',
+    scenario: false,
+  },
   { name: 'step', insert: 'step ', summary: 'ステップ（発表の1ステップになる）', scenario: true },
+  {
+    name: 'layout',
+    insert: 'layout ',
+    summary: 'このステップで構成を切り替える（`layout -` で最初の構成）',
+    scenario: true,
+  },
   { name: 'note', insert: 'note: ', summary: 'このステップの発表者ノート', scenario: true },
 ];
 
@@ -66,6 +78,8 @@ export interface ArchNode {
   group?: string;
   /** 中身の数の上限（`max=5`、#181） */
   max?: number;
+  /** 別の構成のこのノードから分かれた（`order 注文 < app`、#183） */
+  from?: string;
   line: number;
 }
 
@@ -145,7 +159,14 @@ export interface ArchValue {
   line: number;
 }
 
-export type ArchAction = ArchMove | ArchState | ArchCut | ArchItems | ArchValue;
+/** 構成を切り替える（`layout 分割後`、`layout -` で最初の構成。#183）。name が null なら最初の構成 */
+export interface ArchLayoutSwitch {
+  type: 'layout';
+  name: string | null;
+  line: number;
+}
+
+export type ArchAction = ArchMove | ArchState | ArchCut | ArchItems | ArchValue | ArchLayoutSwitch;
 
 export interface ArchStep {
   title: string;
@@ -161,11 +182,22 @@ export interface ArchScenario {
   line: number;
 }
 
+/** 別の構成（`layout 分割後` の下に字下げして書く、#183）。字下げしない構成が最初の構成 */
+export interface ArchLayout {
+  name: string;
+  nodes: ArchNode[];
+  groups: ArchGroup[];
+  edges: ArchEdge[];
+  line: number;
+}
+
 export interface ArchDiagram {
   direction: 'right' | 'down';
   nodes: ArchNode[];
   groups: ArchGroup[];
   edges: ArchEdge[];
+  /** 別の構成（#183）。あるときだけ持つ */
+  layouts?: ArchLayout[];
   scenarios: ArchScenario[];
 }
 
@@ -231,6 +263,10 @@ export function parseArch(source: string): {
 
   // 構成：開いているグループ（インデントの深さと ID）
   const groups: Array<{ indent: number; id: string }> = [];
+  // 構成を書く先：最初の構成（diagram）か、別の構成（layout の下。字下げは 2 つ分ずらして読む。#183）
+  let target: { nodes: ArchNode[]; groups: ArchGroup[]; edges: ArchEdge[] } = diagram;
+  let layout: ArchLayout | undefined;
+  let offset = 0;
   let scenario: ArchScenario | undefined;
   let step: { step: ArchStep; indent: number } | undefined;
   let lastMove: { move: ArchMove; indent: number } | undefined;
@@ -255,7 +291,7 @@ export function parseArch(source: string): {
           { found: '-->', suggestion: '->' },
         );
       }
-      diagram.edges.push({
+      target.edges.push({
         from,
         to,
         type: arrow === '<->' ? 'both' : arrow === '--' ? 'line' : 'arrow',
@@ -293,8 +329,9 @@ export function parseArch(source: string): {
     }
     const group = /^group\s+(.+)$/.exec(text);
     if (group) {
-      const id = `g${diagram.groups.length + 1}`;
-      diagram.groups.push({ id, label: unquote(group[1]!), ...(parent ? { parent } : {}), line });
+      const prefix = layout ? `l${diagram.layouts!.length}-` : '';
+      const id = `${prefix}g${target.groups.length + 1}`;
+      target.groups.push({ id, label: unquote(group[1]!), ...(parent ? { parent } : {}), line });
       groups.push({ indent, id });
       return;
     }
@@ -303,15 +340,30 @@ export function parseArch(source: string): {
       return;
     }
     // 中身の数の上限（行末の `max=5`、#181）
+    // 行末の指定：`max=5`（#181）と `< app`（別の構成のノードから分かれた、#183）。順は問わない
     let max: number | undefined;
-    const maxText = /\s+max=(\S*)$/.exec(text);
-    const nodeText = maxText ? text.slice(0, maxText.index) : text;
-    if (maxText) {
-      const n = Number(maxText[1]);
-      if (Number.isInteger(n) && n >= 1 && n <= 20) max = n;
-      else {
-        warn(line, 'arch/invalid-max', '`max=` は 1〜20 の整数で書きます', { found: maxText[1]! });
+    let from: string | undefined;
+    let nodeText = text;
+    for (;;) {
+      const maxText = /\s+max=(\S*)$/.exec(nodeText);
+      if (maxText) {
+        nodeText = nodeText.slice(0, maxText.index);
+        const n = Number(maxText[1]);
+        if (Number.isInteger(n) && n >= 1 && n <= 20) max = n;
+        else {
+          warn(line, 'arch/invalid-max', '`max=` は 1〜20 の整数で書きます', {
+            found: maxText[1]!,
+          });
+        }
+        continue;
       }
+      const fromText = /\s+<\s*([A-Za-z0-9_-]+)$/.exec(nodeText);
+      if (fromText) {
+        nodeText = nodeText.slice(0, fromText.index);
+        from = fromText[1]!;
+        continue;
+      }
+      break;
     }
     // ノード：<ID> <表示名> [<種類>]
     const node = /^([^\s[\]]+)(?:\s+(.*?))?(?:\s*\[([^\]]*)\])?$/.exec(nodeText);
@@ -320,7 +372,7 @@ export function parseArch(source: string): {
       return;
     }
     const id = node[1]!;
-    if (diagram.nodes.some((n) => n.id === id)) {
+    if (target.nodes.some((n) => n.id === id)) {
       warn(line, 'arch/duplicate-node', `ノード ${id} が2回定義されています`);
       return;
     }
@@ -340,12 +392,13 @@ export function parseArch(source: string): {
       }
     }
     const label = node[2] ? unquote(node[2].replace(/\s+/g, ' ')) : id;
-    diagram.nodes.push({
+    target.nodes.push({
       id,
       label: label || id,
       kind,
       ...(parent ? { group: parent } : {}),
       ...(max !== undefined ? { max } : {}),
+      ...(from !== undefined ? { from } : {}),
       line,
     });
   };
@@ -372,6 +425,13 @@ export function parseArch(source: string): {
     const note = /^note\s*:\s*(.*)$/.exec(text);
     if (note) {
       step.step.notes.push(note[1]!);
+      return;
+    }
+    // 構成を切り替える（#183）：`layout 分割後`・`layout -`（最初の構成）
+    const switchTo = /^layout\s+(.+)$/.exec(text);
+    if (switchTo) {
+      const name = unquote(switchTo[1]!);
+      step.step.actions.push({ type: 'layout', name: name === '-' ? null : name, line });
       return;
     }
     // ノードの中身（#181）：`queue += 注文1 注文2`・`queue -= 注文1`・`db.注文 = 3件`
@@ -521,8 +581,27 @@ export function parseArch(source: string): {
       step = undefined;
       return;
     }
-    if (scenario) parseScenarioLine(text, indent, line);
-    else parseStructureLine(text, indent, line);
+    if (scenario) {
+      parseScenarioLine(text, indent, line);
+      return;
+    }
+    // 別の構成（#183）：`layout 名前` の下に、字下げして構成を全部書く
+    const layoutHead = /^layout\s+(.+)$/.exec(text);
+    if (layoutHead && indent === 0) {
+      layout = { name: unquote(layoutHead[1]!), nodes: [], groups: [], edges: [], line };
+      (diagram.layouts ??= []).push(layout);
+      target = layout;
+      offset = 2;
+      groups.length = 0;
+      return;
+    }
+    if (layout && indent === 0) {
+      layout = undefined;
+      target = diagram;
+      offset = 0;
+      groups.length = 0;
+    }
+    parseStructureLine(text, indent - offset, line);
   });
 
   checkReferences(diagram, diagnostics);
@@ -534,26 +613,57 @@ export function parseArch(source: string): {
  * 移動 `a -> b` は、構成に a→b・a↔b・a—b のどれかがあればよい。応答 `b --> a` は、向きを問わない。
  */
 function checkReferences(diagram: ArchDiagram, diagnostics: ArchDiagnostic[]): void {
-  const ids = new Set(diagram.nodes.map((n) => n.id));
+  // 構成（最初の構成と、別の構成。#183）。シナリオでは、そのときの構成で参照を確かめる
+  type Structure = { name: string | null; nodes: ArchNode[]; edges: ArchEdge[] };
+  const structures: Structure[] = [
+    { name: null, nodes: diagram.nodes, edges: diagram.edges },
+    ...(diagram.layouts ?? []).map((l) => ({ name: l.name, nodes: l.nodes, edges: l.edges })),
+  ];
+  const allIds = new Set(structures.flatMap((st) => st.nodes.map((n) => n.id)));
+  let cur = structures[0]!;
+  let ids = new Set(cur.nodes.map((n) => n.id));
+  const use = (st: Structure) => {
+    cur = st;
+    ids = new Set(st.nodes.map((n) => n.id));
+  };
   const used = new Set<string>();
   const unknown = (id: string, line: number) => {
     if (ids.has(id)) return false;
     diagnostics.push({
       severity: 'warning',
       code: 'arch/unknown-node',
-      message: `ノード ${id} は定義されていません`,
+      message: allIds.has(id)
+        ? `ノード ${id} は、今の構成（${cur.name ?? '最初の構成'}）にはありません`
+        : `ノード ${id} は定義されていません`,
       line,
       found: id,
     });
     return true;
   };
-  for (const e of diagram.edges) {
-    used.add(e.from).add(e.to);
-    unknown(e.from, e.line);
-    unknown(e.to, e.line);
+  for (const st of structures) {
+    use(st);
+    for (const e of st.edges) {
+      used.add(e.from).add(e.to);
+      unknown(e.from, e.line);
+      unknown(e.to, e.line);
+    }
+    for (const n of st.nodes) {
+      if (n.from === undefined) continue;
+      used.add(n.from).add(n.id);
+      if (!allIds.has(n.from)) {
+        diagnostics.push({
+          severity: 'warning',
+          code: 'arch/unknown-node',
+          message: `分かれる元のノード ${n.from} は、どの構成にもありません`,
+          line: n.line,
+          found: n.from,
+        });
+      }
+    }
   }
+  use(structures[0]!);
   const connected = (a: string, b: string, reply: boolean) =>
-    diagram.edges.some(
+    cur.edges.some(
       (e) =>
         (e.from === a && e.to === b) ||
         ((reply || e.type !== 'arrow') && e.from === b && e.to === a),
@@ -566,9 +676,29 @@ function checkReferences(diagram: ArchDiagram, diagnostics: ArchDiagnostic[]): v
     const cuts = new Set<string>();
     // ノードの中身（#181）
     const held = new Map<string, string[]>();
-    const maxOf = new Map(diagram.nodes.map((n) => [n.id, n.max]));
+    const maxOf = new Map<string, number | undefined>();
+    for (const st of structures) {
+      for (const n of st.nodes) if (!maxOf.has(n.id)) maxOf.set(n.id, n.max);
+    }
+    use(structures[0]!);
     for (const st of s.steps) {
       for (const action of st.actions) {
+        if (action.type === 'layout') {
+          const next = structures.find((x) => x.name === action.name);
+          if (next) use(next);
+          else {
+            diagnostics.push({
+              severity: 'warning',
+              code: 'arch/unknown-layout',
+              message: `構成 ${action.name} はありません（${structures
+                .slice(1)
+                .map((x) => x.name)
+                .join('・')}）`,
+              line: action.line,
+            });
+          }
+          continue;
+        }
         if (action.type === 'state') {
           used.add(action.node);
           unknown(action.node, action.line);
@@ -647,7 +777,7 @@ function checkReferences(diagram: ArchDiagram, diagnostics: ArchDiagnostic[]): v
       }
     }
   }
-  for (const n of diagram.nodes) {
+  for (const n of structures.flatMap((st) => st.nodes)) {
     if (!used.has(n.id)) {
       diagnostics.push({
         severity: 'info',

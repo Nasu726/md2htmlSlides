@@ -22,8 +22,11 @@ export function startArch(doc: Document): void {
   type Items = { q: string; a?: string[]; d?: string[] };
   type Value = { v: string; n: string; t: string | null };
   type Change = State | Cut | Items | Value;
-  type Action = Move | Change;
+  // y：構成を切り替える（空なら最初の構成。#183）
+  type Layout = { y: string };
+  type Action = Move | Change | Layout;
   const isMove = (a: Action): a is Move => 'm' in a;
+  const isLayout = (a: Action): a is Layout => 'y' in a;
   const isState = (a: Action): a is State => 's' in a;
   const isCut = (a: Action): a is Cut => 'k' in a;
   const NS = 'http://www.w3.org/2000/svg';
@@ -49,10 +52,21 @@ export function startArch(doc: Document): void {
     return e;
   };
   const sel = (s: string) => s.replace(/["\\]/g, '\\$&');
+  /**
+   * 今の構成（#183）：別の構成のある図は、構成ごとのまとまり（.arch-layout）を重ねていて、
+   * 今の構成のほかは隠している。ノードと線は今の構成の中から探す
+   */
+  const scopeOf = (svg: Element): Element =>
+    svg.querySelector('.arch-layout:not(.is-hidden)') ?? svg;
+  const setLayout = (svg: Element, name: string) => {
+    for (const g of Array.from(svg.querySelectorAll('.arch-layout'))) {
+      g.classList.toggle('is-hidden', g.getAttribute('data-layout') !== name);
+    }
+  };
   const nodeOf = (svg: Element, id: string) =>
-    svg.querySelector(`.arch-node[data-node="${sel(id)}"]`);
+    scopeOf(svg).querySelector(`.arch-node[data-node="${sel(id)}"]`);
   const edgeOf = (svg: Element, a: string, b: string) =>
-    svg.querySelector(`.arch-edge[data-from="${sel(a)}"][data-to="${sel(b)}"]`);
+    scopeOf(svg).querySelector(`.arch-edge[data-from="${sel(a)}"][data-to="${sel(b)}"]`);
   /**
    * ノードの枠（renderArch が data-box に書く）。getBBox は使わない：
    * 発表者ビューの複製など、まだ描かれていない要素では 0 になるため
@@ -294,10 +308,10 @@ export function startArch(doc: Document): void {
     svg.querySelector('.arch-state')?.remove();
     const fx = svg.querySelector('.arch-fx') ?? make('g', { class: 'arch-fx' }, svg);
     const g = make('g', { class: 'arch-state' }, fx);
-    for (const n of Array.from(svg.querySelectorAll<SVGElement>('.arch-node'))) {
+    for (const n of Array.from(scopeOf(svg).querySelectorAll<SVGElement>('.arch-node'))) {
       n.classList.toggle('is-down', world.down.has(n.dataset.node ?? ''));
     }
-    for (const e of Array.from(svg.querySelectorAll<SVGElement>('.arch-edge'))) {
+    for (const e of Array.from(scopeOf(svg).querySelectorAll<SVGElement>('.arch-edge'))) {
       const from = e.dataset.from ?? '';
       const to = e.dataset.to ?? '';
       const side = world.cuts.get(pairKey(from, to));
@@ -308,7 +322,9 @@ export function startArch(doc: Document): void {
       const len = lengthOf(pts);
       cross(g, pointAt(pts, Math.min(Math.max(60, len * 0.35), len * 0.5)));
     }
-    for (const n of Array.from(svg.querySelectorAll<SVGElement>('.arch-node[data-table]'))) {
+    for (const n of Array.from(
+      scopeOf(svg).querySelectorAll<SVGElement>('.arch-node[data-table]'),
+    )) {
       table(g, n, world, fresh);
     }
     for (const [id, b] of world.badges) badge(g, svg, id, b.t, b.e);
@@ -383,6 +399,7 @@ export function startArch(doc: Document): void {
         if (edge) edges.add(edge);
         continue;
       }
+      if (isLayout(a)) continue;
       if (!isMove(a)) {
         nodes.add('q' in a ? a.q : a.v);
         continue;
@@ -393,13 +410,14 @@ export function startArch(doc: Document): void {
         if (seg?.edge) edges.add(seg.edge);
       }
     }
-    const on = step !== undefined;
-    for (const n of Array.from(svg.querySelectorAll<SVGElement>('.arch-node'))) {
+    // 構成を切り替えるだけのステップ（#183）など、強調するものがなければ薄くしない
+    const on = step !== undefined && (nodes.size > 0 || edges.size > 0);
+    for (const n of Array.from(scopeOf(svg).querySelectorAll<SVGElement>('.arch-node'))) {
       const active = nodes.has(n.dataset.node ?? '');
       n.classList.toggle('is-active', on && active);
       n.classList.toggle('is-dim', on && !active);
     }
-    for (const e of Array.from(svg.querySelectorAll('.arch-edge'))) {
+    for (const e of Array.from(scopeOf(svg).querySelectorAll('.arch-edge'))) {
       e.classList.toggle('is-active', on && edges.has(e));
       e.classList.toggle('is-dim', on && !edges.has(e));
     }
@@ -426,6 +444,9 @@ export function startArch(doc: Document): void {
   };
   /** 図の全体（最初の viewBox を覚えておく） */
   const fullOf = (svg: Element): Box => {
+    // 別の構成のある図（#183）は、今の構成の範囲
+    const layout = svg.querySelector('.arch-layout:not(.is-hidden)');
+    if (layout) return parseBox(layout.getAttribute('data-bounds'));
     if (!svg.hasAttribute('data-arch-full')) {
       svg.setAttribute('data-arch-full', svg.getAttribute('viewBox') ?? '0 0 0 0');
     }
@@ -455,6 +476,7 @@ export function startArch(doc: Document): void {
     let x1 = -Infinity;
     let y1 = -Infinity;
     for (const a of step) {
+      if (isLayout(a)) continue;
       const ids = isMove(a) ? a.m : isState(a) ? [a.s] : isCut(a) ? a.k : ['q' in a ? a.q : a.v];
       for (const id of ids) {
         const node = nodeOf(svg, id);
@@ -552,6 +574,118 @@ export function startArch(doc: Document): void {
     });
 
   /**
+   * 構成の変化（#183）：今の構成から name の構成へ、動きでつなぐ。同じ ID のノードは前の位置から動き、
+   * `< app` で分かれたノードは app の位置から小さく出て広がり、新しいノードは現れ、なくなるノードは消える。
+   * 線とグループは、前の構成のものを消してから、新しい構成のものを出す。範囲（viewBox）も移す
+   */
+  const morph = async (svg: SVGSVGElement, name: string) => {
+    const from = svg.querySelector<SVGGElement>('.arch-layout:not(.is-hidden)');
+    const to = svg.querySelector<SVGGElement>(`.arch-layout[data-layout="${sel(name)}"]`);
+    if (!from || !to || from === to) {
+      setLayout(svg, name);
+      return;
+    }
+    // 番号の印・状態は新しい構成で描き直す
+    for (const old of Array.from(
+      svg.querySelectorAll('.arch-fx .arch-state, .arch-mark, .arch-temp, .arch-fx > .arch-cross'),
+    )) {
+      old.remove();
+    }
+    to.classList.remove('is-hidden');
+    const nodeIn = (g: Element, id: string) =>
+      g.querySelector<SVGElement>(`.arch-node[data-node="${sel(id)}"]`);
+    const center = (n: Element) => {
+      const b = boxOf(n);
+      return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+    };
+    const anims: Animation[] = [];
+    const parts = '.arch-edge, .arch-edge-label, .arch-group, .arch-group-label';
+    for (const n of Array.from(to.querySelectorAll<SVGElement>('.arch-node'))) {
+      const id = n.dataset.node ?? '';
+      const same = nodeIn(from, id);
+      const src = same ?? (n.dataset.from ? nodeIn(from, n.dataset.from) : null);
+      n.style.transformBox = 'fill-box';
+      n.style.transformOrigin = 'center';
+      if (src) {
+        const a = center(src);
+        const b = center(n);
+        const start = `translate(${a.x - b.x}px, ${a.y - b.y}px) scale(${same ? 1 : 0.6})`;
+        anims.push(
+          n.animate(
+            [
+              { transform: start, opacity: same ? 1 : 0 },
+              { transform: 'none', opacity: 1 },
+            ],
+            { duration: 1000, easing: 'ease-in-out' },
+          ),
+        );
+      } else {
+        anims.push(
+          n.animate(
+            [
+              { transform: 'scale(0.6)', opacity: 0 },
+              { transform: 'none', opacity: 1 },
+            ],
+            { duration: 600, delay: 500, easing: 'ease-out', fill: 'backwards' },
+          ),
+        );
+      }
+    }
+    for (const e of Array.from(to.querySelectorAll(parts))) {
+      anims.push(
+        e.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: 400,
+          delay: 800,
+          fill: 'backwards',
+        }),
+      );
+    }
+    for (const n of Array.from(from.querySelectorAll<SVGElement>('.arch-node'))) {
+      if (nodeIn(to, n.dataset.node ?? '')) n.style.visibility = 'hidden';
+      else
+        anims.push(
+          n.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 700, fill: 'forwards' }),
+        );
+    }
+    for (const e of Array.from(from.querySelectorAll(parts))) {
+      anims.push(e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }));
+    }
+    // 範囲（viewBox）を、前の構成から次の構成へ
+    const a = parseBox(from.getAttribute('data-bounds'));
+    const b = parseBox(to.getAttribute('data-bounds'));
+    const view = new Promise<void>((done) => {
+      const start = win.performance.now();
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - start) / 1000);
+        const e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+        svg.setAttribute(
+          'viewBox',
+          boxText({
+            x: a.x + (b.x - a.x) * e,
+            y: a.y + (b.y - a.y) * e,
+            width: a.width + (b.width - a.width) * e,
+            height: a.height + (b.height - a.height) * e,
+          }),
+        );
+        if (t < 1) win.requestAnimationFrame(tick);
+        else done();
+      };
+      win.requestAnimationFrame(tick);
+    });
+    await Promise.all([...anims.map((x) => x.finished.catch(() => undefined)), view]);
+    // 後片付け：前の構成を隠し、足した見た目を外す
+    from.classList.add('is-hidden');
+    for (const x of anims) x.cancel();
+    for (const n of Array.from(from.querySelectorAll<SVGElement>('.arch-node'))) {
+      n.style.visibility = '';
+    }
+    for (const n of Array.from(to.querySelectorAll<SVGElement>('.arch-node'))) {
+      n.style.transformBox = '';
+      n.style.transformOrigin = '';
+    }
+  };
+
+  /**
    * 「段」個のステップが終わった状態を、動きなしで表示する。
    * summary（一覧・PDF の既定）では、通ったすべての経路に番号を付け、1つのステップを強調せず、
    * 説明をすべて同じに見せ、図の全体を見せる（まとめの1枚。#109）
@@ -566,10 +700,22 @@ export function startArch(doc: Document): void {
     const done = Math.min(stage, steps.length);
     const world = newWorld(svg);
     const used = new Map<Element | string, number>();
+    setLayout(svg, '');
     for (let k = 0; k < done; k++) {
       // 構成にない経路と届かない移動の ×は、そのステップのあいだだけ描く（まとめではすべて）
       const now = summary || k === done - 1;
       for (const a of steps[k]!) {
+        if (isLayout(a)) {
+          // 構成を切り替えたら、番号の印などは新しい構成で数え直す（#183）
+          setLayout(svg, a.y);
+          for (const old of Array.from(
+            fx.querySelectorAll('.arch-mark, .arch-temp, .arch-cross'),
+          )) {
+            old.remove();
+          }
+          used.clear();
+          continue;
+        }
         if (!isMove(a)) {
           apply(world, a);
           continue;
@@ -624,7 +770,7 @@ export function startArch(doc: Document): void {
     // このステップの初めの状態（止めたノード・切ったつながり・バッジ）から、書いた順に進める
     const world = newWorld(svg);
     for (const before of stepsOf(figure).slice(0, stage - 1)) {
-      for (const a of before) if (!isMove(a)) apply(world, a);
+      for (const a of before) if (!isMove(a) && !isLayout(a)) apply(world, a);
     }
     // シーケンス図：前のステップは薄く、このステップの番号だけ出し、行は動きに合わせて1つずつ出す
     for (const el of Array.from(svg.querySelectorAll<SVGElement>('.seq-row, .seq-step'))) {
@@ -636,6 +782,14 @@ export function startArch(doc: Document): void {
       );
     }
     for (const [ai, a] of step.entries()) {
+      if (isLayout(a)) {
+        // 構成を切り替える（#183）：動きでつないでから、今の状態を新しい構成に描き直す
+        await morph(svg, a.y);
+        if (runs.get(figure) !== run) return;
+        paint(svg, world);
+        highlight(svg, step);
+        continue;
+      }
       if (!isMove(a)) {
         seqRow(svg, stage - 1, ai)?.classList.remove('is-future');
         const rejected = apply(world, a);

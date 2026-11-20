@@ -328,6 +328,8 @@ body { margin: 0; background: #d1d5db; }
 .mds-arch-svg .seq-step circle { fill: var(--mds-accent); }
 .mds-arch-svg .seq-step text { fill: var(--mds-bg); font-size: 13px; font-weight: 700; }
 .mds-arch-svg .seq-dot circle { fill: var(--mds-accent); stroke: var(--mds-bg); stroke-width: 2; }
+/* 構成の変化（#183）：今の構成のほかは隠す */
+.mds-arch-svg .arch-layout.is-hidden { display: none; }
 /* 再生：まだのステップは隠し、終わったステップは薄くする */
 .mds-arch-svg :is(.seq-row, .seq-step).is-future { visibility: hidden; }
 .mds-arch-svg :is(.seq-row, .seq-step).is-past { opacity: 0.45; }
