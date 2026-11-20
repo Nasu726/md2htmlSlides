@@ -1,4 +1,4 @@
-import type { Diagnostic } from '@mdhs/core';
+import { VERSION, type Diagnostic } from '@mdhs/core';
 import { EditorView } from '@codemirror/view';
 import { signal } from '@preact/signals';
 import { useEffect, useRef } from 'preact/hooks';
@@ -81,6 +81,20 @@ const CHEAT_ITEMS: CheatItem[] = cheatSheet();
  */
 const NARROW = '(max-width: 700px), (max-height: 500px)';
 const isNarrow = () => typeof matchMedia !== 'undefined' && matchMedia(NARROW).matches;
+/** 版とビルド（#167）。どの版で開いているかが分かるように出す */
+const VERSION_LABEL = `v${VERSION}（${__BUILD__}）`;
+
+/**
+ * 新しい版が入った（Service Worker が入れ替わった）ことを知らせる（#167）。
+ * アプリはキャッシュから開くので、公開した直後に開いた画面は古い版のまま
+ */
+export function showUpdateNotice(): void {
+  notice.value = {
+    text: '新しい版を読み込みました。再読み込みすると使えます（書いている内容は下書きに残ります）。',
+    actions: [{ label: '再読み込み', run: () => location.reload() }],
+  };
+}
+
 /** 狭い画面で表示している側 */
 const pane = signal<'edit' | 'preview'>('edit');
 /** 狭い画面の「≡」のメニュー */
@@ -913,6 +927,7 @@ export function App() {
           >
             このアプリについて・ライセンス
           </a>
+          <p class="menu-version">{VERSION_LABEL}</p>
         </div>
       )}
       {notice.value && (
@@ -1047,6 +1062,9 @@ export function App() {
         >
           このアプリについて・ライセンス
         </a>
+        <span class="muted wide-only" data-testid="version">
+          {VERSION_LABEL}
+        </span>
       </footer>
       {showWarnings.value && warnings.length > 0 && (
         <div class="warnings" role="dialog" aria-label="警告">

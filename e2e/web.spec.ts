@@ -1,4 +1,5 @@
 import { build, buildSingle } from '@mdhs/cli';
+import { VERSION } from '@mdhs/core';
 import { devices, expect, test, type Page, type Route } from '@playwright/test';
 import {
   createReadStream,
@@ -525,29 +526,31 @@ test('行番号欄に、スライドの番号・自動の区切り・警告を�
   await expect(markers).toHaveCount(count);
 });
 
-test('プレビューは、見ている位置を保てるブラウザでだけ、画面の外のスライドの描画を省く（#163）', async ({
+test('プレビューは画面の外のスライドの描画を省かない。版とビルドを出す（#163・#167）', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(origin);
   await expect(slideCount(page)).toHaveText(/^\d+ 枚$/);
-  const result = await preview(page)
+  // 描画を省くと、iOS の Safari でスクロールした位置が上に戻る
+  const visibility = await preview(page)
     .locator('.mds-slide')
-    .first()
-    .evaluate((slide) => ({
-      anchoring: CSS.supports('overflow-anchor', 'auto'),
-      visibility: getComputedStyle(slide).contentVisibility,
-      // Safari（scroll anchoring がない）では、描画を省かない規則がある
-      fallback: Array.from(slide.ownerDocument.styleSheets).some((sheet) =>
-        Array.from(sheet.cssRules).some(
-          (rule) =>
-            rule instanceof CSSSupportsRule &&
-            rule.conditionText.includes('overflow-anchor') &&
-            rule.cssText.includes('content-visibility: visible'),
-        ),
-      ),
-    }));
-  expect(result).toEqual({ anchoring: true, visibility: 'auto', fallback: true });
+    .last()
+    .evaluate((slide) => getComputedStyle(slide).contentVisibility);
+  expect(visibility).toBe('visible');
+  // どの版で試しているかが分かるように（Service Worker のキャッシュで古い版のこともある）
+  await expect(page.getByTestId('version')).toHaveText(
+    new RegExp(`^v${VERSION.replace(/\./g, '\\.')}（([0-9a-f]{7}|dev)）$`),
+  );
+
+  // 新しい版が入ったら（Service Worker が入れ替わったら）知らせる。初めて入れたときは知らせない
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await expect(page.locator('.notice')).toHaveCount(0);
+  await page.reload();
+  await expect(slideCount(page)).toHaveText(/^\d+ 枚$/);
+  await page.evaluate(() => navigator.serviceWorker.dispatchEvent(new Event('controllerchange')));
+  await expect(page.locator('.notice')).toContainText('新しい版を読み込みました');
+  await expect(page.locator('.notice').getByRole('button', { name: '再読み込み' })).toBeVisible();
 });
 
 test('カーソルのあるスライドをプレビューで示し、スライドをクリックするとその行に移る（#74）', async ({
