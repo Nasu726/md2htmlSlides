@@ -297,15 +297,13 @@ body { margin: 0; }
 .mds-deck[data-preview] { padding: 16px 0; gap: 16px; }
 .mds-deck[data-preview] > .mds-slide { zoom: var(--mds-preview-zoom, 1); }
 .mds-deck[data-preview] > .mds-slide * { overflow-anchor: none; }
-.mds-deck[data-preview] > .mds-slide { cursor: pointer; content-visibility: auto; }
 /*
- * 見ている位置を保つ仕組み（scroll anchoring）のないブラウザ（Safari）では、画面の外の描画を省かない。
- * Safari では、描画を省いている間のスライドの高さが zoom で縮める前の大きさになり、スライドが
- * 画面に出入りするたびに上の高さが変わって、スクロールした位置が上に戻っていた（#163）
+ * 画面の外のスライドの描画は省かない（content-visibility: auto を使わない）。iOS の Safari では、
+ * 描画を省いている間のスライドの高さが zoom で縮める前の大きさになり、スライドが画面に出入りするたびに
+ * 上の高さが変わって、スクロールした位置が上に戻っていた（#163・#167）。省かなくても、
+ * 50枚ほどの資料で打鍵から反映までの時間は変わらない（p95 で 26〜34 ms）
  */
-@supports not (overflow-anchor: auto) {
-  .mds-deck[data-preview] > .mds-slide { content-visibility: visible; }
-}
+.mds-deck[data-preview] > .mds-slide { cursor: pointer; }
 /* エディタのカーソルがあるスライド（#74） */
 .mds-deck[data-preview] > .mds-slide[data-editing] { outline: 4px solid #2563eb; outline-offset: 3px; }
 `;

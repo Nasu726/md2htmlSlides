@@ -164,6 +164,8 @@ function budouxBrowser(): Plugin {
 
 export default defineConfig({
   base: './',
+  // どのビルドかを画面に出す（#167）。GitHub Actions ではコミットの短い SHA、手元では dev
+  define: { __BUILD__: JSON.stringify((process.env.GITHUB_SHA ?? '').slice(0, 7) || 'dev') },
   resolve: {
     // ビルドせずに、各パッケージのソースを直接読む（tsc の出力を待たずに済む）
     alias: {
