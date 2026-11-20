@@ -298,6 +298,14 @@ body { margin: 0; }
 .mds-deck[data-preview] > .mds-slide { zoom: var(--mds-preview-zoom, 1); }
 .mds-deck[data-preview] > .mds-slide * { overflow-anchor: none; }
 .mds-deck[data-preview] > .mds-slide { cursor: pointer; content-visibility: auto; }
+/*
+ * 見ている位置を保つ仕組み（scroll anchoring）のないブラウザ（Safari）では、画面の外の描画を省かない。
+ * Safari では、描画を省いている間のスライドの高さが zoom で縮める前の大きさになり、スライドが
+ * 画面に出入りするたびに上の高さが変わって、スクロールした位置が上に戻っていた（#163）
+ */
+@supports not (overflow-anchor: auto) {
+  .mds-deck[data-preview] > .mds-slide { content-visibility: visible; }
+}
 /* エディタのカーソルがあるスライド（#74） */
 .mds-deck[data-preview] > .mds-slide[data-editing] { outline: 4px solid #2563eb; outline-offset: 3px; }
 `;

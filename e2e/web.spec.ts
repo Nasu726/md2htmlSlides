@@ -525,6 +525,31 @@ test('行番号欄に、スライドの番号・自動の区切り・警告を�
   await expect(markers).toHaveCount(count);
 });
 
+test('プレビューは、見ている位置を保てるブラウザでだけ、画面の外のスライドの描画を省く（#163）', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(origin);
+  await expect(slideCount(page)).toHaveText(/^\d+ 枚$/);
+  const result = await preview(page)
+    .locator('.mds-slide')
+    .first()
+    .evaluate((slide) => ({
+      anchoring: CSS.supports('overflow-anchor', 'auto'),
+      visibility: getComputedStyle(slide).contentVisibility,
+      // Safari（scroll anchoring がない）では、描画を省かない規則がある
+      fallback: Array.from(slide.ownerDocument.styleSheets).some((sheet) =>
+        Array.from(sheet.cssRules).some(
+          (rule) =>
+            rule instanceof CSSSupportsRule &&
+            rule.conditionText.includes('overflow-anchor') &&
+            rule.cssText.includes('content-visibility: visible'),
+        ),
+      ),
+    }));
+  expect(result).toEqual({ anchoring: true, visibility: 'auto', fallback: true });
+});
+
 test('カーソルのあるスライドをプレビューで示し、スライドをクリックするとその行に移る（#74）', async ({
   page,
 }) => {
